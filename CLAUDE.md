@@ -305,11 +305,4 @@ Claude_SQM_v864_3/
 1. `feature_matrix.json`에서 해당 기능의 `tkinter_source` 확인
 2. v864.2 원본 코드 참조
 3. `docs/handoff/`의 3개 JSON 재확인
-4. 여전히 막히면 → 사장님께 구체적 질문 (가정하지 말 것)
-
----
-
-**버전:** v865
-**작성일:** 2026-04-21
-**작성자:** Ruby (Senior Software Architect Mode)
-**기반:** Cowork Sub-Agent 3인 산출물 (Agent 1 구조분석, Agent 2 기능추출, Agent 3 디자인토큰)
+4. 

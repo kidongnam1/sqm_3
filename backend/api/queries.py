@@ -387,6 +387,72 @@ def get_sold_list(limit: int = 500):
 
 
 # ── F055: 제품별 재고 현황 ──────────────────────────────────────
+@router.get("/products", summary="📦 품목 선택 목록")
+def get_products(active_only: bool = True):
+    """product_master 기반 품목 목록. 테이블이 없으면 현재 재고 품목으로 fallback."""
+    try:
+        con = _db()
+        try:
+            con.execute("""
+                CREATE TABLE IF NOT EXISTS product_master (
+                    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                    code        TEXT    NOT NULL UNIQUE,
+                    full_name   TEXT    NOT NULL,
+                    korean_name TEXT    NOT NULL DEFAULT '',
+                    tonbag_support INTEGER NOT NULL DEFAULT 0,
+                    is_default  INTEGER NOT NULL DEFAULT 0,
+                    is_active   INTEGER NOT NULL DEFAULT 1,
+                    sort_order  INTEGER NOT NULL DEFAULT 0,
+                    created_at  TEXT,
+                    updated_at  TEXT
+                )
+            """)
+            from datetime import datetime
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            defaults = [
+                ("NSH", "Nickel Sulfate Hexahydrate", "황산니켈", 1, 1),
+                ("LCA", "Lithium Carbonate Anhydrous", "탄산리튬", 1, 1),
+                ("CSH", "Cobalt Sulfate Heptahydrate", "황산코발트", 0, 1),
+                ("NCM", "Nickel Cobalt Manganese", "니켈코발트망간", 0, 1),
+                ("NCA", "Nickel Cobalt Aluminum", "니켈코발트알루미늄", 0, 1),
+                ("LFP", "Lithium Iron Phosphate", "리튬인산철", 0, 1),
+                ("LMO", "Lithium Manganese Oxide", "리튬망간산화물", 0, 1),
+                ("LCO", "Lithium Cobalt Oxide", "리튬코발트산화물", 0, 1),
+            ]
+            for idx, (code, full_name, korean_name, tonbag, is_default) in enumerate(defaults):
+                con.execute(
+                    """INSERT OR IGNORE INTO product_master
+                       (code, full_name, korean_name, tonbag_support, is_default, sort_order, created_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (code, full_name, korean_name, tonbag, is_default, idx * 10, now),
+                )
+            con.commit()
+            where = "WHERE is_active = 1" if active_only else ""
+            rows = con.execute(f"""
+                SELECT id, code, full_name, korean_name, tonbag_support, is_default, is_active
+                FROM product_master
+                {where}
+                ORDER BY sort_order, code
+            """).fetchall()
+        except Exception:
+            rows = []
+
+        items = _rows_to_list(rows)
+        if not items:
+            fallback = con.execute("""
+                SELECT DISTINCT product AS full_name, '' AS code, '' AS korean_name
+                FROM inventory
+                WHERE COALESCE(product, '') <> ''
+                ORDER BY product
+            """).fetchall()
+            items = _rows_to_list(fallback)
+        con.close()
+        return ok_response(data={"items": items, "total": len(items)})
+    except Exception as e:
+        logger.error("products error: %s", e)
+        return err_response(str(e))
+
+
 @router.get("/product-inventory", summary="📊 제품별 재고 현황 (F055)")
 def get_product_inventory():
     """inventory + inventory_tonbag JOIN — 제품별 톤백 상세"""
@@ -549,76 +615,4 @@ def get_tonbag_detail(lot_no: str = ""):
                 FROM inventory_tonbag t
                 WHERE t.lot_no = ?
                 ORDER BY t.sub_lt
-            """, (lot_no,)).fetchall()
-        else:
-            rows = []
-        con.close()
-        return ok_response(data={"items": _rows_to_list(rows), "total": len(rows)})
-    except Exception as e:
-        logger.error("tonbag-detail error: %s", e)
-        return err_response(str(e))
-
-
-@router.get("/outbound-history", summary="📦 출고 이력 목록 (Stage 2)")
-def get_outbound_history(limit: int = 100, lot_no: str = "", date_from: str = "", date_to: str = ""):
-    """출고 이력 목록"""
-    try:
-        con = _db()
-        params = []
-        where_parts = []
-        if lot_no:
-            where_parts.append("i.lot_no LIKE ?")
-            params.append(f"%{lot_no}%")
-        if date_from:
-            where_parts.append("sm.created_at >= ?")
-            params.append(date_from)
-        if date_to:
-            where_parts.append("sm.created_at <= ?")
-            params.append(date_to + " 23:59:59")
-        where = ("WHERE " + " AND ".join(where_parts)) if where_parts else ""
-        rows = con.execute(f"""
-            SELECT sm.id, sm.lot_no, i.product, sm.qty_kg,
-                   ROUND(sm.qty_kg/1000.0,3) AS qty_mt,
-                   sm.customer, sm.actor, sm.remarks,
-                   COALESCE(sm.movement_date, sm.created_at) AS outbound_dt,
-                   sm.from_location, sm.to_location, i.warehouse
-            FROM stock_movement sm
-            LEFT JOIN inventory i ON i.lot_no = sm.lot_no
-            {where}
-            {'WHERE' if not where_parts else 'AND'} sm.movement_type = 'OUTBOUND'
-            ORDER BY sm.created_at DESC
-            LIMIT ?
-        """.replace("WHERE AND", "WHERE").replace("AND AND", "AND"), params + [limit]).fetchall()
-        con.close()
-        return ok_response(data={"items": _rows_to_list(rows), "total": len(rows)})
-    except Exception as e:
-        logger.error("outbound-history error: %s", e)
-        return err_response(str(e))
-
-
-@router.get("/global-search", summary="🔍 전역 검색 (Stage 2)")
-def global_search(q: str = "", limit: int = 50):
-    """전역 검색 — inventory / inventory_tonbag 통합 검색"""
-    if not q or len(q.strip()) < 2:
-        return ok_response(data={"items": [], "total": 0, "query": q})
-    try:
-        con = _db()
-        term = f"%{q.strip()}%"
-        rows = con.execute("""
-            SELECT 'LOT' AS type, lot_no AS id, lot_no, product, status,
-                   net_weight AS weight, warehouse, inbound_date AS date
-            FROM inventory
-            WHERE lot_no LIKE ? OR product LIKE ? OR bl_no LIKE ? OR sap_no LIKE ?
-            UNION ALL
-            SELECT 'TONBAG', sub_lt, lot_no, NULL, status,
-                   weight, location, inbound_date
-            FROM inventory_tonbag
-            WHERE sub_lt LIKE ? OR tonbag_uid LIKE ? OR location LIKE ?
-            ORDER BY date DESC
-            LIMIT ?
-        """, (term, term, term, term, term, term, term, limit)).fetchall()
-        con.close()
-        return ok_response(data={"items": _rows_to_list(rows), "total": len(rows), "query": q})
-    except Exception as e:
-        logger.error("global-search error: %s", e)
-        return err_response(str(e))
+            """,

@@ -241,17 +241,66 @@ def _is_transient_error(exc: Exception) -> bool:
     return False
 
 
+
+# ── Daily provider cache ──────────────────────────────────────────────────────
+# Gemini 가 하루 N회 초과 실패하면 당일은 OpenAI를 1순위로 자동 승격.
+# 메모리 캐시(프로세스 재시작 시 리셋)이므로 DB 의존 없음.
+
+_DAILY_CACHE: dict = {"date": "", "failures": 0, "prefer_openai": False}
+_GEMINI_DAILY_FAIL_THRESHOLD = 3   # 이 횟수 초과 시 당일 OpenAI 우선
+
+
+def _record_gemini_failure() -> None:
+    """Gemini transient 오류 발생 시 호출. 임계치 초과 시 prefer_openai=True."""
+    from datetime import date as _date
+    today = str(_date.today())
+    if _DAILY_CACHE["date"] != today:
+        _DAILY_CACHE.update({"date": today, "failures": 0, "prefer_openai": False})
+    _DAILY_CACHE["failures"] += 1
+    if _DAILY_CACHE["failures"] > _GEMINI_DAILY_FAIL_THRESHOLD:
+        if not _DAILY_CACHE["prefer_openai"]:
+            logger.warning(
+                "[DailyCache] Gemini 당일 %d회 실패 → 오늘은 다음 provider 1순위로 전환",
+                _DAILY_CACHE["failures"],
+            )
+        _DAILY_CACHE["prefer_openai"] = True
+
+
+def _prefer_openai_today() -> bool:
+    """당일 임계치 초과 여부. 날짜가 바뀌면 자동 리셋."""
+    from datetime import date as _date
+    if _DAILY_CACHE["date"] != str(_date.today()):
+        _DAILY_CACHE.update({"date": str(_date.today()), "failures": 0, "prefer_openai": False})
+    return _DAILY_CACHE["prefer_openai"]
+
+
 def _load_ext_api_key(provider: str) -> str:
-    """Load OpenAI key: env OPENAI_API_KEY → core.config → settings.ini [OpenAI]."""
+    """Load API key for any provider: ENV -> core.config -> settings.ini.
+    Supported: openai, paid_openai, groq, openrouter.
+    ENV: OPENAI_API_KEY | GROQ_API_KEY | OPENROUTER_API_KEY
+    INI: [OpenAI] | [Groq] | [OpenRouter]  key=api_key
+    """
+    _ENV_MAP = {
+        "openai": "OPENAI_API_KEY", "paid_openai": "OPENAI_API_KEY",
+        "groq": "GROQ_API_KEY", "openrouter": "OPENROUTER_API_KEY",
+    }
+    _CONFIG_ATTR = {
+        "openai": "OPENAI_API_KEY", "paid_openai": "OPENAI_API_KEY",
+        "groq": "GROQ_API_KEY", "openrouter": "OPENROUTER_API_KEY",
+    }
+    _INI_SECTION = {
+        "openai": "OpenAI", "paid_openai": "OpenAI",
+        "groq": "Groq", "openrouter": "OpenRouter",
+    }
     provider = provider.lower()
-    if provider != "openai":
+    if provider not in _ENV_MAP:
         return ""
-    env_val = os.environ.get("OPENAI_API_KEY", "")
+    env_val = os.environ.get(_ENV_MAP[provider], "")
     if env_val:
         return env_val
     try:
         import core.config as cc
-        return getattr(cc, "OPENAI_API_KEY", "") or ""
+        return getattr(cc, _CONFIG_ATTR[provider], "") or ""
     except Exception:
         pass
     try:
@@ -260,8 +309,9 @@ def _load_ext_api_key(provider: str) -> str:
         if ini.exists():
             cp = configparser.ConfigParser()
             cp.read(ini, encoding="utf-8")
-            if cp.has_section("OpenAI"):
-                return cp.get("OpenAI", "api_key", fallback="")
+            section = _INI_SECTION[provider]
+            if cp.has_section(section):
+                return cp.get(section, "api_key", fallback="")
     except Exception:
         pass
     return ""
@@ -276,6 +326,10 @@ class _SimpleRaw:
         return None
 
 
+
+
+class MultiProviderParser:
+    """Gemini (1st) → OpenAI (2nd) 2-provider fallback router."""
 
     def __init__(self, gemini_key: str = "", openai_key: str = ""):
         self._gemini_key = gemini_key
@@ -298,13 +352,15 @@ class _SimpleRaw:
 
     def parse_invoice(self, pdf_path: str, gemini_hint: str = ""):
         # 1st: Gemini
-        try:
-            gp = self._gemini()
-            return gp.parse_invoice(pdf_path, gemini_hint=gemini_hint), "gemini"
-        except Exception as e:
-            if not _is_transient_error(e):
-                raise
-            logger.warning("[MultiProvider] Gemini 일시 오류 → OpenAI 시도: %s", e)
+        if not _prefer_openai_today():
+            try:
+                gp = self._gemini()
+                return gp.parse_invoice(pdf_path, gemini_hint=gemini_hint), "gemini"
+            except Exception as e:
+                if not _is_transient_error(e):
+                    raise
+                _record_gemini_failure()
+                logger.warning("[MultiProvider] Gemini 일시 오류 → OpenAI 시도: %s", e)
 
         # 2nd: OpenAI
         try:
@@ -321,13 +377,15 @@ class _SimpleRaw:
         raise RuntimeError("Gemini/OpenAI 모두 일시 오류. 잠시 후 재시도하세요.")
 
     def parse_bl(self, pdf_path: str, gemini_hint: str = ""):
-        try:
-            gp = self._gemini()
-            return gp.parse_bl(pdf_path, gemini_hint=gemini_hint), "gemini"
-        except Exception as e:
-            if not _is_transient_error(e):
-                raise
-            logger.warning("[MultiProvider] Gemini BL 일시 오류 → OpenAI 시도: %s", e)
+        if not _prefer_openai_today():
+            try:
+                gp = self._gemini()
+                return gp.parse_bl(pdf_path, gemini_hint=gemini_hint), "gemini"
+            except Exception as e:
+                if not _is_transient_error(e):
+                    raise
+                _record_gemini_failure()
+                logger.warning("[MultiProvider] Gemini BL 일시 오류 → OpenAI 시도: %s", e)
 
         try:
             if not self._openai_key:
@@ -343,13 +401,15 @@ class _SimpleRaw:
         raise RuntimeError("Gemini/OpenAI 모두 일시 오류. 잠시 후 재시도하세요.")
 
     def parse_do(self, pdf_path: str, gemini_hint: str = ""):
-        try:
-            gp = self._gemini()
-            return gp.parse_do(pdf_path, gemini_hint=gemini_hint), "gemini"
-        except Exception as e:
-            if not _is_transient_error(e):
-                raise
-            logger.warning("[MultiProvider] Gemini DO 일시 오류 → OpenAI 시도: %s", e)
+        if not _prefer_openai_today():
+            try:
+                gp = self._gemini()
+                return gp.parse_do(pdf_path, gemini_hint=gemini_hint), "gemini"
+            except Exception as e:
+                if not _is_transient_error(e):
+                    raise
+                _record_gemini_failure()
+                logger.warning("[MultiProvider] Gemini DO 일시 오류 → OpenAI 시도: %s", e)
 
         try:
             if not self._openai_key:
@@ -365,13 +425,15 @@ class _SimpleRaw:
         raise RuntimeError("Gemini/OpenAI 모두 일시 오류. 잠시 후 재시도하세요.")
 
     def parse_packing_list(self, pdf_path: str, gemini_hint: str = ""):
-        try:
-            gp = self._gemini()
-            return gp.parse_packing_list(pdf_path, gemini_hint=gemini_hint), "gemini"
-        except Exception as e:
-            if not _is_transient_error(e):
-                raise
-            logger.warning("[MultiProvider] Gemini PL 일시 오류 → OpenAI 시도: %s", e)
+        if not _prefer_openai_today():
+            try:
+                gp = self._gemini()
+                return gp.parse_packing_list(pdf_path, gemini_hint=gemini_hint), "gemini"
+            except Exception as e:
+                if not _is_transient_error(e):
+                    raise
+                _record_gemini_failure()
+                logger.warning("[MultiProvider] Gemini PL 일시 오류 → OpenAI 시도: %s", e)
 
         try:
             if not self._openai_key:
@@ -385,6 +447,106 @@ class _SimpleRaw:
             logger.warning("[MultiProvider] OpenAI PL 일시 오류 — 재시도 불가: %s", e)
 
         raise RuntimeError("Gemini/OpenAI 모두 일시 오류. 잠시 후 재시도하세요.")
+
+
+
+class MultiProviderParserV2:
+    """6-provider fallback: Gemini->Groq->OpenRouter->Ollama->LMStudio->PaidOpenAI.
+
+    Policy: features/ai/ai_fallback_policy.py (settings.ini [AI] section)
+    Daily cache: Gemini failures > threshold -> skip Gemini for today
+    """
+
+    def __init__(self, *, gemini_key="", openai_key="", groq_key="",
+                 openrouter_key="", ollama_base_url="http://localhost:11434",
+                 ollama_model="qwen2.5:14b",
+                 lmstudio_base_url="http://localhost:1234/v1",
+                 lmstudio_model="local-model"):
+        self._gemini_key = gemini_key
+        self._openai_key = openai_key
+        self._groq_key = groq_key
+        self._openrouter_key = openrouter_key
+        self._ollama_base_url = ollama_base_url
+        self._ollama_model = ollama_model
+        self._lmstudio_base_url = lmstudio_base_url
+        self._lmstudio_model = lmstudio_model
+
+    def _build_parser(self, provider):
+        if provider == "gemini":
+            if not self._gemini_key:
+                raise RuntimeError("GEMINI_API_KEY 없음")
+            from features.ai.gemini_parser import GeminiDocumentParser
+            return GeminiDocumentParser(self._gemini_key)
+        if provider == "groq":
+            if not self._groq_key:
+                raise RuntimeError("GROQ_API_KEY 없음 — groq 건너뜀")
+            from features.ai.groq_parser import create_groq_parser
+            return create_groq_parser(self._groq_key)
+        if provider == "openrouter":
+            if not self._openrouter_key:
+                raise RuntimeError("OPENROUTER_API_KEY 없음 — openrouter 건너뜀")
+            from features.ai.openrouter_parser import create_openrouter_parser
+            return create_openrouter_parser(self._openrouter_key)
+        if provider == "ollama":
+            from features.ai.local_llm_parser import create_ollama_parser
+            return create_ollama_parser(self._ollama_base_url, self._ollama_model)
+        if provider == "lmstudio":
+            from features.ai.local_llm_parser import create_lmstudio_parser
+            return create_lmstudio_parser(self._lmstudio_base_url, self._lmstudio_model)
+        if provider == "paid_openai":
+            if not self._openai_key:
+                raise RuntimeError("OPENAI_API_KEY 없음 — paid_openai 건너뜀")
+            from features.ai.openai_compatible_parser import OpenAICompatibleTextParser
+            return OpenAICompatibleTextParser(
+                provider_name="paid_openai",
+                base_url="https://api.openai.com/v1",
+                model="gpt-4o-mini",
+                api_key=self._openai_key,
+            )
+        raise RuntimeError(f"알 수 없는 provider: {provider}")
+
+    def _parse_with_providers(self, method_name, pdf_path, gemini_hint):
+        """Try each enabled provider in policy order. Returns (result, provider_name)."""
+        from features.ai.ai_fallback_policy import build_provider_policy
+        policies = build_provider_policy()
+        last_err = RuntimeError("사용 가능한 provider 없음")
+        for policy in policies:
+            if not policy.enabled:
+                logger.debug("[V2] %s disabled by policy", policy.name)
+                continue
+            if policy.name == "gemini" and _prefer_openai_today():
+                logger.info("[V2] Gemini 당일 임계치 초과 — 다음 provider")
+                continue
+            try:
+                parser = self._build_parser(policy.name)
+                result = getattr(parser, method_name)(pdf_path, gemini_hint)
+                if isinstance(result, tuple):
+                    result = result[0]
+                logger.info("[V2] %s success via %s", method_name, policy.name)
+                return result, policy.name
+            except Exception as e:
+                if policy.name == "gemini" and _is_transient_error(e):
+                    _record_gemini_failure()
+                if not _is_transient_error(e):
+                    logger.warning("[V2] %s non-transient from %s: %s",
+                                   method_name, policy.name, e)
+                    raise
+                logger.warning("[V2] %s transient from %s -> next: %s",
+                               method_name, policy.name, e)
+                last_err = e
+        raise RuntimeError(f"모든 provider 실패: {last_err}")
+
+    def parse_invoice(self, pdf_path, gemini_hint=""):
+        return self._parse_with_providers("parse_invoice", pdf_path, gemini_hint)
+
+    def parse_bl(self, pdf_path, gemini_hint=""):
+        return self._parse_with_providers("parse_bl", pdf_path, gemini_hint)
+
+    def parse_do(self, pdf_path, gemini_hint=""):
+        return self._parse_with_providers("parse_do", pdf_path, gemini_hint)
+
+    def parse_packing_list(self, pdf_path, gemini_hint=""):
+        return self._parse_with_providers("parse_packing_list", pdf_path, gemini_hint)
 
 
 def _get_provider_parser(owner: Any, provider: Optional[str] = None):
@@ -406,10 +568,21 @@ def _get_provider_parser(owner: Any, provider: Optional[str] = None):
     openai_key = _load_ext_api_key("openai")
 
 
-    if not gemini_key and not openai_key:
-        raise RuntimeError("AI API Key가 없습니다. GEMINI_API_KEY 또는 OPENAI_API_KEY 환경변수를 설정하세요.")
+    groq_key = _load_ext_api_key("groq")
+    openrouter_key = _load_ext_api_key("openrouter")
 
-    mpp = MultiProviderParser(gemini_key, openai_key)
+    if not gemini_key and not openai_key and not groq_key:
+        raise RuntimeError(
+            "AI API Key가 없습니다. "
+            "GEMINI_API_KEY, OPENAI_API_KEY, 또는 GROQ_API_KEY 를 설정하세요."
+        )
+
+    mpp = MultiProviderParserV2(
+        gemini_key=gemini_key,
+        openai_key=openai_key,
+        groq_key=groq_key,
+        openrouter_key=openrouter_key,
+    )
     return mpp, "multi"
 
 

@@ -660,26 +660,4 @@ class BLMixin:
             line_texts = [self._sanitize_line(" ".join(w["text"] for w in ln)) for _k, ln in page_lines]
             if not any(self.SHIPPED_PATTERN.search(t.upper()) for t in line_texts):
                 continue
-            for i, t in enumerate(line_texts):
-                if not self.SHIPPED_PATTERN.search(t.upper()):
-                    continue
-                direct = self._parse_date_from_text(t)
-                if direct:
-                    return direct, "full_text_proximity", page + 1
-                for j in range(i + 1, min(i + 7, len(line_texts))):
-                    near = self._parse_date_from_text(line_texts[j])
-                    if near:
-                        return near, "full_text_proximity", page + 1
-        return None, "", None
-
-    def _extract_ship_date_v2(self, words: List[Dict]):
-        d, m, p = self._extract_ship_date_keyword_anchor(words)
-        if d:
-            return d, m, p
-        d, m, p = self._extract_ship_date_bottom_zone(words)
-        if d:
-            return d, m, p
-        d, m, p = self._extract_ship_date_text_proximity(words)
-        if d:
-            return d, m, p
-        return None, "none", None
+            f

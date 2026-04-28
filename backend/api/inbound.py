@@ -1584,6 +1584,7 @@ async def inbound_bl(file: UploadFile = File(...)):
                 cn = c.get("container_no") or c.get("container") or ""
             else:
                 cn = str(c)
+            cn = re.sub(r"[^A-Z0-9]", "", cn.upper())  # ISO6346-norm
             if cn:
                 container_nos.append(cn)
 

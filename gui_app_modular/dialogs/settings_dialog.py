@@ -13,6 +13,7 @@ from gui_app_modular.utils.ui_constants import is_dark  # v8.0.9
 from gui_app_modular.utils.ui_constants import tc
 import logging
 import os
+import threading
 
 from ..utils.ui_constants import (
     CustomMessageBox,
@@ -39,8 +40,24 @@ class SettingsDialogMixin:
         try:
             from core.config import (
                 API_KEY_SOURCE,
+                AI_FREE_FALLBACK_ENABLED,
+                AI_LOCAL_AI_ENABLED,
+                AI_PAID_AI_ENABLED,
+                AI_PROVIDER_ORDER,
+                AI_REQUIRE_PAID_CONFIRM,
                 GEMINI_API_KEY,
                 GEMINI_MODEL,
+                GROQ_API_KEY,
+                GROQ_MODEL,
+                LMSTUDIO_BASE_URL,
+                LMSTUDIO_MODEL,
+                OLLAMA_BASE_URL,
+                OLLAMA_MODEL,
+                OLLAMA_AUTO_PULL_CONFIRM,
+                OLLAMA_AUTO_START,
+                OPENROUTER_API_KEY,
+                OPENROUTER_MODEL,
+                save_ai_fallback_settings,
                 save_api_key_secure,
                 save_gemini_model,
             )
@@ -97,6 +114,103 @@ class SettingsDialogMixin:
 
         ttk.Separator(body).pack(fill=X, pady=Spacing.SM)
 
+        ai_frame = tk.LabelFrame(body, text="AI Fallback 정책", bg=_bg, fg=_fg, padx=Spacing.SM, pady=Spacing.XS)
+        ai_frame.pack(fill=X, pady=Spacing.XS)
+        free_var = tk.BooleanVar(value=bool(AI_FREE_FALLBACK_ENABLED))
+        local_var = tk.BooleanVar(value=bool(AI_LOCAL_AI_ENABLED))
+        paid_var = tk.BooleanVar(value=bool(AI_PAID_AI_ENABLED))
+        confirm_var = tk.BooleanVar(value=bool(AI_REQUIRE_PAID_CONFIRM))
+        ttk.Checkbutton(ai_frame, text="무료 AI fallback 사용", variable=free_var).pack(anchor=W)
+        ttk.Checkbutton(ai_frame, text="로컬 AI fallback 사용", variable=local_var).pack(anchor=W)
+        ttk.Checkbutton(ai_frame, text="유료 AI 사용 허용", variable=paid_var).pack(anchor=W)
+        ttk.Checkbutton(ai_frame, text="유료 AI 호출 전 매번 확인", variable=confirm_var).pack(anchor=W)
+        ollama_auto_start_var = tk.BooleanVar(value=bool(OLLAMA_AUTO_START))
+        ollama_confirm_var = tk.BooleanVar(value=bool(OLLAMA_AUTO_PULL_CONFIRM))
+        ttk.Checkbutton(ai_frame, text="Ollama 서버 자동 시작", variable=ollama_auto_start_var).pack(anchor=W)
+        ttk.Checkbutton(ai_frame, text="Ollama 모델 다운로드 전 확인", variable=ollama_confirm_var).pack(anchor=W)
+        order_var = tk.StringVar(value=AI_PROVIDER_ORDER)
+        tk.Label(ai_frame, text="Provider 순서:", bg=_bg, fg=_fg, font=('맑은 고딕', 9)).pack(anchor=W, pady=(Spacing.XS, 0))
+        ttk.Entry(ai_frame, textvariable=order_var, width=70).pack(fill=X, pady=Spacing.XS)
+        status = (
+            f"Groq: {'설정됨' if GROQ_API_KEY else '미설정'} / {GROQ_MODEL} | "
+            f"OpenRouter: {'설정됨' if OPENROUTER_API_KEY else '미설정'} / {OPENROUTER_MODEL}\n"
+            f"Ollama: {OLLAMA_BASE_URL} / {OLLAMA_MODEL} | "
+            f"LM Studio: {LMSTUDIO_BASE_URL} / {LMSTUDIO_MODEL}"
+        )
+        tk.Label(ai_frame, text=status, bg=_bg, fg=ThemeColors.get('text_muted', _is_dark), justify='left',
+                 font=('맑은 고딕', 9)).pack(anchor=W)
+        apply_tooltip(ai_frame, "기본값은 무료/로컬 AI 우선입니다. 유료 AI는 승인 없이는 호출하지 않습니다.")
+
+        ollama_status_var = tk.StringVar(value="Ollama 상태: 확인 전")
+        tk.Label(ai_frame, textvariable=ollama_status_var, bg=_bg, fg=ThemeColors.get('text_muted', _is_dark),
+                 justify='left', font=('맑은 고딕', 9)).pack(anchor=W, pady=(Spacing.XS, 0))
+
+        def _format_ollama_status(st):
+            return (
+                "Ollama 상태: "
+                f"설치={'확인됨' if st.installed else '미설치'}, "
+                f"서버={'실행 중' if st.server_running else '중지'}, "
+                f"모델 {st.model}={'있음' if st.model_available else '없음'}"
+            )
+
+        def refresh_ollama_status():
+            try:
+                from features.ai.ollama_manager import get_ollama_status
+                st = get_ollama_status(OLLAMA_BASE_URL, OLLAMA_MODEL)
+                ollama_status_var.set(_format_ollama_status(st))
+            except Exception as e:
+                ollama_status_var.set(f"Ollama 상태 확인 실패: {e}")
+
+        def start_ollama():
+            try:
+                from features.ai.ollama_manager import find_ollama_cli, start_ollama_server
+                if not find_ollama_cli():
+                    CustomMessageBox.showwarning(
+                        dialog,
+                        "Ollama 미설치",
+                        "Ollama가 설치되어 있지 않습니다.\nOllama 설치 후 다시 시도하세요.",
+                    )
+                    return
+                ollama_status_var.set("Ollama 서버 시작 중...")
+                ok = start_ollama_server()
+                ollama_status_var.set("Ollama 서버 시작 완료" if ok else "Ollama 서버 시작 실패")
+                refresh_ollama_status()
+            except Exception as e:
+                ollama_status_var.set(f"Ollama 서버 시작 실패: {e}")
+
+        def pull_ollama_model_async():
+            if ollama_confirm_var.get():
+                ok = CustomMessageBox.askyesno(
+                    dialog,
+                    "Ollama 모델 다운로드",
+                    f"Ollama 모델 {OLLAMA_MODEL}를 다운로드합니다.\n"
+                    "파일 크기가 클 수 있고 시간이 오래 걸릴 수 있습니다.\n\n"
+                    "계속할까요?",
+                )
+                if not ok:
+                    return
+            ollama_status_var.set(f"Ollama 모델 다운로드 중: {OLLAMA_MODEL}")
+
+            def worker():
+                try:
+                    from features.ai.ollama_manager import pull_ollama_model
+                    ok = pull_ollama_model(OLLAMA_MODEL)
+                    msg = "Ollama 모델 다운로드 완료" if ok else "Ollama 모델 다운로드 실패"
+                except Exception as e:
+                    msg = f"Ollama 모델 다운로드 실패: {e}"
+                try:
+                    dialog.after(0, lambda: (ollama_status_var.set(msg), refresh_ollama_status()))
+                except Exception:
+                    logger.debug("Suppressed: dialog closed during Ollama pull status update")
+
+            threading.Thread(target=worker, daemon=True).start()
+
+        ollama_btn_frame = tk.Frame(ai_frame, bg=_bg)
+        ollama_btn_frame.pack(fill=X, pady=Spacing.XS)
+        ttk.Button(ollama_btn_frame, text="Ollama 상태 새로고침", command=refresh_ollama_status).pack(side=LEFT, padx=Spacing.XS)
+        ttk.Button(ollama_btn_frame, text="Ollama 서버 시작", command=start_ollama).pack(side=LEFT, padx=Spacing.XS)
+        ttk.Button(ollama_btn_frame, text=f"{OLLAMA_MODEL} 다운로드", command=pull_ollama_model_async).pack(side=LEFT, padx=Spacing.XS)
+
         # 새 API 키 입력
         _l_key = tk.Label(body, text="새 API 키 입력:", bg=_bg, fg=_fg, font=('맑은 고딕', 10))
         _l_key.pack(anchor=W)
@@ -151,8 +265,22 @@ class SettingsDialogMixin:
                         result_label.config(text="✅ 모델 저장됨 (다음 실행부터 적용)", fg=ThemeColors.get('badge_db'))
                 elif not key:
                     result_label.config(text="❌ 모델 저장 실패", fg=ThemeColors.get('statusbar_icon_err'))
+            ok_ai = save_ai_fallback_settings({
+                "free_fallback_enabled": free_var.get(),
+                "local_ai_enabled": local_var.get(),
+                "paid_ai_enabled": paid_var.get(),
+                "require_paid_confirm": confirm_var.get(),
+                "provider_order": order_var.get().strip(),
+                "ollama_auto_start": ollama_auto_start_var.get(),
+                "ollama_auto_pull_confirm": ollama_confirm_var.get(),
+                "openai_enabled": paid_var.get(),
+                "openai_paid_only": True,
+            })
+            if ok_ai and not key and not model_str:
+                result_label.config(text="✅ AI fallback 정책 저장됨", fg=ThemeColors.get('badge_db'))
             if not key and not model_str:
-                result_label.config(text="⚠️ API 키 또는 모델을 입력하세요", fg=ThemeColors.get('statusbar_icon_err'))
+                if not ok_ai:
+                    result_label.config(text="❌ AI fallback 정책 저장 실패", fg=ThemeColors.get('statusbar_icon_err'))
 
         btn_frame = tk.Frame(body, bg=_bg)
         btn_frame.pack(fill=X, pady=Spacing.SM)
@@ -720,150 +848,4 @@ Open settings.ini now?
                     logger.debug("[SUPPRESSED] exception in settings_dialog.py")  # noqa
             tree.bind("<<TreeviewSelect>>", _sel)
 
-            def _save():
-                cid = v_cid.get().strip().upper()
-                if not cid:
-                    messagebox.showwarning("입력 오류", "선사코드를 입력하세요.", parent=dlg)
-                    return
-                rx = v_regex.get().strip() or _nat2re(v_desc.get())
-                if not rx:
-                    messagebox.showwarning("입력 오류", "정규식 또는 자연어를 입력하세요.", parent=dlg)
-                    return
-                try:
-                    sel = tree.selection()
-                    if sel:
-                        def _f(v):
-                            try:
-                                return float(v.get().strip()) if v.get().strip() else None
-                            except (ValueError, TypeError):
-                                return None
-                        db.execute(
-                            "UPDATE carrier_bl_rule SET carrier_id=?, carrier_name=?,"
-                            " anchor_label=?, pattern_desc=?, regex_pattern=?,"
-                            " field_name=?, extraction_method=?,"
-                            " x_min_pct=?, x_max_pct=?, y_min_pct=?, y_max_pct=?,"
-                            " is_active=? WHERE id=?",
-                            (cid, v_cname.get().strip(), v_anchor.get().strip(),
-                             v_desc.get().strip(), rx, v_field.get(), v_method.get(),
-                             _f(v_x1), _f(v_x2), _f(v_y1), _f(v_y2),
-                             v_active.get(), int(sel[0]))
-                        )
-                    else:
-                        def _f(v):
-                            try:
-                                return float(v.get().strip()) if v.get().strip() else None
-                            except (ValueError, TypeError):
-                                return None
-                        db.execute(
-                            "INSERT INTO carrier_bl_rule"
-                            " (carrier_id, carrier_name, doc_type, anchor_label,"
-                            " pattern_desc, regex_pattern, field_name, extraction_method,"
-                            " x_min_pct, x_max_pct, y_min_pct, y_max_pct, is_active)"
-                            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                            (cid, v_cname.get().strip(), doc_type,
-                             v_anchor.get().strip(), v_desc.get().strip(),
-                             rx, v_field.get(), v_method.get(),
-                             _f(v_x1), _f(v_x2), _f(v_y1), _f(v_y2),
-                             v_active.get())
-                        )
-                    _load()
-                    messagebox.showinfo("저장 완료",
-                                        cid + " " + doc_type + " 규칙 저장됐습니다.", parent=dlg)
-                except Exception as e:
-                    messagebox.showerror("저장 오류", str(e), parent=dlg)
-
-            def _del():
-                sel = tree.selection()
-                if not sel:
-                    messagebox.showwarning("선택 없음", "삭제할 항목을 선택하세요.", parent=dlg)
-                    return
-                if not messagebox.askyesno("삭제 확인", "삭제하시겠습니까?", parent=dlg):
-                    return
-                try:
-                    db.execute("DELETE FROM carrier_bl_rule WHERE id=?", (int(sel[0]),))
-                    _load()
-                except Exception as e:
-                    messagebox.showerror("삭제 오류", str(e), parent=dlg)
-
-            def _clear():
-                for v in (v_cid, v_cname, v_anchor, v_desc, v_regex,
-                          v_x1, v_x2, v_y1, v_y2):
-                    v.set("")
-                v_active.set(1)
-                v_field.set("bl_no")
-                tree.selection_remove(tree.selection())
-                _toggle_coord()
-
-            bf = tk.Frame(tab)
-            bf.pack(fill="x", padx=12, pady=(2,8))
-            for text, cmd, bg in [
-                ("저장",    _save,  "#0066CC"),
-                ("삭제",    _del,   "#CC3333"),
-                ("새 항목", _clear, "#444444"),
-            ]:
-                tk.Button(bf, text=text, command=cmd,
-                          font=("맑은 고딕",11,"bold"),
-                          bg=bg, fg=tc('text_primary'), padx=12, pady=4,
-                          cursor="hand2", bd=0).pack(side="left", padx=(0,6))
-            _load()
-
-        _build_tab("BL")
-        _build_tab("DO")
-
-        tk.Button(dlg, text="닫기", command=dlg.destroy,
-                  font=("맑은 고딕",11), padx=16, pady=4,
-                  cursor="hand2").pack(pady=(0,8))
-
-    def _on_bl_carrier_analyze(self) -> None:
-        """선사 BL 규칙 현황 v9.0"""
-        import tkinter as tk
-        import tkinter.scrolledtext as st
-
-        parent = getattr(self, 'root', getattr(self, 'parent', None))
-        db     = getattr(self, 'db', None) or getattr(getattr(self, 'engine', None), 'db', None)
-
-        dlg = create_themed_toplevel(parent)
-        dlg.title("선사 BL 규칙 현황  v9.0")
-        dlg.geometry("700x420")
-        dlg.resizable(True, True)
-        try:
-            dlg.transient(parent)
-            dlg.grab_set()
-        except Exception:
-            logger.debug("[SUPPRESSED] exception in settings_dialog.py")  # noqa
-
-        tk.Label(dlg, text="현재 등록된 선사별 BL 번호 추출 규칙",
-                 font=("맑은 고딕", 12, "bold")).pack(pady=(12, 4))
-
-        box = st.ScrolledText(dlg, font=("Consolas", 11), height=20)
-        box.pack(fill="both", expand=True, padx=12, pady=4)
-
-        try:
-            if db:
-                rows = db.execute(
-                    "SELECT carrier_id, carrier_name, pattern_desc, "
-                    "regex_pattern, is_active FROM carrier_bl_rule ORDER BY carrier_id"
-                ).fetchall()
-                if rows:
-                    box.insert("end", f"{'선사코드':<10}{'선사명':<16}{'자연어설명':<20}{'정규식':<25}활성\n")
-                    box.insert("end", "-"*75 + "\n")
-                    for r in rows:
-                        if hasattr(r, 'keys'):
-                            r = dict(r)
-                        else:
-                            r = dict(zip(['carrier_id','carrier_name',
-                                          'pattern_desc','regex_pattern','is_active'], r))
-                        box.insert("end",
-                            f"{r['carrier_id']:<10}{r.get('carrier_name',''):<16}"
-                            f"{r.get('pattern_desc',''):<20}{r.get('regex_pattern',''):<25}"
-                            f"{'활성' if r.get('is_active') else '비활성'}\n")
-                else:
-                    box.insert("end", "등록된 선사 규칙이 없습니다.\n선사 BL 등록 도구에서 추가하세요.")
-            else:
-                box.insert("end", "DB 연결 없음")
-        except Exception as e:
-            box.insert("end", f"조회 오류: {e}")
-
-        tk.Button(dlg, text="닫기", command=dlg.destroy,
-                  font=("맑은 고딕", 11), padx=12, pady=4,
-                  cursor="hand2").pack(pady=6)
+  

@@ -176,6 +176,15 @@
       <button data-action="onExportLot" title="LOT별 재고 현황을 Excel 파일로 내보냅니다">📊 LOT 리스트 Excel</button>
       <button data-action="onTonbagListExcel" title="전체 톤백 목록을 Excel로 내보냅니다">🎒 톤백리스트 Excel</button>
       <hr class="menu-sep">
+      <div class="submenu-parent" tabindex="0">
+        <button class="submenu-parent-btn" type="button">📦 품목</button>
+        <div class="submenu-dropdown">
+          <button data-action="onProductSummary" title="품목별 현재 재고 수량을 요약합니다">📋 품목별 재고 요약</button>
+          <button data-action="onProductLotLookup" title="특정 품목에 해당하는 LOT 목록을 조회합니다">🔍 품목별 LOT 조회</button>
+          <button data-action="onProductMovement" title="품목별 입출고 내역을 기간별로 조회합니다">📊 품목별 입출고 현황</button>
+        </div>
+      </div>
+      <hr class="menu-sep">
       <button data-action="onStockTrendChart" title="기간별 재고 증감 추이를 차트로 시각화합니다">📊 재고 추이 차트</button>
     </div>
   </div>
@@ -270,16 +279,6 @@
     </div>
   </div>
 
-  <!-- ══ 품목 ══ -->
-  <div class="menu-btn" data-menu="품목" tabindex="0" role="menuitem">📦 <span>품목</span> <span class="caret">▼</span>
-    <div class="menu-dropdown">
-      <button data-action="onProductSummary" title="품목별 현재 재고 수량을 요약합니다">📋 품목별 재고 요약</button>
-      <button data-action="onProductLotLookup" title="특정 품목에 해당하는 LOT 목록을 조회합니다">🔍 품목별 LOT 조회</button>
-      <hr class="menu-sep">
-      <button data-action="onProductMovement" title="품목별 입출고 내역을 기간별로 조회합니다">📊 품목별 입출고 현황</button>
-    </div>
-  </div>
-
   <div class="menubar-spacer"></div>
   <button class="topbar-btn" data-action="refresh-all" title="전체 데이터를 서버에서 다시 불러옵니다 (단축키: F5)">🔄 새로고침</button>
   <span class="topbar-sep">|</span>
@@ -362,3 +361,4 @@
 </script>
 </body>
 </html>
+        

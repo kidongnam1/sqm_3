@@ -188,6 +188,8 @@ def _load_settings():
         'openrouter_model': 'meta-llama/llama-3.1-8b-instruct:free',
         'ollama_base_url': 'http://localhost:11434',
         'ollama_model': 'qwen2.5:14b',
+        'ollama_auto_start': True,
+        'ollama_auto_pull_confirm': True,
         'lmstudio_base_url': 'http://localhost:1234/v1',
         'lmstudio_model': 'local-model',
         'save_raw_gemini_response': False,   # v5.5.2: 디버깅 시 Gemini 원문을 logs/에 저장 (ON/OFF)
@@ -271,6 +273,8 @@ def _load_settings():
             if config.has_section('Ollama'):
                 result['ollama_base_url'] = config.get('Ollama', 'base_url', fallback=result.get('ollama_base_url', 'http://localhost:11434'))
                 result['ollama_model'] = config.get('Ollama', 'model', fallback=result.get('ollama_model', 'qwen2.5:14b'))
+                result['ollama_auto_start'] = config.getboolean('Ollama', 'auto_start', fallback=result.get('ollama_auto_start', True))
+                result['ollama_auto_pull_confirm'] = config.getboolean('Ollama', 'auto_pull_confirm', fallback=result.get('ollama_auto_pull_confirm', True))
             if config.has_section('LMStudio'):
                 result['lmstudio_base_url'] = config.get('LMStudio', 'base_url', fallback=result.get('lmstudio_base_url', 'http://localhost:1234/v1'))
                 result['lmstudio_model'] = config.get('LMStudio', 'model', fallback=result.get('lmstudio_model', 'local-model'))
@@ -350,6 +354,49 @@ def save_gemini_model(model: str) -> bool:
         return False
 
 
+def save_ai_fallback_settings(values: dict) -> bool:
+    """AI fallback 정책 설정을 settings.ini에 저장."""
+    try:
+        config = configparser.ConfigParser()
+        if SETTINGS_FILE.exists():
+            config.read(SETTINGS_FILE, encoding='utf-8')
+        for section in ("AI", "Groq", "OpenRouter", "Ollama", "LMStudio", "OpenAI"):
+            if not config.has_section(section):
+                config.add_section(section)
+
+        ai_fields = (
+            "free_fallback_enabled",
+            "local_ai_enabled",
+            "paid_ai_enabled",
+            "require_paid_confirm",
+            "provider_order",
+        )
+        for field in ai_fields:
+            if field in values:
+                config.set("AI", field, str(values[field]).lower())
+
+        provider_fields = {
+            "Groq": ("api_key", "model"),
+            "OpenRouter": ("api_key", "model"),
+            "Ollama": ("base_url", "model", "auto_start", "auto_pull_confirm"),
+            "LMStudio": ("base_url", "model"),
+            "OpenAI": ("enabled", "paid_only", "model"),
+        }
+        for section, fields in provider_fields.items():
+            prefix = section.lower()
+            for field in fields:
+                key = f"{prefix}_{field}"
+                if key in values:
+                    config.set(section, field, str(values[key]).lower() if isinstance(values[key], bool) else str(values[key]))
+
+        with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+            config.write(f)
+        return True
+    except (OSError, IOError, PermissionError, configparser.Error) as e:
+        logger.debug(f"Suppressed: AI fallback settings save failed: {e}")
+        return False
+
+
 # 설정 로드
 _settings = _load_settings()
 
@@ -378,6 +425,8 @@ OPENROUTER_API_KEY = _settings.get('openrouter_api_key', '')
 OPENROUTER_MODEL = _settings.get('openrouter_model', 'meta-llama/llama-3.1-8b-instruct:free')
 OLLAMA_BASE_URL = _settings.get('ollama_base_url', 'http://localhost:11434')
 OLLAMA_MODEL = _settings.get('ollama_model', 'qwen2.5:14b')
+OLLAMA_AUTO_START = _settings.get('ollama_auto_start', True)
+OLLAMA_AUTO_PULL_CONFIRM = _settings.get('ollama_auto_pull_confirm', True)
 LMSTUDIO_BASE_URL = _settings.get('lmstudio_base_url', 'http://localhost:1234/v1')
 LMSTUDIO_MODEL = _settings.get('lmstudio_model', 'local-model')
 
@@ -407,193 +456,4 @@ def get_settings():
         'gemini_api_key': _settings.get('api_key', ''),
         'model': _settings.get('model', 'gemini-2.5-flash'),
         'use_gemini': _settings.get('use_gemini', True),
-        'openai_api_key': _settings.get('openai_api_key', ''),
-        'openai_model': _settings.get('openai_model', 'gpt-4o'),
-        'ai_free_fallback_enabled': _settings.get('ai_free_fallback_enabled', True),
-        'ai_local_ai_enabled': _settings.get('ai_local_ai_enabled', True),
-        'ai_paid_ai_enabled': _settings.get('ai_paid_ai_enabled', False),
-        'ai_require_paid_confirm': _settings.get('ai_require_paid_confirm', True),
-        'ai_provider_order': _settings.get('ai_provider_order', 'gemini,groq,openrouter,ollama,lmstudio,paid_openai'),
-        'groq_api_key': _settings.get('groq_api_key', ''),
-        'groq_model': _settings.get('groq_model', 'llama-3.3-70b-versatile'),
-        'openrouter_api_key': _settings.get('openrouter_api_key', ''),
-        'openrouter_model': _settings.get('openrouter_model', 'meta-llama/llama-3.1-8b-instruct:free'),
-        'ollama_base_url': _settings.get('ollama_base_url', 'http://localhost:11434'),
-        'ollama_model': _settings.get('ollama_model', 'qwen2.5:14b'),
-        'lmstudio_base_url': _settings.get('lmstudio_base_url', 'http://localhost:1234/v1'),
-        'lmstudio_model': _settings.get('lmstudio_model', 'local-model'),
-    }
-
-# =============================================================================
-# UI 설정
-# =============================================================================
-
-UI_THEME = "darkly"  # v8.5.6: 다크 프로페셔널 테마 통일
-UI_DARK_MODE = True
-WINDOW_SIZE = "1200x800"
-WINDOW_MIN_SIZE = (900, 600)
-
-# =============================================================================
-# 비즈니스 설정
-# =============================================================================
-
-# 제품 코드
-PRODUCT_CODES = {
-    "MIC9000": "LITHIUM CARBONATE 99.5%",
-    "MIC9100": "LITHIUM CARBONATE 99.5% BG",
-    "LC": "LITHIUM CARBONATE",
-    "LH": "LITHIUM HYDROXIDE",
-}
-
-# 포장 단위
-PACKING_UNITS = {
-    "MX500": "MX 500 Kg (In Wooden Pallet)",
-    "MX1000": "MX 1000 Kg (In Wooden Pallet)",
-}
-
-# 입력 검증 설정 (개선 #3)
-VALIDATION = {
-    'LOT_NO_MIN_LENGTH': 5,
-    'LOT_NO_MAX_LENGTH': 20,
-    'LOT_NO_PATTERN': r'^\d{8,11}$',  # 8~11자리 숫자 (OCR 오독 허용)
-    'WEIGHT_MIN': 0,
-    'WEIGHT_MAX': 50000,  # 50톤
-    'SAP_NO_PATTERN': r'^\d{10}$',  # SAP No는 정확히 10자리 유지
-}
-
-# =============================================================================
-# 로깅 설정 (P2: config_logging에서 구현, 하위 호환 re-export)
-# =============================================================================
-from config_logging import (
-    setup_logging,
-)
-
-# =============================================================================
-# 설정 유효성 검사
-# =============================================================================
-
-def validate_config():
-    """
-    전체 설정 유효성 검사
-
-    Returns:
-        (success, errors): 성공 여부 및 오류 목록
-    """
-    errors = []
-
-    # 디렉토리 확인
-    for dir_name, dir_path in [
-        ('DATA_DIR', DATA_DIR),
-        ('DB_DIR', DB_DIR),
-        ('LOG_DIR', LOG_DIR),
-    ]:
-        if not dir_path.exists():
-            try:
-                dir_path.mkdir(parents=True, exist_ok=True)
-            except (ConnectionError, TimeoutError, ValueError) as e:
-                errors.append(f"{dir_name} 생성 실패: {e}")
-
-    # API 키 확인
-    api_valid, api_error = validate_api_key()
-    if not api_valid:
-        errors.append(api_error)
-
-    return len(errors) == 0, errors
-
-
-# =============================================================================
-# v3.6.0: API 키 GUI 검증 (안정성 강화)
-# =============================================================================
-
-def validate_api_key_with_gui(parent=None):
-    """
-    v3.6.0: GUI 실행 전 API 키 검증 및 경고창 표시
-    
-    Args:
-        parent: 부모 윈도우 (None이면 루트 생성)
-    
-    Returns:
-        bool: 계속 실행 여부 (True: 진행, False: 중단)
-    """
-    api_valid, api_error = validate_api_key()
-
-    if not api_valid:
-        try:
-            import tkinter as tk
-
-            from gui_app_modular.utils.custom_messagebox import CustomMessageBox
-
-            # 임시 루트 윈도우 (숨김)
-            if parent is None:
-                temp_root = tk.Tk()
-                temp_root.withdraw()
-
-            CustomMessageBox.warning(None,
-                "⚠️ API 설정 필요",
-                "Gemini API 키가 설정되지 않았습니다.\n\n"
-                "PDF 파싱 기능을 사용하려면:\n"
-                "1. 메뉴 > 도구 > Gemini > 설정\n"
-                "2. 또는 환경변수 GEMINI_API_KEY 설정\n\n"
-                "API 키 없이도 기본 기능은 사용 가능합니다."
-            )
-
-            if parent is None:
-                temp_root.destroy()
-
-        except (RuntimeError, ValueError):
-            logger.info(f"⚠️ API 키 미설정: {api_error}")
-
-    return True  # 실행은 허용 (경고만 표시)
-
-
-# =============================================================================
-# 파일/경로 유틸 (P2: utils.file_utils에서 구현, 하위 호환 re-export)
-# =============================================================================
-
-
-# =============================================================================
-# v5.7.8: SQL 호환 함수 — config_sql에서 구현, 하위 호환용 래퍼 (출고/리포트 참조)
-# =============================================================================
-from config_sql import (
-    sql_auto_increment as _sql_auto_increment_impl,
-)
-from config_sql import (
-    sql_date_format as _sql_date_format_impl,
-)
-from config_sql import (
-    sql_group_concat as _sql_group_concat_impl,
-)
-
-
-def sql_group_concat(column: str, separator: str = ',') -> str:
-    """DB 타입에 따른 문자열 집계. SQLite: GROUP_CONCAT, PostgreSQL: STRING_AGG"""
-    return _sql_group_concat_impl(DB_TYPE, column, separator)
-
-
-def sql_date_format(column: str, format_str: str) -> str:
-    """DB 타입에 따른 날짜 포맷. SQLite: strftime, PostgreSQL: to_char"""
-    return _sql_date_format_impl(DB_TYPE, column, format_str)
-
-
-def sql_auto_increment() -> str:
-    """자동 증가 컬럼 타입. SQLite: INTEGER PRIMARY KEY AUTOINCREMENT, PG: SERIAL PRIMARY KEY"""
-    return _sql_auto_increment_impl(DB_TYPE)
-
-
-# 모듈 로드 시 로깅 초기화
-_logger = setup_logging()
-
-
-# =============================================================================
-# 출고(Outbound) 모드 설정 (★ v6.3.3: 랜덤출고/스캔즉시확정 기본)
-# =============================================================================
-# 리오님 운영 정책:
-# - STEP1~3: TONBAG 미지정(사전 예약/선정/상태변경 금지)
-# - STEP4: UID 스캔 = 즉시 확정(출고) + 원장 기록
-#
-# 기존 방식(예정 UID 대조 + PICKED→SOLD)은 옵션으로만 유지 가능
-OUTBOUND_MODE = os.environ.get("SQM_OUTBOUND_MODE", "random_scan_confirm")
-# 허용오차: ±0.1% (0.001)
-OUTBOUND_WEIGHT_TOL_PCT = float(os.environ.get("SQM_OUTBOUND_WEIGHT_TOL_PCT", "0.001"))
-# Undo: 최근 1건(관리자 전용) — 기능은 엔진에만 제공(연결은 UI 패치에서)
-OUTBOUND_UNDO_LIMIT = int(os.environ.get("SQM_OUTBOUND_UNDO_LIMIT", "1"))
+        'openai_api_key': _settings.get('openai_api_key', ''

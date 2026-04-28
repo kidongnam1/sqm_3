@@ -1,1 +1,5 @@
-{}
+{
+  "tests/test_ai_fallback_router.py::test_router_skips_paid_provider_without_user_confirmation": true,
+  "tests/test_ai_fallback_router.py::test_router_allows_paid_provider_after_confirmation": true,
+  "tests/test_ollama_manager.py::test_router_skips_ollama_and_does_not_call_paid_without_confirmation": true
+}
