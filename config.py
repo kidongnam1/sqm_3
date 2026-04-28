@@ -176,6 +176,7 @@ def _load_settings():
         'use_gemini': 'true',
         'theme': 'darkly',
         'openai_api_key': '',
+        'anthropic_api_key': '',
         'openai_model': 'gpt-4o',
         'save_raw_gemini_response': False,   # v5.5.2: 디버깅 시 Gemini 원문을 logs/에 저장 (ON/OFF)
         'disable_openai_fallback': False,     # v5.5.2: True면 OpenAI 폴백 비활성 (Gemini-only)
@@ -187,6 +188,7 @@ def _load_settings():
     os.environ.get('SQM_DB_PATH', '')
     env_openai_key = os.environ.get('OPENAI_API_KEY', '')
     env_openai_model = os.environ.get('OPENAI_MODEL', '')
+    env_anthropic_key = os.environ.get('ANTHROPIC_API_KEY', '')
     env_save_raw = os.environ.get('SQM_SAVE_RAW_GEMINI_RESPONSE', '')
 
     result = defaults.copy()
@@ -202,6 +204,8 @@ def _load_settings():
         result['openai_api_key'] = env_openai_key
     if env_openai_model:
         result['openai_model'] = env_openai_model
+    if env_anthropic_key:
+        result['anthropic_api_key'] = env_anthropic_key
     if env_save_raw and str(env_save_raw).strip().lower() in ('1', 'true', 'yes'):
         result['save_raw_gemini_response'] = True
 
@@ -237,6 +241,8 @@ def _load_settings():
             if config.has_section('OpenAI'):
                 result['openai_api_key'] = config.get('OpenAI', 'api_key', fallback=result.get('openai_api_key', ''))
                 result['openai_model'] = config.get('OpenAI', 'model', fallback=result.get('openai_model', 'gpt-4o'))
+            if config.has_section('Anthropic'):
+                result['anthropic_api_key'] = config.get('Anthropic', 'api_key', fallback=result.get('anthropic_api_key', ''))
             if config.has_section('Debug'):
                 result['save_raw_gemini_response'] = config.getboolean('Debug', 'save_raw_gemini_response', fallback=result.get('save_raw_gemini_response', False))
             if config.has_section('Parser'):
@@ -325,6 +331,9 @@ API_KEY_SOURCE = _settings.get('api_key_source', 'NONE')  # v2.8.0: 키 출처 �
 # OpenAI API 설정 (Gemini 실패 시 폴백용, 선택)
 OPENAI_API_KEY = _settings.get('openai_api_key', '')
 OPENAI_MODEL = _settings.get('openai_model', 'gpt-4o')
+
+# Anthropic API 설정 (3순위 폴백)
+ANTHROPIC_API_KEY = _settings.get('anthropic_api_key', '')
 
 # v5.5.2: 디버깅/정책 옵션
 SAVE_RAW_GEMINI_RESPONSE = _settings.get('save_raw_gemini_response', False)  # True면 logs/raw_pl_response.txt 등 저장

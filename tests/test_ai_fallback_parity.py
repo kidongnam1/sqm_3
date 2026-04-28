@@ -292,7 +292,7 @@ class TestParseInvoiceAiMock:
         owner = _make_mock_owner()
 
         mock_gp = MagicMock()
-        mock_gp.parse_invoice = MagicMock(return_value=gemini_return)
+        mock_gp.parse_invoice = MagicMock(return_value=(gemini_return, "gemini"))
         owner._gemini_with_retry = MagicMock(return_value=gemini_return)
 
         with patch("parsers.document_parser_modular.ai_fallback._get_provider_parser",
@@ -332,7 +332,7 @@ class TestParseBlAiMock:
         from parsers.document_parser_modular.ai_fallback import parse_bl_ai
         owner = _make_mock_owner()
         mock_gp = MagicMock()
-        mock_gp.parse_bl = MagicMock(return_value=gemini_return)
+        mock_gp.parse_bl = MagicMock(return_value=(gemini_return, "gemini"))
         with patch("parsers.document_parser_modular.ai_fallback._get_provider_parser",
                    return_value=(mock_gp, "gemini")):
             return parse_bl_ai(owner, "dummy.pdf", carrier_id=carrier_id)
@@ -364,7 +364,7 @@ class TestParseDoAiMock:
         from parsers.document_parser_modular.ai_fallback import parse_do_ai
         owner = _make_mock_owner()
         mock_gp = MagicMock()
-        mock_gp.parse_do = MagicMock(return_value=gemini_return)
+        mock_gp.parse_do = MagicMock(return_value=(gemini_return, "gemini"))
         with patch("parsers.document_parser_modular.ai_fallback._get_provider_parser",
                    return_value=(mock_gp, "gemini")):
             return parse_do_ai(owner, "dummy.pdf", carrier_id=carrier_id)
@@ -577,15 +577,15 @@ def _make_real_owner(carrier_id: str = "MSC"):
 
 def _run_fa_parity(pdf_path: str, carrier_id: str):
     """FA 좌표 파싱 vs AI 파싱 패리티 검사."""
-    from parsers.document_parser_modular.invoice_mixin import InvoiceMixin
+    from parsers.document_parser_modular.parser import DocumentParser
     from parsers.document_parser_modular.ai_fallback import parse_invoice_ai
 
+    dp = DocumentParser()
     owner = _make_real_owner(carrier_id)
-    mixin = InvoiceMixin()
 
     # 좌표 파싱
     try:
-        coord = mixin.parse_invoice(pdf_path)
+        coord = dp.parse_invoice(pdf_path)
     except Exception as e:
         pytest.skip(f"좌표 파싱 오류: {e}")
         return
@@ -610,14 +610,14 @@ def _run_fa_parity(pdf_path: str, carrier_id: str):
 
 def _run_bl_parity(pdf_path: str, carrier_id: str):
     """BL 좌표 파싱 vs AI 파싱 패리티 검사."""
-    from parsers.document_parser_modular.bl_mixin import BLMixin
+    from parsers.document_parser_modular.parser import DocumentParser
     from parsers.document_parser_modular.ai_fallback import parse_bl_ai
 
+    dp = DocumentParser()
     owner = _make_real_owner(carrier_id)
-    mixin = BLMixin()
 
     try:
-        coord = mixin.parse_bl(pdf_path, carrier_id=carrier_id)
+        coord = dp.parse_bl(pdf_path, carrier_id=carrier_id)
     except Exception as e:
         pytest.skip(f"BL 좌표 파싱 오류: {e}")
         return
@@ -641,14 +641,14 @@ def _run_bl_parity(pdf_path: str, carrier_id: str):
 
 def _run_do_parity(pdf_path: str, carrier_id: str):
     """DO 좌표 파싱 vs AI 파싱 패리티 검사."""
-    from parsers.document_parser_modular.do_mixin import DOMixin
+    from parsers.document_parser_modular.parser import DocumentParser
     from parsers.document_parser_modular.ai_fallback import parse_do_ai
 
+    dp = DocumentParser()
     owner = _make_real_owner(carrier_id)
-    mixin = DOMixin()
 
     try:
-        coord = mixin.parse_do(pdf_path, carrier_id=carrier_id)
+        coord = dp.parse_do(pdf_path)  # parse_do는 carrier_id 파라미터 없음
     except Exception as e:
         pytest.skip(f"DO 좌표 파싱 오류: {e}")
         return
@@ -668,3 +668,35 @@ def _run_do_parity(pdf_path: str, carrier_id: str):
         f"[DO-{carrier_id}] 좌표/AI 결과 불일치:\n" +
         "\n".join(f"  {m}" for m in mismatches)
     )
+
+
+# ── ONE 선사 통합 테스트 (2026-04-28 추가) ─────────────────────────────────
+
+@pytest.mark.integration
+@pytest.mark.skipif(SKIP_INTEGRATION, reason=SKIP_REASON)
+class TestParityFaOneIntegration:
+    def test_fa_one_parity(self):
+        pdf = _get_test_pdfs()["FA_ONE"]
+        if not pdf or not os.path.exists(pdf):
+            pytest.skip("TEST_FA_ONE PDF 없음")
+        _run_fa_parity(pdf, "ONE")
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(SKIP_INTEGRATION, reason=SKIP_REASON)
+class TestParityBlOneIntegration:
+    def test_bl_one_parity(self):
+        pdf = _get_test_pdfs()["BL_ONE"]
+        if not pdf or not os.path.exists(pdf):
+            pytest.skip("TEST_BL_ONE PDF 없음")
+        _run_bl_parity(pdf, "ONE")
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(SKIP_INTEGRATION, reason=SKIP_REASON)
+class TestParityDoOneIntegration:
+    def test_do_one_parity(self):
+        pdf = _get_test_pdfs()["DO_ONE"]
+        if not pdf or not os.path.exists(pdf):
+            pytest.skip("TEST_DO_ONE PDF 없음")
+        _run_do_parity(pdf, "ONE")

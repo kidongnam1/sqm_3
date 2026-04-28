@@ -229,27 +229,296 @@ def _copy_if_empty(dst: Any, src: Any, fields: Iterable[str]) -> None:
             setattr(dst, f, new)
 
 
-def _get_provider_parser(owner: Any, provider: Optional[str] = None):
-    provider = (provider or getattr(owner, "provider", "gemini") or "gemini").lower()
-    if provider != "gemini":
-        logger.info("[AI-FALLBACK] provider=%s requested; Gemini fallback is required for this path", provider)
-        provider = "gemini"
-    api_key = ""
+# ── Multi-provider helper utilities ───────────────────────────────────────────
+
+def _is_transient_error(exc: Exception) -> bool:
+    """503 / 429 / quota errors → True (fallback to next provider)."""
+    msg = str(exc).lower()
+    for kw in ("503", "429", "quota", "overloaded", "rate limit",
+               "resource_exhausted", "too many requests", "unavailable"):
+        if kw in msg:
+            return True
+    return False
+
+
+def _load_ext_api_key(provider: str) -> str:
+    """Load OpenAI / Anthropic key: env → core.config → settings.ini."""
+    provider = provider.lower()
+    env_map = {"openai": "OPENAI_API_KEY", "anthropic": "ANTHROPIC_API_KEY"}
+    env_val = os.environ.get(env_map.get(provider, ""), "")
+    if env_val:
+        return env_val
     try:
-        api_key = owner._get_ai_key(provider)
+        import core.config as cc
+        if provider == "openai":
+            return getattr(cc, "OPENAI_API_KEY", "") or ""
+        if provider == "anthropic":
+            return getattr(cc, "ANTHROPIC_API_KEY", "") or ""
     except Exception:
-        api_key = getattr(owner, "_ai_api_key", "") or getattr(owner, "gemini_api_key", "")
-    if not api_key:
-        raise RuntimeError(f"{provider.upper()} API Key가 필요합니다.")
-    from features.ai.gemini_parser import GeminiDocumentParser
-    return GeminiDocumentParser(api_key), provider
+        pass
+    try:
+        import configparser, pathlib
+        ini = pathlib.Path(__file__).resolve().parents[3] / "settings.ini"
+        if ini.exists():
+            cp = configparser.ConfigParser()
+            cp.read(ini, encoding="utf-8")
+            sec = provider.capitalize()
+            if cp.has_section(sec):
+                return cp.get(sec, "api_key", fallback="")
+    except Exception:
+        pass
+    return ""
+
+
+class _SimpleRaw:
+    """Wrap a dict as attribute-accessible object (duck-types GeminiDocumentParser result)."""
+    def __init__(self, d: dict):
+        for k, v in d.items():
+            setattr(self, k, v)
+    def __getattr__(self, item):
+        return None
+
+
+def _anthropic_call(pdf_path: str, prompt: str, api_key: str) -> str:
+    """Send a single base64-encoded PDF page to Anthropic Claude Vision and return the raw JSON string."""
+    import base64
+    try:
+        import anthropic as _anthropic
+    except ImportError:
+        raise RuntimeError("anthropic 패키지 미설치. pip install anthropic")
+    import fitz  # PyMuPDF
+
+    doc = fitz.open(pdf_path)
+    # Use first page as image (sufficient for most shipping docs)
+    page = doc[0]
+    pix = page.get_pixmap(dpi=150)
+    img_bytes = pix.tobytes("png")
+    doc.close()
+    b64 = base64.standard_b64encode(img_bytes).decode()
+
+    client = _anthropic.Anthropic(api_key=api_key)
+    msg = client.messages.create(
+        model="claude-opus-4-5",
+        max_tokens=2048,
+        messages=[{
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/png",
+                        "data": b64,
+                    },
+                },
+                {"type": "text", "text": prompt},
+            ],
+        }],
+    )
+    return msg.content[0].text
+
+
+_FA_ANTHROPIC_PROMPT = (
+    "You are a shipping document parser. Extract from this invoice image and return ONLY valid JSON:\n"
+    '{"sap_no":"","invoice_no":"","bl_no":"","vessel":"","voyage":"","port_of_loading":"","port_of_discharge":"",'
+    '"invoice_date":"","lot_list":[{"lot_no":"","lot_sqm":0.0,"mxbg_pallet":0}]}\n'
+    "Use empty string for missing text fields. Use 0.0 / 0 for missing numbers."
+)
+_BL_ANTHROPIC_PROMPT = (
+    "You are a shipping document parser. Extract from this B/L image and return ONLY valid JSON:\n"
+    '{"bl_no":"","vessel":"","voyage":"","port_of_loading":"","port_of_discharge":"","shipper":"","consignee":"",'
+    '"notify_party":"","container_list":[{"container_no":"","seal_no":"","size_type":""}]}\n'
+    "Use empty string for missing fields."
+)
+_DO_ANTHROPIC_PROMPT = (
+    "You are a shipping document parser. Extract from this D/O image and return ONLY valid JSON:\n"
+    '{"do_no":"","bl_no":"","vessel":"","voyage":"","arrival_date":"","return_deadline":"",'
+    '"container_list":[{"container_no":"","size_type":"","free_time_date":"","return_yard":""}]}\n'
+    "Use empty string for missing fields."
+)
+_PL_ANTHROPIC_PROMPT = (
+    "You are a shipping document parser. Extract from this packing list image and return ONLY valid JSON:\n"
+    '{"invoice_no":"","bl_no":"","rows":[{"item_no":"","description":"","quantity":0,"unit":"","net_weight":0.0,"gross_weight":0.0}]}\n'
+    "Use empty string / 0 for missing fields."
+)
+
+
+class MultiProviderParser:
+    """Try Gemini → OpenAI → Anthropic in order, falling back on transient errors."""
+
+    def __init__(self, gemini_key: str = "", openai_key: str = "", anthropic_key: str = ""):
+        self._gemini_key = gemini_key
+        self._openai_key = openai_key
+        self._anthropic_key = anthropic_key
+
+    # ── internal helpers ──────────────────────────────────────────────────────
+
+    def _gemini(self):
+        if not self._gemini_key:
+            raise RuntimeError("GEMINI_API_KEY 없음")
+        from features.ai.gemini_parser import GeminiDocumentParser
+        return GeminiDocumentParser(self._gemini_key)
+
+    def _openai(self):
+        if not self._openai_key:
+            raise RuntimeError("OPENAI_API_KEY 없음")
+        return None  # openai_parser functions are called directly
+
+    # ── public parse methods ──────────────────────────────────────────────────
+
+    def parse_invoice(self, pdf_path: str, gemini_hint: str = ""):
+        # 1st: Gemini
+        try:
+            gp = self._gemini()
+            return gp.parse_invoice(pdf_path, gemini_hint=gemini_hint), "gemini"
+        except Exception as e:
+            if not _is_transient_error(e):
+                raise
+            logger.warning("[MultiProvider] Gemini 일시 오류 → OpenAI 시도: %s", e)
+
+        # 2nd: OpenAI
+        try:
+            if not self._openai_key:
+                raise RuntimeError("OPENAI_API_KEY 없음")
+            from features.ai.openai_parser import try_parse_invoice
+            raw = try_parse_invoice(pdf_path, self._openai_key)
+            return (_SimpleRaw(raw) if isinstance(raw, dict) else raw), "openai"
+        except Exception as e:
+            if not _is_transient_error(e):
+                raise
+            logger.warning("[MultiProvider] OpenAI 일시 오류 → Anthropic 시도: %s", e)
+
+        # 3rd: Anthropic
+        if not self._anthropic_key:
+            raise RuntimeError("모든 AI 공급자 실패 또는 키 없음 (Gemini/OpenAI/Anthropic)")
+        try:
+            raw_text = _anthropic_call(pdf_path, _FA_ANTHROPIC_PROMPT, self._anthropic_key)
+            raw_json = json.loads(re.search(r'\{.*\}', raw_text, re.DOTALL).group())
+            return _SimpleRaw(raw_json), "anthropic"
+        except Exception as e:
+            raise RuntimeError(f"Anthropic 파싱 실패: {e}") from e
+
+    def parse_bl(self, pdf_path: str, gemini_hint: str = ""):
+        try:
+            gp = self._gemini()
+            return gp.parse_bl(pdf_path, gemini_hint=gemini_hint), "gemini"
+        except Exception as e:
+            if not _is_transient_error(e):
+                raise
+            logger.warning("[MultiProvider] Gemini BL 일시 오류 → OpenAI 시도: %s", e)
+
+        try:
+            if not self._openai_key:
+                raise RuntimeError("OPENAI_API_KEY 없음")
+            from features.ai.openai_parser import try_parse_bl
+            raw = try_parse_bl(pdf_path, self._openai_key)
+            return (_SimpleRaw(raw) if isinstance(raw, dict) else raw), "openai"
+        except Exception as e:
+            if not _is_transient_error(e):
+                raise
+            logger.warning("[MultiProvider] OpenAI BL 일시 오류 → Anthropic 시도: %s", e)
+
+        if not self._anthropic_key:
+            raise RuntimeError("모든 AI 공급자 실패 또는 키 없음")
+        try:
+            raw_text = _anthropic_call(pdf_path, _BL_ANTHROPIC_PROMPT, self._anthropic_key)
+            raw_json = json.loads(re.search(r'\{.*\}', raw_text, re.DOTALL).group())
+            return _SimpleRaw(raw_json), "anthropic"
+        except Exception as e:
+            raise RuntimeError(f"Anthropic BL 파싱 실패: {e}") from e
+
+    def parse_do(self, pdf_path: str, gemini_hint: str = ""):
+        try:
+            gp = self._gemini()
+            return gp.parse_do(pdf_path, gemini_hint=gemini_hint), "gemini"
+        except Exception as e:
+            if not _is_transient_error(e):
+                raise
+            logger.warning("[MultiProvider] Gemini DO 일시 오류 → OpenAI 시도: %s", e)
+
+        try:
+            if not self._openai_key:
+                raise RuntimeError("OPENAI_API_KEY 없음")
+            from features.ai.openai_parser import try_parse_do
+            raw = try_parse_do(pdf_path, self._openai_key)
+            return (_SimpleRaw(raw) if isinstance(raw, dict) else raw), "openai"
+        except Exception as e:
+            if not _is_transient_error(e):
+                raise
+            logger.warning("[MultiProvider] OpenAI DO 일시 오류 → Anthropic 시도: %s", e)
+
+        if not self._anthropic_key:
+            raise RuntimeError("모든 AI 공급자 실패 또는 키 없음")
+        try:
+            raw_text = _anthropic_call(pdf_path, _DO_ANTHROPIC_PROMPT, self._anthropic_key)
+            raw_json = json.loads(re.search(r'\{.*\}', raw_text, re.DOTALL).group())
+            return _SimpleRaw(raw_json), "anthropic"
+        except Exception as e:
+            raise RuntimeError(f"Anthropic DO 파싱 실패: {e}") from e
+
+    def parse_packing_list(self, pdf_path: str, gemini_hint: str = ""):
+        try:
+            gp = self._gemini()
+            return gp.parse_packing_list(pdf_path, gemini_hint=gemini_hint), "gemini"
+        except Exception as e:
+            if not _is_transient_error(e):
+                raise
+            logger.warning("[MultiProvider] Gemini PL 일시 오류 → OpenAI 시도: %s", e)
+
+        try:
+            if not self._openai_key:
+                raise RuntimeError("OPENAI_API_KEY 없음")
+            from features.ai.openai_parser import try_parse_packing_list
+            raw = try_parse_packing_list(pdf_path, self._openai_key)
+            return (_SimpleRaw(raw) if isinstance(raw, dict) else raw), "openai"
+        except Exception as e:
+            if not _is_transient_error(e):
+                raise
+            logger.warning("[MultiProvider] OpenAI PL 일시 오류 → Anthropic 시도: %s", e)
+
+        if not self._anthropic_key:
+            raise RuntimeError("모든 AI 공급자 실패 또는 키 없음")
+        try:
+            raw_text = _anthropic_call(pdf_path, _PL_ANTHROPIC_PROMPT, self._anthropic_key)
+            raw_json = json.loads(re.search(r'\{.*\}', raw_text, re.DOTALL).group())
+            return _SimpleRaw(raw_json), "anthropic"
+        except Exception as e:
+            raise RuntimeError(f"Anthropic PL 파싱 실패: {e}") from e
+
+
+def _get_provider_parser(owner: Any, provider: Optional[str] = None):
+    """Return a MultiProviderParser loaded with all available API keys."""
+    # Gemini key (1st priority)
+    gemini_key = ""
+    try:
+        gemini_key = owner._get_ai_key("gemini")
+    except Exception:
+        gemini_key = getattr(owner, "_ai_api_key", "") or getattr(owner, "gemini_api_key", "")
+    if not gemini_key:
+        try:
+            import core.config as cc
+            gemini_key = getattr(cc, "GEMINI_API_KEY", "") or os.environ.get("GEMINI_API_KEY", "")
+        except Exception:
+            gemini_key = os.environ.get("GEMINI_API_KEY", "")
+
+    # OpenAI key (2nd priority)
+    openai_key = _load_ext_api_key("openai")
+
+    # Anthropic key (3rd priority)
+    anthropic_key = _load_ext_api_key("anthropic")
+
+    if not gemini_key and not openai_key and not anthropic_key:
+        raise RuntimeError("AI API Key가 하나도 없습니다. GEMINI_API_KEY / OPENAI_API_KEY / ANTHROPIC_API_KEY 중 하나를 설정하세요.")
+
+    mpp = MultiProviderParser(gemini_key, openai_key, anthropic_key)
+    return mpp, "multi"
 
 
 def parse_invoice_ai(owner: Any, pdf_path: str, *, partial: Any = None,
                      carrier_id: str = "", provider: Optional[str] = None) -> InvoiceData:
     gp, used_provider = _get_provider_parser(owner, provider)
     hint = build_ai_hint("FA", carrier_id, partial)
-    raw = gp.parse_invoice(pdf_path, gemini_hint=hint)
+    raw, used_provider = gp.parse_invoice(pdf_path, gemini_hint=hint)
 
     result = InvoiceData()
     result.source_file = pdf_path
@@ -294,7 +563,7 @@ def parse_packing_list_ai(owner: Any, pdf_path: str, *, partial: Any = None,
                           provider: Optional[str] = None) -> PackingListData:
     gp, used_provider = _get_provider_parser(owner, provider)
     hint = build_ai_hint("PL", carrier_id, partial)
-    raw = gp.parse_packing_list(pdf_path, bag_weight_kg=bag_weight_kg, gemini_hint=hint)
+    raw, used_provider = gp.parse_packing_list(pdf_path, gemini_hint=hint)
 
     result = PackingListData()
     result.source_file = pdf_path
@@ -359,7 +628,7 @@ def parse_bl_ai(owner: Any, pdf_path: str, *, partial: Any = None,
     carrier = normalize_carrier_id(carrier_id)
     gp, used_provider = _get_provider_parser(owner, provider)
     hint = build_ai_hint("BL", carrier, partial)
-    raw = gp.parse_bl(pdf_path, gemini_hint=hint)
+    raw, used_provider = gp.parse_bl(pdf_path, gemini_hint=hint)
 
     result = BLData()
     result.source_file = pdf_path
@@ -413,7 +682,7 @@ def parse_do_ai(owner: Any, pdf_path: str, *, partial: Any = None,
     carrier = normalize_carrier_id(carrier_id)
     gp, used_provider = _get_provider_parser(owner, provider)
     hint = build_ai_hint("DO", carrier, partial)
-    raw = gp.parse_do(pdf_path, gemini_hint=hint) if _accepts_do_hint(gp) else gp.parse_do(pdf_path)
+    raw, used_provider = gp.parse_do(pdf_path, gemini_hint=hint)
 
     result = DOData()
     result.source_file = pdf_path
