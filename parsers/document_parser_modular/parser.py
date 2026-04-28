@@ -125,7 +125,8 @@ class DocumentParserV3(
         invoice_path: str = None,
         packing_path: str = None,
         bl_path: str = None,
-        do_path: str = None
+        do_path: str = None,
+        carrier_id: str = ""
     ) -> ShipmentDocuments:
         """
         선적 관련 문서들 일괄 파싱
@@ -135,6 +136,7 @@ class DocumentParserV3(
             packing_path: Packing List PDF 경로
             bl_path: B/L PDF 경로
             do_path: D/O PDF 경로
+            carrier_id: 선사 ID (MAERSK/MSC/HAPAG/ONE) — BL·DO AI fallback 정확도 향상
         
         Returns:
             ShipmentDocuments: 파싱된 모든 문서 데이터
@@ -151,11 +153,13 @@ class DocumentParserV3(
 
         if bl_path:
             logger.info(f"B/L 파싱: {bl_path}")
-            result.bl = self.parse_bl(bl_path)
+            result.bl = self.parse_bl(bl_path, carrier_id=carrier_id) if carrier_id \
+                else self.parse_bl(bl_path)
 
         if do_path:
             logger.info(f"D/O 파싱: {do_path}")
-            result.do = self.parse_do(do_path)
+            result.do = self.parse_do(do_path, carrier_id=carrier_id) if carrier_id \
+                else self.parse_do(do_path)
 
         # 문서 간 교차 검증 (기존 빈 값 보완)
         result = self._validate_shipment_documents(result)
