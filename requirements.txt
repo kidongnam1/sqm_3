@@ -1,0 +1,35 @@
+# SQM v7.0.0 — 런타임 의존성
+# 최종 업데이트: 2026-03-08
+# 설치: pip install -r requirements.txt
+
+# ── 런타임 필수 ────────────────────────────────────────
+pandas>=2.2              # Excel 입출고 처리
+openpyxl>=3.1            # Excel 읽기/쓰기
+reportlab>=4.2           # PDF 리포트 생성
+Pillow>=10.0             # 이미지 처리
+ttkbootstrap>=1.10       # GUI 테마/위젯
+PyMuPDF>=1.23            # PDF → 이미지 변환 (fitz)
+pdfplumber>=0.11         # PDF 텍스트 추출
+numpy>=1.26              # 수치 계산
+python-barcode>=0.15     # 바코드 생성
+keyring>=25.0            # API Key 보안 저장
+
+# ── AI / 문서 파싱 ─────────────────────────────────────
+google-genai>=0.1       # Gemini API (최신)
+openai>=1.12             # OpenAI GPT
+anthropic>=0.25         # Claude API
+
+# ── API 서버 (선택 — FastAPI 기반 REST API 사용 시) ───
+fastapi>=0.110
+uvicorn>=0.24              # FastAPI local server for main_webview.py
+python-multipart>=0.0.9      # FastAPI UploadFile/form-data support
+httpx>=0.27
+slowapi>=0.1.9
+bcrypt>=4.0               # 비밀번호 해싱 (v8.5.8 보안 강화)
+
+# ── 선택 패키지 ────────────────────────────────────────
+# tkinterdnd2>=0.3       # 드래그&드롭 입고 (있으면 활성화)
+# pytesseract>=0.3       # OCR (Tesseract 별도 설치 필요)
+# opencv-python>=4.9     # OpenCV (OCR 보조)
+# qrcode>=7.4            # QR코드 생성
+# python-docx>=1.1       # Word 문서 출력

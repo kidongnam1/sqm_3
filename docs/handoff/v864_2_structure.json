@@ -1,0 +1,661 @@
+{
+  "window": {
+    "title": "📦 SQM 재고관리 시스템 v8.6.4",
+    "size": "1500x900",
+    "min_size": "1000x700",
+    "theme_default": "darkly",
+    "theme_system": "ttkbootstrap",
+    "has_theme_toggle": true,
+    "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/main_app.py:1-150",
+    "window_config": "window_config.json (persistent geometry save/restore)"
+  },
+  "menubar": {
+    "style": "custom_tkinter",
+    "description": "ttkbootstrap-based CustomMenuBar or fallback native tk.Menu",
+    "menus": [
+      {
+        "id": "menu_file",
+        "name": "파일",
+        "icon": "📁",
+        "order": 0,
+        "items": [
+          {
+            "label": "📄 PDF 스캔 입고",
+            "handler": "_on_pdf_inbound",
+            "keyboard_shortcut": "Ctrl+I"
+          },
+          {
+            "label": "📊 엑셀 파일 수동 입고",
+            "handler": "_bulk_import_inventory_simple"
+          },
+          {
+            "label": "📋 D/O 후속 연결",
+            "handler": "_on_do_update"
+          },
+          {
+            "label": "📍 톤백 위치 매핑",
+            "handler": "_on_tonbag_location_upload",
+            "optional": true
+          },
+          {
+            "label": "✅ 대량 이동 승인",
+            "handler": "_on_move_approval_queue",
+            "optional": true
+          },
+          {
+            "label": "🔄 반품 (재입고)",
+            "handler": "_show_return_dialog",
+            "submenu": [
+              {
+                "label": "📝 소량 반품 (1~2건)",
+                "handler": "_show_return_dialog",
+                "params": {"mode": 0}
+              },
+              {
+                "label": "📂 다량 반품 (Excel)",
+                "handler": "_show_return_dialog",
+                "params": {"mode": 1}
+              }
+            ]
+          },
+          {
+            "label": "📂 반품 입고 (Excel)",
+            "handler": "_on_return_inbound_upload"
+          },
+          {
+            "label": "📊 반품 사유 통계",
+            "handler": "_show_return_statistics"
+          },
+          {
+            "label": "📂 최근 파일",
+            "handler": "recent_menu",
+            "submenu": "dynamic"
+          },
+          {
+            "label": "📥 업로드 메뉴",
+            "submenu": "dynamic_inbound_outbound"
+          }
+        ],
+        "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/menu_registry.py:1-50"
+      },
+      {
+        "id": "menu_stock",
+        "name": "재고",
+        "icon": "📊",
+        "order": 1,
+        "items": [
+          {
+            "label": "📊 LOT 리스트 Excel",
+            "handler": "_on_export_click",
+            "params": {"option": 3}
+          },
+          {
+            "label": "🎒 톤백리스트 Excel",
+            "handler": "_on_export_click",
+            "params": {"option": 4}
+          },
+          {
+            "label": "📋 출고 현황 조회",
+            "handler": "_show_outbound_history",
+            "optional": true
+          },
+          {
+            "label": "📊 재고 추이 차트",
+            "handler": "_show_snapshot_chart",
+            "optional": true
+          }
+        ],
+        "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/menu_registry.py:200-210"
+      },
+      {
+        "id": "menu_report",
+        "name": "보고서",
+        "icon": "📝",
+        "order": 2,
+        "items": [
+          {
+            "label": "📄 거래명세서 생성",
+            "handler": "_generate_outbound_invoice"
+          },
+          {
+            "label": "📦 Detail of Outbound",
+            "handler": "_on_detail_of_outbound_report"
+          },
+          {
+            "label": "📋 Sales Order DN",
+            "handler": "_on_sales_order_dn_report"
+          },
+          {
+            "label": "🔍 DN 교차검증",
+            "handler": "_on_dn_cross_check"
+          },
+          {
+            "label": "📝 고객 보고서 생성",
+            "handler": "_generate_customer_report",
+            "optional": true
+          },
+          {
+            "label": "📂 보고서 양식 관리",
+            "handler": "_manage_report_templates",
+            "optional": true
+          },
+          {
+            "label": "📋 보고서 이력 조회",
+            "handler": "_show_report_history",
+            "optional": true
+          },
+          {
+            "label": "📦 재고 현황 보고서",
+            "handler": "_generate_inventory_pdf_report"
+          },
+          {
+            "label": "📈 입출고 내역",
+            "handler": "_generate_transaction_pdf"
+          },
+          {
+            "label": "📅 월간 실적 PDF",
+            "handler": "_generate_monthly_pdf_v398",
+            "optional": true
+          },
+          {
+            "label": "📊 일일 현황 PDF",
+            "handler": "_generate_daily_pdf_v398",
+            "optional": true
+          },
+          {
+            "label": "🔖 LOT 상세",
+            "handler": "_generate_lot_detail_pdf"
+          }
+        ],
+        "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/menu_registry.py:212-240"
+      },
+      {
+        "id": "menu_settings",
+        "name": "설정/도구",
+        "icon": "⚙️",
+        "order": 3,
+        "items": [
+          {
+            "label": "🔄 새로고침 (F5)",
+            "handler": "_refresh_all_data"
+          },
+          {
+            "label": "💾 현재 창 크기 저장",
+            "handler": "_on_save_window_size"
+          },
+          {
+            "label": "↩️ 기본 창 크기 초기화",
+            "handler": "_on_reset_window_size"
+          },
+          {
+            "label": "📦 제품 마스터 관리",
+            "handler": "_show_product_master"
+          },
+          {
+            "label": "📊 제품별 재고 현황",
+            "handler": "_show_product_inventory_report"
+          },
+          {
+            "label": "📋 D/O 후속 연결",
+            "handler": "_on_do_update"
+          },
+          {
+            "label": "🔔 재고 알림 조회",
+            "handler": "_show_stock_alerts"
+          },
+          {
+            "label": "🩺 데이터 정합성 검사",
+            "handler": "_run_integrity_check"
+          },
+          {
+            "label": "🔍 정합성 검사/복구",
+            "handler": "_on_integrity_check"
+          },
+          {
+            "label": "🔧 DB 최적화",
+            "handler": "_on_optimize_db"
+          },
+          {
+            "label": "📋 로그 정리",
+            "handler": "_on_cleanup_logs"
+          },
+          {
+            "label": "ℹ️ DB 정보",
+            "handler": "_show_db_info"
+          },
+          {
+            "label": "🌙 다크/라이트 전환",
+            "handler": "_toggle_dark_mode",
+            "dynamic": true
+          },
+          {
+            "label": "📝 글꼴 설정",
+            "handler": "font_menu",
+            "dynamic": true
+          }
+        ],
+        "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/menu_registry.py:250-280"
+      },
+      {
+        "id": "menu_help",
+        "name": "도움말",
+        "icon": "❓",
+        "order": 4,
+        "items": [
+          {
+            "label": "📖 사용법",
+            "handler": "_show_help"
+          },
+          {
+            "label": "⌨️ 단축키 안내",
+            "handler": "_show_shortcuts"
+          },
+          {
+            "label": "📊 STATUS 상태값 안내",
+            "handler": "_show_status_guide",
+            "optional": true
+          },
+          {
+            "label": "💾 DB 백업/복구 가이드",
+            "handler": "_show_backup_guide",
+            "optional": true
+          },
+          {
+            "label": "ℹ️ 시스템 정보",
+            "handler": "_show_system_info",
+            "optional": true
+          },
+          {
+            "label": "📝 버전 정보",
+            "handler": "_show_about"
+          }
+        ],
+        "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/menu_registry.py:282-295"
+      }
+    ],
+    "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/mixins/menu_mixin.py:90-500"
+  },
+  "action_toolbar": {
+    "layout": "horizontal_button_bar",
+    "background": "dark_statusbar_color",
+    "items": [
+      {
+        "label": "📄 PDF 입고",
+        "handler": "_on_pdf_inbound",
+        "bg_color": "#22c55e",
+        "hover_color": "#16a34a",
+        "order": 0
+      },
+      {
+        "label": "🚀 즉시 출고",
+        "handler": "_on_s1_onestop_outbound",
+        "bg_color": "#3b82f6",
+        "hover_color": "#2563eb",
+        "order": 1
+      },
+      {
+        "label": "🔄 반품",
+        "handler": "_show_return_dialog",
+        "bg_color": "#64748b",
+        "hover_color": "#475569",
+        "order": 2
+      },
+      {
+        "label": "📋 재고 조회",
+        "handler": "_on_inventory_search_dialog",
+        "bg_color": "#3b82f6",
+        "hover_color": "#2563eb",
+        "order": 3
+      },
+      {
+        "label": "✅ 정합성",
+        "handler": "_run_integrity_check",
+        "bg_color": "#06b6d4",
+        "hover_color": "#0891b2",
+        "order": 4
+      },
+      {
+        "label": "💾 백업",
+        "handler": "_on_backup_click",
+        "bg_color": "#64748b",
+        "hover_color": "#475569",
+        "order": 5
+      },
+      {
+        "label": "⚙️ 설정",
+        "handler": "open_settings_menu",
+        "bg_color": "#64748b",
+        "hover_color": "#475569",
+        "order": 6
+      }
+    ],
+    "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/mixins/toolbar_mixin.py:150-250"
+  },
+  "sidebar_tabs": [
+    {
+      "order": 0,
+      "id": "tab_inventory",
+      "label": "📦 Inventory",
+      "icon": "📦",
+      "description": "전체 재고 및 확인",
+      "handler": "_setup_inventory_tab",
+      "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/tabs/inventory_tab.py:1-50"
+    },
+    {
+      "order": 1,
+      "id": "tab_allocation",
+      "label": "📋 Allocation",
+      "icon": "📋",
+      "description": "판매 배정/예약",
+      "handler": "_setup_allocation_tab",
+      "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/tabs/allocation_tab.py:1-50"
+    },
+    {
+      "order": 2,
+      "id": "tab_picked",
+      "label": "🚛 Picked",
+      "icon": "🚛",
+      "description": "피킹 현황",
+      "handler": "_setup_picked_tab",
+      "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/tabs/picked_tab.py:1-50"
+    },
+    {
+      "order": 3,
+      "id": "tab_sold",
+      "label": "📤 Outbound",
+      "icon": "📤",
+      "description": "출고 현황",
+      "handler": "_setup_sold_tab",
+      "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/tabs/sold_tab.py:1-50"
+    },
+    {
+      "order": 4,
+      "id": "tab_return",
+      "label": "🔄 Return",
+      "icon": "🔄",
+      "description": "반품 처리",
+      "handler": "_setup_return_tab",
+      "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/tabs/cargo_overview_tab.py:1-50"
+    },
+    {
+      "order": 5,
+      "id": "tab_move",
+      "label": "🔀 Move",
+      "icon": "🔀",
+      "description": "재고 이동",
+      "handler": "_setup_move_tab",
+      "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/tabs/move_tab.py:1-50"
+    },
+    {
+      "order": 6,
+      "id": "tab_dashboard",
+      "label": "📊 Dashboard",
+      "icon": "📊",
+      "description": "통계 및 현황",
+      "handler": "_setup_dashboard_tab",
+      "sidebar_visible": false,
+      "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/tabs/dashboard_tab.py:1-50"
+    },
+    {
+      "order": 7,
+      "id": "tab_log",
+      "label": "📝 Log",
+      "icon": "📝",
+      "description": "작업 로그",
+      "handler": "_setup_log_tab",
+      "sidebar_visible": false,
+      "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/tabs/log_tab.py:1-50"
+    },
+    {
+      "order": 8,
+      "id": "tab_scan",
+      "label": "📷 Scan",
+      "icon": "📷",
+      "description": "바코드 스캔",
+      "handler": "_setup_scan_tab",
+      "sidebar_visible": false,
+      "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/tabs/scan_tab.py:1-50"
+    }
+  ],
+  "layout_structure": {
+    "root_frame": {
+      "description": "Main tkinter/ttkbootstrap window",
+      "children": [
+        {
+          "name": "toolbar_container",
+          "type": "tk.Frame",
+          "layout": "pack(fill=x)",
+          "children": [
+            {
+              "name": "_row1",
+              "description": "Menu buttons row + right actions (refresh, theme)",
+              "children": [
+                {"name": "_menu_frame", "contains": "7 menu buttons (파일, 입고, 출고, 재고, 보고서, 설정/도구, 도움말)"},
+                {"name": "_right_actions", "contains": "Refresh button + Dark/Light toggle"}
+              ]
+            },
+            {
+              "name": "_action_bar",
+              "description": "Colored action buttons (PDF입고, 즉시출고, 반품, 재고조회, 정합성, 백업, 설정)",
+              "type": "tk.Frame"
+            },
+            {
+              "name": "_row2",
+              "description": "Previously used for tab buttons (now in sidebar)",
+              "status": "deprecated"
+            }
+          ]
+        },
+        {
+          "name": "main_frame",
+          "type": "tk.Frame",
+          "layout": "pack(fill=both, expand=yes)",
+          "children": [
+            {
+              "name": "_sidebar_frame",
+              "description": "Left sidebar with tab buttons (Inventory, Allocation, Picked, Outbound, Return, Move)",
+              "type": "tk.Frame",
+              "width": "~100px"
+            },
+            {
+              "name": "notebook",
+              "type": "ttk.Notebook",
+              "description": "Tab container with hidden headers (headers in sidebar)",
+              "tabs": [
+                "tab_inventory", "tab_allocation", "tab_picked", "tab_sold", 
+                "tab_return", "tab_move", "tab_dashboard", "tab_log", "tab_scan"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "statusbar_frame",
+          "type": "ttk.Frame",
+          "layout": "pack(fill=x, side=bottom)",
+          "children": [
+            {"name": "mode_label", "description": "READ/WRITE indicator"},
+            {"name": "module_status_label", "description": "Module status (Modules: X/Y)"},
+            {"name": "status_label", "description": "Current status message"},
+            {"name": "_inv_summary_label", "description": "Inventory summary (LOT count, Tonbag, Stock weight)"},
+            {"name": "progress_bar", "description": "Progress indicator"}
+          ]
+        }
+      ]
+    },
+    "tab_contents": {
+      "inventory_tab": {
+        "elements": ["Table: 재고 현황", "ALERTS panel"],
+        "refresh_handler": "_refresh_inventory_tab"
+      },
+      "allocation_tab": {
+        "elements": ["Allocation tree", "Approval queue"],
+        "refresh_handler": "_refresh_allocation_tab"
+      },
+      "dashboard_tab": {
+        "elements": ["Statistical charts", "KPI metrics"],
+        "refresh_handler": "_refresh_dashboard",
+        "initial_active": true
+      },
+      "scan_tab": {
+        "elements": ["Barcode input", "Scan results table"],
+        "refresh_handler": "_refresh_scan_tab"
+      }
+    }
+  },
+  "status_bar": {
+    "layout": "left-to-right_panels",
+    "items": [
+      {
+        "name": "mode_label",
+        "display": "READ / WRITE",
+        "color": "success (green)",
+        "clickable": true,
+        "handler": "_toggle_db_mode"
+      },
+      {
+        "name": "module_status_label",
+        "display": "Modules: X/Y (e.g., 7/8)",
+        "color": "text_muted",
+        "clickable": true,
+        "handler": "_show_module_status_dialog"
+      },
+      {
+        "name": "status_label",
+        "display": "Current status message (Ready, Processing, etc.)",
+        "color": "auto"
+      },
+      {
+        "name": "_inv_summary_label",
+        "display": "📦 LOT: N | 🎒 톤백: M | 💰 재고: K MT",
+        "color": "text_primary",
+        "font_weight": "bold"
+      },
+      {
+        "name": "progress_bar",
+        "type": "ttk.Progressbar",
+        "orientation": "horizontal"
+      }
+    ],
+    "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/mixins/statusbar_mixin.py:50-200"
+  },
+  "theme_system": {
+    "library": "ttkbootstrap",
+    "themes_available": ["darkly", "superhero", "solar", "cyborg", "darkly_custom"],
+    "default_theme": "darkly",
+    "color_system": "ThemeColors class (dual-mode light/dark)",
+    "colors": {
+      "primary": "#10B981",
+      "secondary": "#64748b",
+      "success": "#10b981",
+      "info": "#0ea5e9",
+      "warning": "#f59e0b",
+      "danger": "#ef4444",
+      "dark": "#0f172a",
+      "bg_primary": "#0b1120",
+      "fg_primary": "#e2e8f0",
+      "border": "#1e3a5f",
+      "selectbg": "#1d4ed8",
+      "selectfg": "#ffffff"
+    },
+    "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/main_app.py:50-120",
+    "theme_toggle": "Dark/Light buttons in top-right toolbar"
+  },
+  "keyboard_shortcuts": {
+    "global": [
+      {"key": "F5", "action": "Refresh all data", "handler": "_refresh_all_data"},
+      {"key": "Ctrl+I", "action": "PDF Inbound", "handler": "_on_pdf_inbound"},
+      {"key": "Escape", "action": "Close current dialog", "handler": "builtin"}
+    ],
+    "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/mixins/keybindings_mixin.py"
+  },
+  "drag_drop_support": {
+    "enabled": true,
+    "supported_formats": ["Excel files (.xlsx, .csv)", "PDF files", "Images"],
+    "handler_mixin": "DragDropMixin",
+    "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/mixins/drag_drop_mixin.py"
+  },
+  "dialogs": [
+    {
+      "name": "InboundDialog",
+      "type": "PDF/Excel inbound",
+      "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/dialogs/inbound_dialog_base.py"
+    },
+    {
+      "name": "AllocationDialog",
+      "type": "Allocation approval",
+      "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/dialogs/allocation_dialog.py"
+    },
+    {
+      "name": "IntegrityDialog",
+      "type": "Data integrity check",
+      "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/dialogs/integrity_v760_dialog.py"
+    },
+    {
+      "name": "ProductMasterDialog",
+      "type": "Product management",
+      "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/dialogs/product_master_dialog.py"
+    },
+    {
+      "name": "SettingsDialog",
+      "type": "System settings",
+      "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/dialogs/settings_dialog.py"
+    }
+  ],
+  "class_hierarchy": {
+    "base_class": "SQMInventoryApp",
+    "full_class": "SQMInventoryAppFull",
+    "mixins": [
+      "MenuMixin",
+      "ToolbarMixin",
+      "WindowMixin",
+      "StatusBarMixin",
+      "ThemeMixin",
+      "DragDropMixin",
+      "KeyBindingsMixin",
+      "ValidationMixin",
+      "RefreshMixin",
+      "DatabaseMixin",
+      "ContextMenuMixin",
+      "AdvancedFeaturesMixin",
+      "CargoOverviewTabMixin",
+      "AllocationTabMixin",
+      "InventoryTabMixin",
+      "PickedTabMixin",
+      "SoldTabMixin",
+      "DashboardTabMixin",
+      "ScanTabMixin",
+      "MoveTabMixin",
+      "LogTabMixin"
+    ],
+    "source_file": "/sessions/amazing-gracious-cerf/mnt/outputs/v864_2_source/gui_app_modular/main_app.py:1210-1260"
+  },
+  "initialization_sequence": [
+    "1. run.py → run_bootstrap.py run_gui()",
+    "2. SQMInventoryAppFull() instantiated",
+    "3. _init_state() — theme preference loaded",
+    "4. _show_loading_splash() — splash screen displayed",
+    "5. _init_engine() — database engine initialized",
+    "6. _setup_ui() — window structure created",
+    "7. _setup_menu() — menu bar setup",
+    "8. _setup_toolbar() — toolbar with action buttons",
+    "9. _setup_main_frame() — sidebar + notebook layout",
+    "10. _setup_status_bar() — status bar setup",
+    "11. _setup_*_tab() — individual tab initialization (9 tabs)",
+    "12. _load_window_config() — geometry restore (150ms delay)",
+    "13. root.deiconify() — window displayed",
+    "14. _refresh_dashboard() → root.mainloop()"
+  ],
+  "metadata": {
+    "version": "v864.2",
+    "tkinter_version": "tk8.6+",
+    "ttkbootstrap_version": "1.6+",
+    "python_min": "3.9",
+    "database": "SQLite3",
+    "date_extracted": "2026-04-21",
+    "extraction_scope": "Complete UI structure analysis for v864.3 migration to PyWebView",
+    "total_menu_items": "50+",
+    "total_tabs": 9,
+    "dialogs_count": "15+",
+    "keyboard_shortcuts": "10+"
+  }
+}

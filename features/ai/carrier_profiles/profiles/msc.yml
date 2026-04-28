@@ -1,0 +1,45 @@
+# SQM v8.7.0 · carrier_profile (MSC)
+# 이 YAML은 기존 Python 템플릿(bl_carrier_registry.py)과 공존하며,
+# 역호환 보장을 위해 기존 Python 엔트리가 우선됩니다. 빈 필드만 보강됩니다.
+id: MSC
+name: Mediterranean Shipping Company
+
+detect:
+  keywords:
+    - MEDITERRANEAN SHIPPING COMPANY
+    - SEA WAYBILL No.
+    - MSC CHILE
+  file_prefixes:
+    - MEDU
+    - MSCU
+    - MSDU
+    - MSMU
+    - MSNU
+
+bl:
+  number_regex: 'MEDITERRANEAN SHIPPING COMPANY.*?SEA WAYBILL No\.\s+(\w{6,20})'
+  format_hint: MEDUFP963988
+  page_scope: page0
+  sap_page_hint: page1_to_2
+  bl_equals_booking_no: false
+
+do:
+  number_regex: '^\d{9}$'
+
+hints:
+  bl: |
+    【MSC Sea Waybill 전용 규칙】
+    BL No 위치: 1페이지 상단 맨 첫 번째 줄 끝에 있습니다.
+    형식 예시: MEDUFP963988 (MEDU로 시작하는 알파벳+숫자 혼합)
+    ⚠️ 주의: Rider Page(2~3페이지) 컨테이너 번호를 BL No로 혼동하지 마세요.
+  invoice: |
+    이 서류는 MSC 선사의 Invoice/FA입니다.
+  packing: |
+    이 서류는 MSC 선사의 Packing List입니다.
+
+containers:
+  - MSCU
+  - MEDU
+  - MSDU
+  - MSNU
+  - TCLU

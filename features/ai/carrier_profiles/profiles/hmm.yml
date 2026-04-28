@@ -1,0 +1,36 @@
+# SQM v8.7.0 · carrier_profile (HMM)
+# 역호환: 기존 Python 템플릿이 우선, 빈 필드만 보강.
+# 주의: HMM 실제 샘플 미확보 — 수신 후 정밀화 필요.
+id: HMM
+name: Hyundai Merchant Marine
+
+detect:
+  keywords:
+    - HYUNDAI MERCHANT MARINE
+    - HMM
+    - HMM CO., LTD
+  file_prefixes:
+    - HMMU
+
+bl:
+  number_regex: 'B(?:/L|ILL OF LADING)\s*(?:No\.?|NUMBER|:)\s*([A-Z0-9]{6,20})'
+  format_hint: HBKM1234567
+  page_scope: page0
+  sap_page_hint: all
+  bl_equals_booking_no: false
+
+do:
+  number_regex: '^[A-Z0-9]{6,20}$'
+
+hints:
+  bl: |
+    【HMM (Hyundai Merchant Marine) Bill of Lading 전용 규칙】
+    BL No 위치: 1페이지 상단 'B/L No.' 또는 'Bill of Lading No.' 라벨 근처
+    ⚠️ 주의: 실제 HMM BL 샘플 기반이 아니므로 추출 후 반드시 확인하세요.
+  invoice: |
+    이 서류는 HMM 선사의 Invoice/FA입니다.
+  packing: |
+    이 서류는 HMM 선사의 Packing List입니다.
+
+containers:
+  - HMMU
