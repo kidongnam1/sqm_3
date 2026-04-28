@@ -1990,6 +1990,9 @@
       if (btn) btn.disabled=true;
       apiPost('/api/inbound/pdf',{pdf_base64:_pdfB64,filename:(_pdfFile?_pdfFile.name:'upload.pdf')})
         .then(function(res){
+          if (res.data && res.data.ai_provider_used === 'openai') {
+            showToast('warning', '⚠️ Gemini 한도 초과 → OpenAI 전환됨');
+          }
           showToast('success','PDF inbound done: '+(res.message||'OK'));
           if (status) status.textContent='Done: '+(res.message||'Success');
           if (btn) { btn.style.display='none'; btn.disabled=false; }
@@ -3607,6 +3610,9 @@ function _bringToFront(el) { el.style.zIndex = ++_zFloatTop; }
           tx.textContent = body.message || '완료';
           var extra = opts.onSuccess ? opts.onSuccess(body.data||{}) : '';
           rb.innerHTML = '<div style="padding:12px;background:var(--bg-hover);border-radius:6px;border-left:4px solid var(--success)"><div style="font-weight:600;margin-bottom:4px">✅ '+escapeHtml(body.message||'완료')+'</div>'+(extra||'')+'</div>';
+          if (body.data && body.data.ai_provider_used === 'openai') {
+            showToast('warning', '⚠️ Gemini 한도 초과 → OpenAI 전환됨');
+          }
           showToast('success', body.message || '완료');
           dbgLog('🟢','PDF-UPLOAD OK', opts.endpoint, '#66bb6a');
           if (_currentRoute === 'inventory' && typeof loadInventoryPage === 'function') loadInventoryPage();
@@ -3830,6 +3836,8 @@ function _bringToFront(el) { el.style.zIndex = ++_zFloatTop; }
     files: { BL: null, PACKING_LIST: null, INVOICE: null, DO: null },
     template: null,
     carrier: '',
+    product: '',
+    productCode: '',
     step: 1,
     /* [Sprint 1-2-C] 편집 상태 */
     previewRows: [],        /* 현재 미리보기 rows (편집 반영됨) */
@@ -3939,6 +3947,8 @@ function _bringToFront(el) { el.style.zIndex = ++_zFloatTop; }
   function showOneStopInboundModal() {
     /* 상태 초기화 */
     _onestopState.files = { BL: null, PACKING_LIST: null, INVOICE: null, DO: null };
+    _onestopState.product = '';
+    _onestopState.productCode = '';
     _onestopState.step = 1;
 
     var slotsHtml = ONESTOP_DOC_TYPES.map(function(dt){
@@ -3973,6 +3983,12 @@ function _bringToFront(el) { el.style.zIndex = ++_zFloatTop; }
       '    <label>🚢 선사:</label>',
       '    <select id="onestop-carrier" onchange="window.onestopCarrierChange(this.value)" style="padding:6px;flex:1;max-width:280px;background:var(--bg-hover);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-weight:600"><option value="">— 로딩 중... —</option></select>',
       '    <button class="btn" onclick="window.onestopReparseCarrier()" disabled>🚢 선사 재파싱</button>',
+      '  </div>',
+      /* 품목 줄 */
+      '  <div class="onestop-row">',
+      '    <label>📦 품목:</label>',
+      '    <select id="onestop-product" onchange="window.onestopProductChange(this)" style="padding:6px;flex:1;max-width:420px;background:var(--bg-hover);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-weight:600"><option value="">— 품목 로딩 중... —</option></select>',
+      '    <span class="hint" style="font-size:11px;color:var(--text-muted)">선택값이 미리보기 PRODUCT 열과 DB 품목에 반영됩니다</span>',
       '  </div>',
       /* 힌트 줄 — 업로드 시점 한 줄 메모 (저장 안 됨, Gemini 파싱 보조) */
       '  <div class="onestop-row">',
@@ -4028,6 +4044,7 @@ function _bringToFront(el) { el.style.zIndex = ++_zFloatTop; }
 
     showDataModal('', html);
     _onestopLoadCarriers();
+    _onestopLoadProducts();
   }
   window.showOneStopInboundModal = showOneStopInboundModal;
 
@@ -4337,6 +4354,60 @@ function _bringToFront(el) { el.style.zIndex = ++_zFloatTop; }
       });
   }
 
+  function _productLabel(p) {
+    var code = p && p.code ? String(p.code) : '';
+    var name = p && p.full_name ? String(p.full_name) : '';
+    var ko = p && p.korean_name ? String(p.korean_name) : '';
+    if (code && name && ko) return code + ' · ' + name + ' (' + ko + ')';
+    if (code && name) return code + ' · ' + name;
+    return name || code || '';
+  }
+
+  function _onestopLoadProducts() {
+    var sel = document.getElementById('onestop-product');
+    if (!sel) return;
+    fetch(API + '/api/q/products')
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(d) {
+        var items = (d && d.data && d.data.items) || [];
+        var opts = '<option value="">— 품목 선택 (필수) —</option>';
+        opts += items.map(function(p) {
+          var value = p.full_name || p.code || '';
+          return '<option value="' + escapeHtml(value) + '" data-code="' + escapeHtml(p.code || '') + '">'
+            + escapeHtml(_productLabel(p)) + '</option>';
+        }).join('');
+        sel.innerHTML = opts || '<option value="">— 품목 없음 —</option>';
+      })
+      .catch(function() {
+        sel.innerHTML = '<option value="">— 품목 목록 로드 실패 —</option>';
+      });
+  }
+
+  window.onestopProductChange = function(sel) {
+    var opt = sel && sel.options ? sel.options[sel.selectedIndex] : null;
+    var product = sel ? String(sel.value || '').trim() : '';
+    var code = opt ? String(opt.getAttribute('data-code') || '').trim() : '';
+    _onestopState.product = product;
+    _onestopState.productCode = code;
+    if (_onestopState.parsed && _onestopState.previewRows.length && product) {
+      _onestopState.previewRows.forEach(function(r, i) {
+        if (!r) return;
+        var oldProduct = r.product || '';
+        if (oldProduct !== product) {
+          r.product = product;
+          _onestopState.editedCells[i + '.product'] = true;
+        }
+        if (code && r.code !== code) {
+          r.code = code;
+          _onestopState.editedCells[i + '.code'] = true;
+        }
+      });
+      _onestopRenderPreview(_onestopState.previewRows);
+      _onestopUpdateHistoryButtons();
+      showToast('success', '품목이 미리보기 PRODUCT 열에 반영되었습니다');
+    }
+  };
+
   window.onestopCarrierChange = function(carrier) {
     window._onestopActiveTemplate = null;
     var lbl = document.getElementById('onestop-tpl-label');
@@ -4572,9 +4643,12 @@ function _bringToFront(el) { el.style.zIndex = ++_zFloatTop; }
   window.onestopParseStart = function() {
     var s = _onestopState.files;
     var _cEl = document.getElementById('onestop-carrier');
+    var _pEl = document.getElementById('onestop-product');
     if (!_cEl || !_cEl.value) { showToast('error', '🚢 선사를 먼저 선택하세요 (필수)'); return; }
+    if (!_pEl || !_pEl.value) { showToast('error', '📦 품목을 먼저 선택하세요 (필수)'); return; }
     if (window._onestopBagWeight === null) { showToast('error', '🏋️ DB 파싱 템플릿을 먼저 선택하세요 (톤백 단위 미설정 시 500kg로 오파싱 위험)'); return; }
     if (!s.PACKING_LIST) { showToast('error', 'Packing List(PL) 먼저 선택하세요'); return; }
+    window.onestopProductChange(_pEl);
 
     _onestopSetStep(2);
     /* BL 슬롯 표시 (파싱 시작 시) */
@@ -4608,6 +4682,8 @@ function _bringToFront(el) { el.style.zIndex = ++_zFloatTop; }
     if (window._onestopBagWeight !== null) form.append('bag_weight_kg', String(window._onestopBagWeight));
     if (window._onestopGeminiHint) form.append('gemini_hint', window._onestopGeminiHint);
     if (window._onestopDbTemplateId) form.append('template_id', String(window._onestopDbTemplateId));
+    if (_onestopState.product) form.append('selected_product', _onestopState.product);
+    if (_onestopState.productCode) form.append('selected_product_code', _onestopState.productCode);
 
     var xhr = new XMLHttpRequest();
     /* [Sprint 1-2-C] dry_run=true 로 DB 저장 없이 파싱만 실행 */
@@ -6590,105 +6666,4 @@ function _bringToFront(el) { el.style.zIndex = ++_zFloatTop; }
         var menuName = el.dataset.menu || '?';
         console.log('[SQM MENU CLICK]', menuName, '| target:', ev.target.tagName, '| hasAction:', !!ev.target.closest('[data-action]'));
         dbgLog('🖱️','MENU CLICK', menuName + ' | target=' + ev.target.tagName + ' | hasAction=' + (!!ev.target.closest('[data-action]')), '#00e5ff');
-        if (ev.target.closest('[data-action]')) {
-          dbgLog('⚡','MENU → action', ev.target.dataset.action, '#ffeb3b');
-          return;
-        }
-        ev.preventDefault();
-        ev.stopPropagation();
-        var open = el.classList.contains('open');
-        closeAllMenus();
-        if (!open) {
-          el.classList.add('open');
-          _menuJustOpened = true;
-          setTimeout(function(){ _menuJustOpened = false; }, 200);
-          console.log('[SQM MENU OPEN]', menuName, '| .open class added:', el.classList.contains('open'));
-          dbgLog('📂','MENU OPEN', menuName + ' | .open 추가됨', '#4caf50');
-        } else {
-          console.log('[SQM MENU CLOSE]', menuName);
-          dbgLog('📁','MENU CLOSE', menuName, '#ff9800');
-        }
-      });
-    });
-
-    // close on outside click
-    document.addEventListener('click', function(ev){
-      if (_menuJustOpened) {
-        console.log('[SQM] document click 차단됨 (_menuJustOpened=true)');
-        return;
-      }
-      if (!ev.target.closest('.menu-btn,.menu-dropdown')) {
-        console.log('[SQM] outside click → closeAllMenus');
-        closeAllMenus();
-      }
-    });
-
-    // theme buttons
-    document.querySelectorAll('[data-action="theme-dark"]').forEach(function(el){
-      el.addEventListener('click',function(){
-        document.documentElement.setAttribute('data-theme','dark');
-        try{getStore().setItem('sqm_theme','dark');}catch{}
-      });
-    });
-    document.querySelectorAll('[data-action="theme-light"]').forEach(function(el){
-      el.addEventListener('click',function(){
-        document.documentElement.setAttribute('data-theme','light');
-        try{getStore().setItem('sqm_theme','light');}catch{}
-      });
-    });
-
-    // F5 shortcut — F8: debug panel toggle (handled in _dbgBuild)
-    document.addEventListener('keydown', function(ev){
-      if (ev.key==='F5'&&!ev.ctrlKey&&!ev.metaKey){
-        ev.preventDefault();
-        renderPage(_currentRoute||'dashboard');
-      }
-    });
-
-    console.info('[SQM v864.3] bindAll complete');
-  }
-
-  function boot() {
-    _dbgBuild();
-    applyTheme();
-    bindAll();
-    loadAlerts();
-    loadStatusbar();
-    startKpiPolling();
-    dbgLog('🚀','SQM v864.3 부팅 완료', 'F8 = 디버그 패널 토글','#4caf50');
-
-    var hash = location.hash.slice(1);
-    var lastTab = null;
-    try { lastTab = getStore().getItem('sqm_last_tab'); } catch {}
-    var initial = hash || lastTab || 'dashboard';
-    renderPage(initial);
-
-    window.addEventListener('hashchange', function(){
-      var id = location.hash.slice(1);
-      if (id && id !== _currentRoute) renderPage(id);
-    });
-
-    setInterval(function(){
-      var auto = document.getElementById('sb-auto-refresh');
-      if (auto && auto.checked && document.visibilityState !== 'hidden') {
-        loadAlerts();
-        refreshStatusbar();
-        if (_currentRoute==='dashboard') loadKpi();
-      }
-    }, 30000);
-
-    window.SQM = window.SQM || {};
-    window.SQM.version = '864.3-phase5';
-    window.SQM.renderPage = renderPage;
-    window.SQM.dispatchAction = dispatchAction;
-    window.SQM.currentRoute = function(){ return _currentRoute; };
-    console.info('[SQM v864.3] boot complete. initial route:', initial);
-  }
-
-  if (document.readyState==='loading') {
-    document.addEventListener('DOMContentLoaded', boot);
-  } else {
-    boot();
-  }
-
-})();
+        if (ev.target.closest('

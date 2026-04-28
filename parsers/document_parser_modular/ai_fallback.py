@@ -242,18 +242,16 @@ def _is_transient_error(exc: Exception) -> bool:
 
 
 def _load_ext_api_key(provider: str) -> str:
-    """Load OpenAI / Anthropic key: env → core.config → settings.ini."""
+    """Load OpenAI key: env OPENAI_API_KEY → core.config → settings.ini [OpenAI]."""
     provider = provider.lower()
-    env_map = {"openai": "OPENAI_API_KEY", "anthropic": "ANTHROPIC_API_KEY"}
-    env_val = os.environ.get(env_map.get(provider, ""), "")
+    if provider != "openai":
+        return ""
+    env_val = os.environ.get("OPENAI_API_KEY", "")
     if env_val:
         return env_val
     try:
         import core.config as cc
-        if provider == "openai":
-            return getattr(cc, "OPENAI_API_KEY", "") or ""
-        if provider == "anthropic":
-            return getattr(cc, "ANTHROPIC_API_KEY", "") or ""
+        return getattr(cc, "OPENAI_API_KEY", "") or ""
     except Exception:
         pass
     try:
@@ -262,9 +260,8 @@ def _load_ext_api_key(provider: str) -> str:
         if ini.exists():
             cp = configparser.ConfigParser()
             cp.read(ini, encoding="utf-8")
-            sec = provider.capitalize()
-            if cp.has_section(sec):
-                return cp.get(sec, "api_key", fallback="")
+            if cp.has_section("OpenAI"):
+                return cp.get("OpenAI", "api_key", fallback="")
     except Exception:
         pass
     return ""
@@ -279,77 +276,10 @@ class _SimpleRaw:
         return None
 
 
-def _anthropic_call(pdf_path: str, prompt: str, api_key: str) -> str:
-    """Send a single base64-encoded PDF page to Anthropic Claude Vision and return the raw JSON string."""
-    import base64
-    try:
-        import anthropic as _anthropic
-    except ImportError:
-        raise RuntimeError("anthropic 패키지 미설치. pip install anthropic")
-    import fitz  # PyMuPDF
 
-    doc = fitz.open(pdf_path)
-    # Use first page as image (sufficient for most shipping docs)
-    page = doc[0]
-    pix = page.get_pixmap(dpi=150)
-    img_bytes = pix.tobytes("png")
-    doc.close()
-    b64 = base64.standard_b64encode(img_bytes).decode()
-
-    client = _anthropic.Anthropic(api_key=api_key)
-    msg = client.messages.create(
-        model="claude-opus-4-5",
-        max_tokens=2048,
-        messages=[{
-            "role": "user",
-            "content": [
-                {
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": "image/png",
-                        "data": b64,
-                    },
-                },
-                {"type": "text", "text": prompt},
-            ],
-        }],
-    )
-    return msg.content[0].text
-
-
-_FA_ANTHROPIC_PROMPT = (
-    "You are a shipping document parser. Extract from this invoice image and return ONLY valid JSON:\n"
-    '{"sap_no":"","invoice_no":"","bl_no":"","vessel":"","voyage":"","port_of_loading":"","port_of_discharge":"",'
-    '"invoice_date":"","lot_list":[{"lot_no":"","lot_sqm":0.0,"mxbg_pallet":0}]}\n'
-    "Use empty string for missing text fields. Use 0.0 / 0 for missing numbers."
-)
-_BL_ANTHROPIC_PROMPT = (
-    "You are a shipping document parser. Extract from this B/L image and return ONLY valid JSON:\n"
-    '{"bl_no":"","vessel":"","voyage":"","port_of_loading":"","port_of_discharge":"","shipper":"","consignee":"",'
-    '"notify_party":"","container_list":[{"container_no":"","seal_no":"","size_type":""}]}\n'
-    "Use empty string for missing fields."
-)
-_DO_ANTHROPIC_PROMPT = (
-    "You are a shipping document parser. Extract from this D/O image and return ONLY valid JSON:\n"
-    '{"do_no":"","bl_no":"","vessel":"","voyage":"","arrival_date":"","return_deadline":"",'
-    '"container_list":[{"container_no":"","size_type":"","free_time_date":"","return_yard":""}]}\n'
-    "Use empty string for missing fields."
-)
-_PL_ANTHROPIC_PROMPT = (
-    "You are a shipping document parser. Extract from this packing list image and return ONLY valid JSON:\n"
-    '{"invoice_no":"","bl_no":"","rows":[{"item_no":"","description":"","quantity":0,"unit":"","net_weight":0.0,"gross_weight":0.0}]}\n'
-    "Use empty string / 0 for missing fields."
-)
-
-
-class MultiProviderParser:
-    """Try Gemini → OpenAI → Anthropic in order, falling back on transient errors."""
-
-    def __init__(self, gemini_key: str = "", openai_key: str = "", anthropic_key: str = ""):
+    def __init__(self, gemini_key: str = "", openai_key: str = ""):
         self._gemini_key = gemini_key
         self._openai_key = openai_key
-        self._anthropic_key = anthropic_key
 
     # ── internal helpers ──────────────────────────────────────────────────────
 
@@ -386,17 +316,9 @@ class MultiProviderParser:
         except Exception as e:
             if not _is_transient_error(e):
                 raise
-            logger.warning("[MultiProvider] OpenAI 일시 오류 → Anthropic 시도: %s", e)
+            logger.warning("[MultiProvider] OpenAI 일시 오류 — 재시도 불가: %s", e)
 
-        # 3rd: Anthropic
-        if not self._anthropic_key:
-            raise RuntimeError("모든 AI 공급자 실패 또는 키 없음 (Gemini/OpenAI/Anthropic)")
-        try:
-            raw_text = _anthropic_call(pdf_path, _FA_ANTHROPIC_PROMPT, self._anthropic_key)
-            raw_json = json.loads(re.search(r'\{.*\}', raw_text, re.DOTALL).group())
-            return _SimpleRaw(raw_json), "anthropic"
-        except Exception as e:
-            raise RuntimeError(f"Anthropic 파싱 실패: {e}") from e
+        raise RuntimeError("Gemini/OpenAI 모두 일시 오류. 잠시 후 재시도하세요.")
 
     def parse_bl(self, pdf_path: str, gemini_hint: str = ""):
         try:
@@ -416,16 +338,9 @@ class MultiProviderParser:
         except Exception as e:
             if not _is_transient_error(e):
                 raise
-            logger.warning("[MultiProvider] OpenAI BL 일시 오류 → Anthropic 시도: %s", e)
+            logger.warning("[MultiProvider] OpenAI BL 일시 오류 — 재시도 불가: %s", e)
 
-        if not self._anthropic_key:
-            raise RuntimeError("모든 AI 공급자 실패 또는 키 없음")
-        try:
-            raw_text = _anthropic_call(pdf_path, _BL_ANTHROPIC_PROMPT, self._anthropic_key)
-            raw_json = json.loads(re.search(r'\{.*\}', raw_text, re.DOTALL).group())
-            return _SimpleRaw(raw_json), "anthropic"
-        except Exception as e:
-            raise RuntimeError(f"Anthropic BL 파싱 실패: {e}") from e
+        raise RuntimeError("Gemini/OpenAI 모두 일시 오류. 잠시 후 재시도하세요.")
 
     def parse_do(self, pdf_path: str, gemini_hint: str = ""):
         try:
@@ -445,16 +360,9 @@ class MultiProviderParser:
         except Exception as e:
             if not _is_transient_error(e):
                 raise
-            logger.warning("[MultiProvider] OpenAI DO 일시 오류 → Anthropic 시도: %s", e)
+            logger.warning("[MultiProvider] OpenAI DO 일시 오류 — 재시도 불가: %s", e)
 
-        if not self._anthropic_key:
-            raise RuntimeError("모든 AI 공급자 실패 또는 키 없음")
-        try:
-            raw_text = _anthropic_call(pdf_path, _DO_ANTHROPIC_PROMPT, self._anthropic_key)
-            raw_json = json.loads(re.search(r'\{.*\}', raw_text, re.DOTALL).group())
-            return _SimpleRaw(raw_json), "anthropic"
-        except Exception as e:
-            raise RuntimeError(f"Anthropic DO 파싱 실패: {e}") from e
+        raise RuntimeError("Gemini/OpenAI 모두 일시 오류. 잠시 후 재시도하세요.")
 
     def parse_packing_list(self, pdf_path: str, gemini_hint: str = ""):
         try:
@@ -474,16 +382,9 @@ class MultiProviderParser:
         except Exception as e:
             if not _is_transient_error(e):
                 raise
-            logger.warning("[MultiProvider] OpenAI PL 일시 오류 → Anthropic 시도: %s", e)
+            logger.warning("[MultiProvider] OpenAI PL 일시 오류 — 재시도 불가: %s", e)
 
-        if not self._anthropic_key:
-            raise RuntimeError("모든 AI 공급자 실패 또는 키 없음")
-        try:
-            raw_text = _anthropic_call(pdf_path, _PL_ANTHROPIC_PROMPT, self._anthropic_key)
-            raw_json = json.loads(re.search(r'\{.*\}', raw_text, re.DOTALL).group())
-            return _SimpleRaw(raw_json), "anthropic"
-        except Exception as e:
-            raise RuntimeError(f"Anthropic PL 파싱 실패: {e}") from e
+        raise RuntimeError("Gemini/OpenAI 모두 일시 오류. 잠시 후 재시도하세요.")
 
 
 def _get_provider_parser(owner: Any, provider: Optional[str] = None):
@@ -504,13 +405,11 @@ def _get_provider_parser(owner: Any, provider: Optional[str] = None):
     # OpenAI key (2nd priority)
     openai_key = _load_ext_api_key("openai")
 
-    # Anthropic key (3rd priority)
-    anthropic_key = _load_ext_api_key("anthropic")
 
-    if not gemini_key and not openai_key and not anthropic_key:
-        raise RuntimeError("AI API Key가 하나도 없습니다. GEMINI_API_KEY / OPENAI_API_KEY / ANTHROPIC_API_KEY 중 하나를 설정하세요.")
+    if not gemini_key and not openai_key:
+        raise RuntimeError("AI API Key가 없습니다. GEMINI_API_KEY 또는 OPENAI_API_KEY 환경변수를 설정하세요.")
 
-    mpp = MultiProviderParser(gemini_key, openai_key, anthropic_key)
+    mpp = MultiProviderParser(gemini_key, openai_key)
     return mpp, "multi"
 
 
@@ -555,6 +454,7 @@ def parse_invoice_ai(owner: Any, pdf_path: str, *, partial: Any = None,
         result.lot_numbers = list(getattr(partial, "lot_numbers") or [])
     result.success = bool(result.sap_no and result.invoice_no)
     logger.info("[AI-FALLBACK] FA %s success=%s sap=%s lots=%s", used_provider, result.success, result.sap_no, len(result.lot_numbers))
+    result._ai_provider = used_provider
     return result
 
 
@@ -620,6 +520,7 @@ def parse_packing_list_ai(owner: Any, pdf_path: str, *, partial: Any = None,
     result.containers = sorted({l.container_no for l in result.lots if l.container_no})
     result.success = bool(result.lots)
     logger.info("[AI-FALLBACK] PL %s success=%s lots=%s", used_provider, result.success, result.total_lots)
+    result._ai_provider = used_provider
     return result
 
 
@@ -674,6 +575,7 @@ def parse_bl_ai(owner: Any, pdf_path: str, *, partial: Any = None,
         result.total_containers = len(result.containers)
     result.success = bool(result.bl_no)
     logger.info("[AI-FALLBACK] BL %s carrier=%s success=%s bl=%s", used_provider, result.carrier_id, result.success, result.bl_no)
+    result._ai_provider = used_provider
     return result
 
 
@@ -730,6 +632,7 @@ def parse_do_ai(owner: Any, pdf_path: str, *, partial: Any = None,
         result.free_time_info = list(getattr(partial, "free_time_info") or [])
     result.success = bool(result.bl_no or result.do_no)
     logger.info("[AI-FALLBACK] DO %s carrier=%s success=%s bl=%s do=%s", used_provider, carrier, result.success, result.bl_no, result.do_no)
+    result._ai_provider = used_provider
     return result
 
 

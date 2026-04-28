@@ -1050,6 +1050,7 @@ def pdf_inbound(req: PdfInboundRequest):
                     "parse_type": parse_type,
                     "parse_method": parse_method,
                     "gemini_fallback_used": gemini_used,
+                    "ai_provider_used": getattr(parsed, "_ai_provider", "openai" if gemini_used else "coordinate"),
                     "tier1_lots": tier1_lots,
                     "saved_count": saved_count,
                     "saved_lots": saved_lots[:50],
@@ -1527,6 +1528,7 @@ async def inbound_invoice(file: UploadFile = File(...)):
                 "updated_count": matched,
                 "updated_lots": result_total["lots"][:50],
                 "updated_fields": [k for k, v in update_dict.items() if v not in (None, "")],
+                "ai_provider_used": getattr(inv, "_ai_provider", "gemini"),
             }
         }
 
@@ -1605,6 +1607,7 @@ async def inbound_bl(file: UploadFile = File(...)):
                 "updated_count": matched,
                 "updated_lots": result["lots"][:50],
                 "updated_fields": [k for k, v in update_dict.items() if v not in (None, "")],
+                "ai_provider_used": getattr(bl, "_ai_provider", "gemini"),
             }
         }
 
@@ -1695,6 +1698,7 @@ async def inbound_do(file: UploadFile = File(...)):
                 "updated_count": matched,
                "updated_lots": result_total["lots"][:50],
                 "updated_fields": [k for k, v in update_dict.items() if v not in (None, "")],
+                "ai_provider_used": getattr(do, "_ai_provider", "gemini"),
             }
         }
 

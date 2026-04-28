@@ -176,8 +176,20 @@ def _load_settings():
         'use_gemini': 'true',
         'theme': 'darkly',
         'openai_api_key': '',
-        'anthropic_api_key': '',
         'openai_model': 'gpt-4o',
+        'ai_free_fallback_enabled': True,
+        'ai_local_ai_enabled': True,
+        'ai_paid_ai_enabled': False,
+        'ai_require_paid_confirm': True,
+        'ai_provider_order': 'gemini,groq,openrouter,ollama,lmstudio,paid_openai',
+        'groq_api_key': '',
+        'groq_model': 'llama-3.3-70b-versatile',
+        'openrouter_api_key': '',
+        'openrouter_model': 'meta-llama/llama-3.1-8b-instruct:free',
+        'ollama_base_url': 'http://localhost:11434',
+        'ollama_model': 'qwen2.5:14b',
+        'lmstudio_base_url': 'http://localhost:1234/v1',
+        'lmstudio_model': 'local-model',
         'save_raw_gemini_response': False,   # v5.5.2: 디버깅 시 Gemini 원문을 logs/에 저장 (ON/OFF)
         'disable_openai_fallback': False,     # v5.5.2: True면 OpenAI 폴백 비활성 (Gemini-only)
     }
@@ -188,7 +200,8 @@ def _load_settings():
     os.environ.get('SQM_DB_PATH', '')
     env_openai_key = os.environ.get('OPENAI_API_KEY', '')
     env_openai_model = os.environ.get('OPENAI_MODEL', '')
-    env_anthropic_key = os.environ.get('ANTHROPIC_API_KEY', '')
+    env_groq_key = os.environ.get('GROQ_API_KEY', '')
+    env_openrouter_key = os.environ.get('OPENROUTER_API_KEY', '')
     env_save_raw = os.environ.get('SQM_SAVE_RAW_GEMINI_RESPONSE', '')
 
     result = defaults.copy()
@@ -204,8 +217,10 @@ def _load_settings():
         result['openai_api_key'] = env_openai_key
     if env_openai_model:
         result['openai_model'] = env_openai_model
-    if env_anthropic_key:
-        result['anthropic_api_key'] = env_anthropic_key
+    if env_groq_key:
+        result['groq_api_key'] = env_groq_key
+    if env_openrouter_key:
+        result['openrouter_api_key'] = env_openrouter_key
     if env_save_raw and str(env_save_raw).strip().lower() in ('1', 'true', 'yes'):
         result['save_raw_gemini_response'] = True
 
@@ -241,8 +256,24 @@ def _load_settings():
             if config.has_section('OpenAI'):
                 result['openai_api_key'] = config.get('OpenAI', 'api_key', fallback=result.get('openai_api_key', ''))
                 result['openai_model'] = config.get('OpenAI', 'model', fallback=result.get('openai_model', 'gpt-4o'))
-            if config.has_section('Anthropic'):
-                result['anthropic_api_key'] = config.get('Anthropic', 'api_key', fallback=result.get('anthropic_api_key', ''))
+            if config.has_section('AI'):
+                result['ai_free_fallback_enabled'] = config.getboolean('AI', 'free_fallback_enabled', fallback=result.get('ai_free_fallback_enabled', True))
+                result['ai_local_ai_enabled'] = config.getboolean('AI', 'local_ai_enabled', fallback=result.get('ai_local_ai_enabled', True))
+                result['ai_paid_ai_enabled'] = config.getboolean('AI', 'paid_ai_enabled', fallback=result.get('ai_paid_ai_enabled', False))
+                result['ai_require_paid_confirm'] = config.getboolean('AI', 'require_paid_confirm', fallback=result.get('ai_require_paid_confirm', True))
+                result['ai_provider_order'] = config.get('AI', 'provider_order', fallback=result.get('ai_provider_order', 'gemini,groq,openrouter,ollama,lmstudio,paid_openai'))
+            if config.has_section('Groq'):
+                result['groq_api_key'] = config.get('Groq', 'api_key', fallback=result.get('groq_api_key', ''))
+                result['groq_model'] = config.get('Groq', 'model', fallback=result.get('groq_model', 'llama-3.3-70b-versatile'))
+            if config.has_section('OpenRouter'):
+                result['openrouter_api_key'] = config.get('OpenRouter', 'api_key', fallback=result.get('openrouter_api_key', ''))
+                result['openrouter_model'] = config.get('OpenRouter', 'model', fallback=result.get('openrouter_model', 'meta-llama/llama-3.1-8b-instruct:free'))
+            if config.has_section('Ollama'):
+                result['ollama_base_url'] = config.get('Ollama', 'base_url', fallback=result.get('ollama_base_url', 'http://localhost:11434'))
+                result['ollama_model'] = config.get('Ollama', 'model', fallback=result.get('ollama_model', 'qwen2.5:14b'))
+            if config.has_section('LMStudio'):
+                result['lmstudio_base_url'] = config.get('LMStudio', 'base_url', fallback=result.get('lmstudio_base_url', 'http://localhost:1234/v1'))
+                result['lmstudio_model'] = config.get('LMStudio', 'model', fallback=result.get('lmstudio_model', 'local-model'))
             if config.has_section('Debug'):
                 result['save_raw_gemini_response'] = config.getboolean('Debug', 'save_raw_gemini_response', fallback=result.get('save_raw_gemini_response', False))
             if config.has_section('Parser'):
@@ -332,8 +363,23 @@ API_KEY_SOURCE = _settings.get('api_key_source', 'NONE')  # v2.8.0: 키 출처 �
 OPENAI_API_KEY = _settings.get('openai_api_key', '')
 OPENAI_MODEL = _settings.get('openai_model', 'gpt-4o')
 
-# Anthropic API 설정 (3순위 폴백)
-ANTHROPIC_API_KEY = _settings.get('anthropic_api_key', '')
+# AI fallback 정책 설정 (무료/로컬 우선, 유료는 기본 비활성)
+AI_FREE_FALLBACK_ENABLED = _settings.get('ai_free_fallback_enabled', True)
+AI_LOCAL_AI_ENABLED = _settings.get('ai_local_ai_enabled', True)
+AI_PAID_AI_ENABLED = _settings.get('ai_paid_ai_enabled', False)
+AI_REQUIRE_PAID_CONFIRM = _settings.get('ai_require_paid_confirm', True)
+AI_PROVIDER_ORDER = _settings.get(
+    'ai_provider_order',
+    'gemini,groq,openrouter,ollama,lmstudio,paid_openai',
+)
+GROQ_API_KEY = _settings.get('groq_api_key', '')
+GROQ_MODEL = _settings.get('groq_model', 'llama-3.3-70b-versatile')
+OPENROUTER_API_KEY = _settings.get('openrouter_api_key', '')
+OPENROUTER_MODEL = _settings.get('openrouter_model', 'meta-llama/llama-3.1-8b-instruct:free')
+OLLAMA_BASE_URL = _settings.get('ollama_base_url', 'http://localhost:11434')
+OLLAMA_MODEL = _settings.get('ollama_model', 'qwen2.5:14b')
+LMSTUDIO_BASE_URL = _settings.get('lmstudio_base_url', 'http://localhost:1234/v1')
+LMSTUDIO_MODEL = _settings.get('lmstudio_model', 'local-model')
 
 # v5.5.2: 디버깅/정책 옵션
 SAVE_RAW_GEMINI_RESPONSE = _settings.get('save_raw_gemini_response', False)  # True면 logs/raw_pl_response.txt 등 저장
@@ -363,6 +409,19 @@ def get_settings():
         'use_gemini': _settings.get('use_gemini', True),
         'openai_api_key': _settings.get('openai_api_key', ''),
         'openai_model': _settings.get('openai_model', 'gpt-4o'),
+        'ai_free_fallback_enabled': _settings.get('ai_free_fallback_enabled', True),
+        'ai_local_ai_enabled': _settings.get('ai_local_ai_enabled', True),
+        'ai_paid_ai_enabled': _settings.get('ai_paid_ai_enabled', False),
+        'ai_require_paid_confirm': _settings.get('ai_require_paid_confirm', True),
+        'ai_provider_order': _settings.get('ai_provider_order', 'gemini,groq,openrouter,ollama,lmstudio,paid_openai'),
+        'groq_api_key': _settings.get('groq_api_key', ''),
+        'groq_model': _settings.get('groq_model', 'llama-3.3-70b-versatile'),
+        'openrouter_api_key': _settings.get('openrouter_api_key', ''),
+        'openrouter_model': _settings.get('openrouter_model', 'meta-llama/llama-3.1-8b-instruct:free'),
+        'ollama_base_url': _settings.get('ollama_base_url', 'http://localhost:11434'),
+        'ollama_model': _settings.get('ollama_model', 'qwen2.5:14b'),
+        'lmstudio_base_url': _settings.get('lmstudio_base_url', 'http://localhost:1234/v1'),
+        'lmstudio_model': _settings.get('lmstudio_model', 'local-model'),
     }
 
 # =============================================================================
