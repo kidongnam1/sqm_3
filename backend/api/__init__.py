@@ -511,3 +511,14 @@ try:
     mimetypes.add_type("text/css", ".css")
 except Exception:
     pass
+
+from fastapi.staticfiles import StaticFiles as _StaticFiles
+_FRONTEND_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "frontend"
+)
+if os.path.isdir(_FRONTEND_DIR):
+    app.mount("/", _StaticFiles(directory=_FRONTEND_DIR, html=True), name="frontend")
+    logging.info(f"Static frontend mounted: {_FRONTEND_DIR}")
+else:
+    logging.warning(f"frontend/ not found — GET / will return 404: {_FRONTEND_DIR}")

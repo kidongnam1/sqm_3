@@ -220,6 +220,26 @@ class BLMixin:
                 method = "carrier_re_scan"
 
         if not bl_no:
+            partial = BLData()
+            partial.source_file = pdf_path
+            partial.parsed_at = datetime.now()
+            partial.raw_text = full_text[:20000] if full_text else ""
+            if carrier_id:
+                partial.carrier_id = carrier_id
+            try:
+                from .ai_fallback import parse_bl_ai
+                ai_result = parse_bl_ai(
+                    self,
+                    pdf_path,
+                    partial=partial,
+                    carrier_id=carrier_id or explicit_carrier,
+                    provider=getattr(self, "provider", "gemini"),
+                )
+                if ai_result and getattr(ai_result, "success", False):
+                    logger.info("[BL] 좌표/정규식 실패 → AI fallback 성공: %s", ai_result.bl_no)
+                    return ai_result
+            except Exception as ai_err:
+                logger.warning("[BL] AI fallback 실패: %s", ai_err)
             raise RuntimeError(f"[BL] BL 번호 파싱 실패 (선사={carrier_id or '미지정'})")
 
         result = BLData()
@@ -491,7 +511,7 @@ class BLMixin:
              if w.get('page', 0) == page
              and x1 <= w['x0']/pw*100 <= x2
              and y1 <= w['top']/ph*100 <= y2],
-            key=lambda x: x['x0']
+            key=lambda w: (w['top'], w['x0'])
         )
         return ' '.join(w['text'] for w in hits).strip()
 

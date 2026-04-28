@@ -108,14 +108,14 @@ class DOMixin:
 
         # ── 컨테이너 목록 (4개 행) ─────────────────────────────
         containers = []
-        CT_RE = re.compile(r"^[A-Z]{4}\s?\d{7}$")
+        CT_RE = re.compile(r"^[A-Z]{4}\d{7}$")
         DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
         YARD_RE = re.compile(r"^[A-Z]{6,8}$")
 
         for y1, y2 in [(37.5,39.5),(39.5,41.5),(41.5,43.5),(43.5,45.5)]:
             ct = by_xy(5, 20, y1, y2)
             if ct and CT_RE.match(ct):
-                containers.append(ct.replace(" ", ""))
+                containers.append(ct)
 
         # ── Free Time + 반납지 목록 ────────────────────────────
         free_time_rows = []
@@ -134,7 +134,7 @@ class DOMixin:
 
             if ct_txt and CT_RE.match(ct_txt):
                 free_time_rows.append({
-                    "container_no": ct_txt.replace(" ", ""),
+                    "container_no": ct_txt,
                     "free_time":    ft_date,
                     "return_yard":  return_yard,
                 })
@@ -223,7 +223,7 @@ class DOMixin:
                 [x for x in words
                  if x1 <= x["x0"] / w_page * 100 <= x2
                  and y1 <= x["top"] / h_page * 100 <= y2],
-                key=lambda t: t["x0"],
+                key=lambda t: (t["top"], t["x0"]),
             )
             return " ".join(t["text"] for t in hits).strip()
 
@@ -268,9 +268,9 @@ class DOMixin:
             logger.debug(f"[DO-MSC] 전체 텍스트 읽기 생략: {e}")
             all_text = bl_no_raw
 
-        ct_re = _re.compile(r"\b([A-Z]{4}\s?\d{7})\b")
+        ct_re = _re.compile(r"\b([A-Z]{4}\d{7})\b")
         seal_re = _re.compile(r"\b(ML-CL\d{7}|FX\d{8})\b")
-        containers_found = list(dict.fromkeys(c.replace(" ", "") for c in ct_re.findall(all_text)))
+        containers_found = list(dict.fromkeys(ct_re.findall(all_text)))
         seals_found = list(dict.fromkeys(seal_re.findall(all_text)))
 
         result = DOData()
@@ -341,7 +341,7 @@ class DOMixin:
         # 기존: 반납기한.{0,30}? → 실패 (키워드 후 날짜가 30자 이상 떨어짐)
         # 신규: 컨테이너번호 / / / YYYY-MM-DD 패턴으로 직접 추출
         #       예: MSDU7521485 / / / 2026-04-04
-        _con_ret_re = _re.compile(r'[A-Z]{4}\s?\d{7}\s*/\s*/\s*/\s*(\d{4}-\d{2}-\d{2})')
+        _con_ret_re = _re.compile(r'[A-Z]{4}\d{7}\s*/\s*/\s*/\s*(\d{4}-\d{2}-\d{2})')
         _ret_dates = _con_ret_re.findall(all_text)
         # 반납일은 동일 날짜가 다수 — 가장 늦은 날짜를 대표값으로 사용
         free_time_val = max(_ret_dates) if _ret_dates else ''
@@ -417,7 +417,7 @@ class DOMixin:
                 [w for w in words
                  if x1 <= w["x0"] / W * 100 <= x2
                  and y1 <= w["top"] / H * 100 <= y2],
-                key=lambda t: t["x0"],
+                key=lambda t: (t["top"], t["x0"]),
             )
             return " ".join(t["text"] for t in hits).strip()
 
@@ -427,7 +427,7 @@ class DOMixin:
                 [w for w in words
                  if x1 <= w["x0"] / W * 100 <= x2
                  and y1 <= w["top"] / H * 100 <= y2],
-                key=lambda t: t["x0"],
+                key=lambda t: (t["top"], t["x0"]),
             )
             return "".join(t["text"] for t in hits).strip()
 
@@ -511,12 +511,12 @@ class DOMixin:
         # 이유: PDF가 "N"+"YKU", "TG"+"BU"/"CU5305383" 등으로 분리
         # x 우선 정렬하면 행이 섞이므로 y 우선(by_xy_rows_nospace) 사용
         _ct_area = by_xy_rows_nospace(54.0, 68.0, 39.5, 52.0)
-        ct_re = _re.compile(r'([A-Z]{4}\s?\d{7})')
+        ct_re = _re.compile(r'([A-Z]{4}\d{7})')
         _seen = {}
         for _ct in ct_re.findall(_ct_area):
             if not _ct.startswith("ONEY"):
                 _seen[_ct] = None
-        containers_found = [k.replace(' ', '') for k in _seen.keys()]
+        containers_found = list(_seen.keys())
 
         # ── DOData 조립
         result = DOData()
@@ -589,7 +589,7 @@ class DOMixin:
                 [w for w in words
                  if x1 <= w["x0"] / W * 100 <= x2
                  and y1 <= w["top"] / H * 100 <= y2],
-                key=lambda t: t["x0"],
+                key=lambda t: (t["top"], t["x0"]),
             )
             return " ".join(t["text"] for t in hits).strip()
 
@@ -660,10 +660,10 @@ class DOMixin:
         # ── 컨테이너: HAPAG DO는 완전 토큰 "HAMU2050957" — 정규식 직접 추출
         # y=28.5~40.5% x=51~63% 영역에서 행 우선 추출
         _ct_area = by_xy_rows_nospace(51.0, 63.0, 28.5, 40.5)
-        ct_re = _re.compile(r'([A-Z]{4}\s?\d{7})')
+        ct_re = _re.compile(r'([A-Z]{4}\d{7})')
         _seen: dict = {}
         for _ct in ct_re.findall(_ct_area):
-            _seen[_ct.replace(' ', '')] = None
+            _seen[_ct] = None
         containers_found = list(_seen.keys())
 
         # ── DOData 조립
@@ -1102,6 +1102,21 @@ class DOMixin:
 
         if not gemini_result or not getattr(gemini_result, 'success', False):
             msg = getattr(gemini_result, 'error_message', '') if gemini_result else ''
+            # ── parse_do_ai (ai_fallback.py) 2차 시도 ──────────────────
+            try:
+                from .ai_fallback import parse_do_ai
+                logger.info("[DO] _parse_do_with_ai 실패 → parse_do_ai(ai_fallback) 2차 시도")
+                _ai2 = parse_do_ai(
+                    self, pdf_path or image_path or "",
+                    carrier_id=_carrier,
+                    provider=provider,
+                )
+                if _ai2 and getattr(_ai2, 'success', False):
+                    logger.info("[DO] parse_do_ai 2차 성공: bl=%s", getattr(_ai2, 'bl_no', '?'))
+                    return _ai2
+                logger.warning("[DO] parse_do_ai 2차도 실패")
+            except Exception as _ai2_err:
+                logger.debug("[DO] parse_do_ai 2차 오류: %s", _ai2_err)
             raise RuntimeError(f"[DO] {provider.upper()} 파싱 실패. {msg}".strip())
 
         result = DOData()

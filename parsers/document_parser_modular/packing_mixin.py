@@ -454,6 +454,26 @@ class PackingMixin:
 
         if not gemini_result or not getattr(gemini_result, 'success', False) or len(getattr(gemini_result, 'lots', []) or []) == 0:
             msg = getattr(gemini_result, 'error_message', '') if gemini_result else ''
+            # ── parse_packing_list_ai (ai_fallback.py) 2차 시도 ───────
+            try:
+                from .ai_fallback import parse_packing_list_ai
+                logger.info("[PACKING_LIST] _parse_packing_with_ai 실패 → "
+                            "parse_packing_list_ai(ai_fallback) 2차 시도")
+                _partial = locals().get('_coord')  # 좌표 파싱 부분 결과
+                _ai2 = parse_packing_list_ai(
+                    self, pdf_path,
+                    partial=_partial,
+                    bag_weight_kg=bag_weight_kg,
+                    provider=provider,
+                )
+                if _ai2 and getattr(_ai2, 'success', False) and \
+                        len(getattr(_ai2, 'lots', []) or []) > 0:
+                    logger.info("[PACKING_LIST] parse_packing_list_ai 2차 성공: "
+                                "%d LOT", len(_ai2.lots))
+                    return _ai2
+                logger.warning("[PACKING_LIST] parse_packing_list_ai 2차도 실패")
+            except Exception as _ai2_err:
+                logger.debug("[PACKING_LIST] parse_packing_list_ai 2차 오류: %s", _ai2_err)
             raise RuntimeError(f"[PACKING_LIST] {provider.upper()} 파싱 실패. {msg}".strip())
 
         result = PackingListData()

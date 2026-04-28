@@ -2109,7 +2109,7 @@ function _bringToFront(el) { el.style.zIndex = ++_zFloatTop; }
     m.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;';
     m.innerHTML='<div id="sqm-modal-inner" style="background:var(--bg-card);border-radius:8px;width:min(1280px,92vw);max-width:92vw;min-height:200px;max-height:88vh;position:fixed;top:65px;left:50%;transform:translateX(-50%);overflow:visible;display:flex;flex-direction:column;">'
       +'<div id="sqm-modal-header" onmousedown="(function(){var mi=document.getElementById(\'sqm-modal-inner\');if(mi)mi.style.zIndex=++_zFloatTop;})()" style="flex-shrink:0;cursor:move;user-select:none;background:var(--bg-hover,rgba(0,0,0,.06));border-radius:8px 8px 0 0;border-bottom:1px solid var(--panel-border);padding:5px 48px 5px 12px;font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:6px;min-height:28px;position:relative;">'
-      +'<span style="opacity:.4;letter-spacing:3px;">&#x28FF;&#x28FF;</span>&nbsp;드래그: 이동 &nbsp;|&nbsp; 모서리: 크기 조절'
+      +'<span style="opacity:.4;font-size:10px"></span>'
       +'<button onclick="document.getElementById(\'sqm-modal\').style.display=\'none\'" style="position:absolute;top:3px;right:10px;background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-muted);">&#x2715;</button>'
       +'</div>'
       +'<div id="sqm-modal-content" style="flex:1 1 auto;overflow:auto;padding:16px 20px;min-height:100px;"></div>'

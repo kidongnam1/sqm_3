@@ -80,6 +80,13 @@ def _parse_euro_number(s: str) -> float:
         return 0.0
 
 
+def _clean_package_type(s: str) -> str:
+    """FA 포장명에서 줄바꿈/특수 공백/뒤쪽 구두점을 제거."""
+    s = str(s or '').replace('\xa0', ' ')
+    s = re.sub(r'\s+', ' ', s).strip(' ,;:')
+    return s
+
+
 class InvoiceMixin:
     """Invoice 파서 Mixin — v9.0 좌표 기반 완전 독립 파서."""
 
@@ -109,32 +116,38 @@ class InvoiceMixin:
             for w in words_raw
         ]
 
-        def by_xy(x1, x2, y1, y2) -> str:
+        # ── 앵커 기반 드리프트 보정 (v10.0) ──────────────────────
+        _FA_ANCHORS = {
+            'FECHA/DATE':           (69.75, 21.45),
+            'Ref.SQM/Our':          (76.68, 31.96),
+            'Origen/Origin':        (56.13, 38.91),
+            'Transporte/Transport': (53.24, 42.38),
+            'BL-AWB-CRT':           (75.92, 42.38),
+        }
+        _dx_l, _dy_l = [], []
+        for w in words:
+            if w['text'] in _FA_ANCHORS:
+                ex, ey = _FA_ANCHORS[w['text']]
+                _dx_l.append(w['x0']/W*100 - ex)
+                _dy_l.append(w['top']/H*100 - ey)
+        if _dx_l:
+            _dx_l.sort(); _dy_l.sort()
+            _m = len(_dx_l)//2
+            _dx, _dy = _dx_l[_m], _dy_l[_m]
+        else:
+            _dx, _dy = 0.0, 0.0
+        logger.debug(f'[INVOICE] FA drift dx={_dx:+.3f}%  dy={_dy:+.3f}%')
+
+        def by_xy(x1, x2, y1, y2, h_tol=0.8, v_tol=0.0) -> str:
+            ax0 = x1+_dx-h_tol; ax1 = x2+_dx+h_tol
+            ay0 = y1+_dy-v_tol; ay1 = y2+_dy+v_tol
             hits = sorted(
                 [w for w in words
-                 if x1 <= w['x0']/W*100 <= x2
-                 and y1 <= w['top']/H*100 <= y2],
-                key=lambda x: x['x0']
+                 if ax0 <= w['x0']/W*100 <= ax1
+                 and ay0 <= w['top']/H*100 <= ay1],
+                key=lambda w: (w['top'], w['x0'])
             )
             return ' '.join(w['text'] for w in hits)
-
-        def label_right(label_text: str, y_tol: float = 3.0) -> str:
-            """라벨 단어 찾기 → 같은 줄 오른쪽 값 반환"""
-            label_up = label_text.upper()
-            for w in words:
-                line = ' '.join(
-                    ww['text'] for ww in words
-                    if abs(ww['top'] - w['top']) < y_tol
-                ).upper()
-                if label_up in line and w['x0']/W*100 > 50:
-                    same_row = sorted(
-                        [ww for ww in words
-                         if abs(ww['top'] - w['top']) < y_tol
-                         and ww['x0'] > w['x1']],
-                        key=lambda x: x['x0']
-                    )
-                    return ' '.join(ww['text'] for ww in same_row)
-            return ''
 
         # ── 필드 추출 ────────────────────────────────────────────
 
@@ -156,14 +169,14 @@ class InvoiceMixin:
         sap_no  = re.sub(r'[^\d]', '', sap_raw)[:10]
 
         # Vessel: Transporte/Transport 오른쪽 (y=44.7%)
-        vessel = by_xy(53, 73, 44, 46)
+        vessel = by_xy(49, 73, 44, 46)
 
         # BL No: v8.4.5 수정 — 직접 추출 방식
         # 구방식: bl_digits(숫자만) + scac(vessel에서 추론) → HDMU963970 오파싱
         # 신방식: BL No 전체 직접 추출 → MEDUFP963970 정확 추출
         bl_raw_full = by_xy(77, 95, 44, 46)
         # 알파+숫자 형식(MEDUFP963970, 263764814 등) 직접 매칭
-        bl_m = re.search(r'([A-Z]{2,6}\d{6,12}|\d{8,12})', bl_raw_full)
+        bl_m = re.search(r'([A-Z]{2,12}\d{6,12}|\d{8,12})', bl_raw_full)
         bl_no = bl_m.group(1) if bl_m else re.sub(r'[^\dA-Z]', '', bl_raw_full)
 
         # Origin / Destination
@@ -177,7 +190,7 @@ class InvoiceMixin:
         # MSC FA 실측: y=48%, MAERSK FA도 동일 범위 커버
         qty_raw = by_xy(5, 22, 47, 51)
         # 숫자만 추출 (헤더 텍스트 제거)
-        _qty_m = re.search(r'(\d{2,3}[,.]?\d{3})', qty_raw)
+        _qty_m = re.search(r'(\d{2,4}[,.]?\d{1,3})', qty_raw)
         quantity_mt = _parse_euro_number(_qty_m.group(1)) if _qty_m else 0.0
 
         # Product Code: x=27%
@@ -221,7 +234,7 @@ class InvoiceMixin:
 
         # Package Type — 정규식 기반
         _pkgt_m = re.search(r'Type\s*of\s*(?:Packaging|Envase)[^\n]*\n?([^\n]{3,40})', full_text, re.IGNORECASE)
-        package_type = _pkgt_m.group(1).strip() if _pkgt_m else by_xy(80, 96, 71, 74)
+        package_type = _clean_package_type(_pkgt_m.group(1) if _pkgt_m else by_xy(80, 96, 71, 74))
 
         # LOT 목록: N° LOTES: 다음 텍스트 파싱
         lot_numbers: List[str] = []
@@ -261,11 +274,31 @@ class InvoiceMixin:
         result.package_type     = package_type
         result.lot_numbers      = lot_numbers
         result.success          = bool(sap_no and invoice_no)
-        result.error_message    = ''
-        result.raw_response     = ''
+        result.error_message    = "" if result.success else "[INVOICE] invoice_no 또는 sap_no 미추출"
 
         logger.info(
-            f"[INVOICE] 좌표 파싱 완료: inv={invoice_no} sap={sap_no} "
-            f"bl={bl_no} lots={len(lot_numbers)}개"
+            "[INVOICE] 좌표 파싱 완료: invoice=%s sap=%s bl=%s success=%s",
+            invoice_no, sap_no, bl_no, result.success
         )
+
+        # ── AI fallback (좌표 파싱 실패 시) ──────────────────────────────
+        if not result.success:
+            logger.warning("[INVOICE] 좌표 파싱 실패 → AI fallback 시도: %s", pdf_path)
+            try:
+                from .ai_fallback import parse_invoice_ai
+                ai_result = parse_invoice_ai(
+                    self, pdf_path,
+                    partial=result,
+                    carrier_id=kwargs.get("carrier_id", ""),
+                    provider=kwargs.get("provider", "gemini"),
+                )
+                if ai_result and getattr(ai_result, "success", False):
+                    logger.info("[INVOICE] AI fallback 성공: invoice=%s",
+                                getattr(ai_result, "invoice_no", "?"))
+                    return ai_result
+                else:
+                    logger.warning("[INVOICE] AI fallback도 실패")
+            except Exception as ai_err:
+                logger.warning("[INVOICE] AI fallback 오류: %s", ai_err)
+
         return result
