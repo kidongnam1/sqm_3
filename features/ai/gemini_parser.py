@@ -1630,8 +1630,8 @@ arrival_date는 위 날짜들보다 보통 더 이른(과거) 날짜입니다.
     "port_of_discharge": "양하항 (예: KRKAN 또는 KRKWY)",
     "shipper": "송하인",
     "consignee": "수하인",
-    "mrn": "MRN 번호 — 공백 포함 정확히 추출 (예: 26HDM UK026I, 26MSCU3082I, 26HLCU9401I)",
-    "msn": "MSN 번호 (예: 0001, 5019, 6006)",
+    "mrn": "MRN 번호 — 공백 포함 정확히 추출 (예: 26HDM UK026I, 26MSCU3082I, 26HLCU9401I, 26MAEUK071I). ⚠️ 마지막 글자가 숫자 '1'이 아닌 알파벳 'I'(아이)인 경우가 많으니 반드시 구별할 것",
+    "msn": "MSN 번호 (예: 0001, 5019, 6006, 1020)",
     "containers": [
         {"container_no": "MSCU1234567", "seal_no": "ML-CL1234567", "size_type": "45G1", "con_return_date": "2026-04-04", "return_place": "광양항서부컨테이너터미널"}
     ],

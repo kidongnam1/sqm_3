@@ -129,8 +129,9 @@ class BLMixin:
             "voyage_no": (40.0, 47.5, 36.5, 38.0),  # x2 55→47.5: exclude "Place of Delivery" at x=49%
             # Port of Loading 라벨(6.6%, 40.0%) 아래: PUERTO ANGAMOS, CHILE at [7~26%, 41.3%]
             "port_of_loading": (6.0, 45.0, 41.0, 42.5),
-            # Port of Discharge 라벨(6.6%, 43.0%) 아래: BUSAN, SOUTH KOREA at [7~22%, 44.3%]
-            "port_of_discharge": (6.0, 42.0, 44.0, 45.5),
+            # Place of Delivery(최종 양하항) at [49.4~61.2%, 38.3~39.9%]: GWANGYANG, SOUTH KOREA
+            # Port of Discharge(환적항) BUSAN은 제외 — 최종 목적지 기준으로 추출
+            "port_of_discharge": (49.0, 76.0, 38.0, 40.5),
             # Place and date of issue 오른쪽: 26.FEB.2026 at [70.6%, 88.7%]
             "ship_date": (68.0, 90.0, 88.0, 89.5),
             # Shipper: NOVA ANDINO LITIO SPA at x=7~35%, y=3.5~13.5%

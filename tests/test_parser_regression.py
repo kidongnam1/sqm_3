@@ -111,7 +111,7 @@ class TestHAPAG:
         _check(r, {
             'bl_no': 'HLCUSCL260148627', 'vessel': 'BUENAVENTURA EXPRESS',
             'voyage': '2602W', 'port_of_loading': 'PUERTO ANGAMOS, CHILE',
-            'port_of_discharge': 'BUSAN, SOUTH KOREA',
+            'port_of_discharge': 'GWANGYANG, SOUTH KOREA',  # Place of Delivery (최종항), not BUSAN (환적항)
             'gross_weight_kg': 102625.0, 'carrier_id': 'HAPAG',
         }, 'HAPAG_BL')
 

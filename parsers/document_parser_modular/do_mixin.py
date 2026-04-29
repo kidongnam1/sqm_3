@@ -95,6 +95,11 @@ class DOMixin:
         # 선박 입항일: x=5~28% y=87~89%
         arrival_date = clean_date(by_xy(5, 28, 87.0, 89.5))
 
+        # MRN: x=34~42%, y=88.1~89.2% → "26MAEUK071I"  (/ 구분자는 x=46.1% → x2=45.5 제외)
+        mrn_raw = by_xy(33.0, 45.5, 87.8, 89.5).strip()
+        # MSN: x=48~52%, y=88.1~89.2% → "1020"
+        msn_raw = by_xy(48.0, 53.0, 87.8, 89.5).strip()
+
         # 총중량/CBM
         gw_raw  = by_xy(60, 72, 38.0, 40.0)
         cbm_raw = by_xy(80, 95, 38.0, 40.0)
@@ -185,6 +190,8 @@ class DOMixin:
         result.gross_weight_kg = gross_weight_kg
         result.cbm           = cbm
         result.carrier_id    = "MAERSK"
+        result.mrn           = mrn_raw
+        result.msn           = msn_raw
 
         # 컨테이너 목록
         # v8.5.5 [PATCH2]: free_time_date 키 추가 → inbound_mixin 호환
