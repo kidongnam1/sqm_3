@@ -281,11 +281,14 @@ class PackingMixin:
                 key=lambda x: x["x0"]
             )
             # 컨테이너: x=8~18%
-            container = next(
+            _ct_raw = next(
                 (ww["text"] for ww in row
                  if 7 <= ww["x0"]/page_w*100 <= 19
                  and CT_RE.match(ww["text"])), ""
             )
+            # Normalize check digit hyphen: TCLU640435-3 → TCLU6404353
+            import re as _re_ct
+            container = _re_ct.sub(r'^([A-Z]{4}\d+)-(\d)$', r'\1\2', _ct_raw)
             # LOT SQM: x=27~35% (6~7자리 — 실측 1015616 등)
             lot_sqm = next(
                 (ww["text"] for ww in row

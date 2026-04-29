@@ -178,6 +178,13 @@ class InvoiceMixin:
         # 알파+숫자 형식(MEDUFP963970, 263764814 등) 직접 매칭
         bl_m = re.search(r'([A-Z]{2,12}\d{6,12}|\d{8,12})', bl_raw_full)
         bl_no = bl_m.group(1) if bl_m else re.sub(r'[^\dA-Z]', '', bl_raw_full)
+        # v8.6.5: MAERSK 9자리 순수숫자 bl_no → MAEU 접두사 추가 (vessel명 기반)
+        if re.fullmatch(r'\d{9}', bl_no or ''):
+            vessel_upper = str(vessel or '').upper()
+            for _vk, _sc in _VESSEL_TO_SCAC.items():
+                if _vk in vessel_upper:
+                    bl_no = f'{_sc}{bl_no}'
+                    break
 
         # Origin / Destination
         origin      = by_xy(53, 73, 40, 42)

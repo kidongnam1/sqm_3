@@ -58,7 +58,7 @@ class BLMixin:
     BL_TOKEN_RE = re.compile(r"^[A-Z0-9]{6,25}$")
     CARRIER_RE = re.compile(
         r"(?:MEDU[A-Z0-9]{6,10}|MSCU[A-Z0-9]{6,10}|COSU[A-Z0-9]{6,10}|EVER[A-Z0-9]{6,10}|"
-        r"YMLU[A-Z0-9]{6,10}|HMMU[A-Z0-9]{6,10}|ONEU[A-Z0-9]{6,10}|HLCU[A-Z0-9]{6,10}|"
+        r"YMLU[A-Z0-9]{6,10}|HMMU[A-Z0-9]{6,10}|ONEU[A-Z0-9]{6,10}|HLCU[A-Z0-9]{6,15}|"
         r"CMA[A-Z0-9]{6,10}|PILU[A-Z0-9]{6,10}|SITC[A-Z0-9]{6,10}|"
         r"MAEU\d{9}|"           # v8.4.4: MAERSK BL No — MAEU + 숫자9자리
         r"\d{9,15})"            # 순수 숫자 폴백 (기타 선사 대비 유지)
@@ -95,16 +95,23 @@ class BLMixin:
             "port_of_discharge": (26.0, 46.0, 36.5, 37.8),
             # Shipped on Board Date: y=80.1% — 구좌표 75~78.5% 는 빈값!
             "ship_date": (5.0, 22.0, 79.5, 81.5),
+            # Shipper: 라벨(y=8.1%) 아래 NOVA ANDINO LITIO SPA (y=9.0~15%)
+            "shipper": (5.0, 49.0, 8.5, 15.5),
+            # Consignee: 라벨(y=16.4~17.2%) 아래 SOQUIMICH LLC (y=18~22.8%)
+            "consignee": (5.0, 49.0, 17.5, 23.5),
+            # 총 gross weight: page 1, "102,625 KG GROSS WEIGHT" x=6.5%, y=38%
+            "gross_weight_p1": (5.0, 25.0, 37.0, 39.5),
         },
         "MSC": {
             # v8.4.5: 실제 MSC Sea Waybill PDF(963970, 963988) 좌표 직접 측정 결과
             # MEDUFP963970 위치: x=77.1%, y=2.6% → x=65~90%, y=2.0~3.5%
             "bl_no": (65.0, 90.0, 2.0, 3.5),
-            # HMM BLESSING 위치: x=4.2~7.3%, y=29.9% → x=3~25%, y=29.5~31.0%
-            # (VESSEL AND VOYAGE NO 라벨은 y=28.x%로 제외됨)
-            "vessel": (3.0, 25.0, 29.5, 31.0),
-            # 0037W 위치: x=14.3%, y=29.9% → x=14~22%, y=29.5~31.0%
-            "voyage_no": (14.0, 22.0, 29.5, 31.0),
+            # HMM BLESSING 위치: x=4.2~7.3%, y=29.9% → x=3~17%, y=29.5~31.0%
+            # v8.6.5: x2 25→17 to exclude separator "-" (x=17.7%) and voyage (x=18.4%)
+            "vessel": (3.0, 17.0, 29.5, 31.0),
+            # 0037W/2551W 위치: x=18.4%, y=29.9% → x=18.2~22%, y=29.5~31.0%
+            # v8.6.5: x1 14→18.2 to exclude separator "-" (x=17.7%)
+            "voyage_no": (18.2, 22.0, 29.5, 31.0),
             # Puerto Angamos,Chile: x=36~45%, y=29.6% → x=30~58%, y=29.0~31.0%
             "port_of_loading": (30.0, 58.0, 29.0, 31.0),
             # Gwangyang,Korea: x=36%, y=32.8% → x=30~58%, y=32.0~34.0%
@@ -115,17 +122,23 @@ class BLMixin:
         "HAPAG": {
             # HAPAG-Lloyd Sea Waybill PDF 실측 (HLCUSCL260148627)
             # SWB-No. 라벨(61.1%, 9.7%) 아래 값: HLCUSCL260148627 at [62.3%, 11.1%]
-            "bl_no": (60.0, 97.0, 10.5, 12.0),
+            "bl_no": (60.0, 82.0, 10.5, 12.0),  # x2 97→82: exclude page "2/3" at x=84-89%
             # Vessel(s) 라벨(6.6%, 35.5%) 아래: BUENAVENTURA EXPRESS at [7.0~29%, 36.8%]
             "vessel": (6.0, 40.0, 36.5, 38.0),
             # Voyage-No. 라벨(39.6%, 35.5%) 아래: 2602W at [42.3%, 36.8%]
-            "voyage_no": (40.0, 55.0, 36.5, 38.0),
+            "voyage_no": (40.0, 47.5, 36.5, 38.0),  # x2 55→47.5: exclude "Place of Delivery" at x=49%
             # Port of Loading 라벨(6.6%, 40.0%) 아래: PUERTO ANGAMOS, CHILE at [7~26%, 41.3%]
             "port_of_loading": (6.0, 45.0, 41.0, 42.5),
             # Port of Discharge 라벨(6.6%, 43.0%) 아래: BUSAN, SOUTH KOREA at [7~22%, 44.3%]
             "port_of_discharge": (6.0, 42.0, 44.0, 45.5),
             # Place and date of issue 오른쪽: 26.FEB.2026 at [70.6%, 88.7%]
             "ship_date": (68.0, 90.0, 88.0, 89.5),
+            # Shipper: NOVA ANDINO LITIO SPA at x=7~35%, y=3.5~13.5%
+            "shipper": (5.0, 48.0, 3.5, 13.5),
+            # Consignee: SOQUIMICH LLC at x=7~35%, y=13.5~23%
+            "consignee": (5.0, 48.0, 13.5, 23.0),
+            # Gross weight: page 1, "102625,000" at x=65~82%, y=69~74%
+            "gross_weight_p1": (65.0, 82.0, 69.0, 74.0),
         },
         "ONE": {
             # ONE Sea Waybill PDF 실측 (SCLG01825300, SCLG01857800)
@@ -141,6 +154,12 @@ class BLMixin:
             "port_of_discharge": (4.0, 21.0, 38.0, 39.5),
             # DATE LADEN ON BOARD(74.2%) 바로 아래: 19 FEB 2026 at [82.3~89%, 74.9%]
             "ship_date": (80.0, 96.0, 74.5, 76.5),
+            # Shipper: x=4~45%, y=7~14.5%
+            "shipper": (4.0, 45.0, 7.0, 14.5),
+            # Consignee: x=4~45%, y=15~24%
+            "consignee": (4.0, 45.0, 15.0, 24.0),
+            # Gross weight page 0: x=72~84%, y=49~51.5%
+            "gross_weight_p0": (72.0, 84.0, 49.0, 51.5),
         },
     }
 
@@ -203,6 +222,10 @@ class BLMixin:
         )
         # endregion
         coord_data = self._parse_by_coord_table(words, carrier_id) if carrier_id else {}
+        # 좌표 추출 결과 → result에 반영 (나중에 result 생성 후 설정을 위해 저장)
+        _coord_shipper   = coord_data.get("shipper", "")
+        _coord_consignee = coord_data.get("consignee", "")
+        _coord_gw        = coord_data.get("gross_weight_coord", 0.0)
 
         bl_no = self._clean_bl_no(coord_data.get("bl_no", ""))
         method = f"coord_table({carrier_id})" if bl_no else ""
@@ -245,12 +268,16 @@ class BLMixin:
         result = BLData()
         result.source_file = pdf_path
         result.parsed_at   = datetime.now()
+        # MAERSK: 9자리 순수숫자 bl_no → MAEU 접두사 추가
+        import re as _re_bn
+        if carrier_id == "MAERSK" and bl_no and _re_bn.fullmatch(r"\d{9}", bl_no):
+            bl_no = "MAEU" + bl_no
         result.bl_no = bl_no
         result.booking_no = bl_no
 
         # v8.5.7 [PATCH3-BUG3]: total_containers / gross_weight 보강
         import re as _bl_re
-        _ct_m = _bl_re.search(r'(\d+)\s+(?:cntrs|containers?|CNTRS)', full_text, _bl_re.IGNORECASE)
+        _ct_m = _bl_re.search(r'\b([1-9]\d{0,2})\s+(?:cntrs|containers?|CNTRS)', full_text, _bl_re.IGNORECASE)  # v8.6.5: max 3 digits, exclude 4-digit years
         if _ct_m:
             try:
                 result.total_containers = int(_ct_m.group(1))
@@ -318,6 +345,17 @@ class BLMixin:
             },
         )
         # endregion
+        # 좌표 추출 결과 result 에 반영
+        if _coord_shipper:
+            _s = re.sub(r"^(?:Shipper|SHIPPER(?:/EXPORTER)?)\s*[:\s]+", "", _coord_shipper, flags=re.IGNORECASE).strip()
+            if _s:
+                result.shipper = _s
+        if _coord_consignee:
+            _c = re.sub(r"^(?:Consignee|CONSIGNEE)\s*[:\s]+", "", _coord_consignee, flags=re.IGNORECASE).strip()
+            if _c:
+                result.consignee = _c
+        if _coord_gw > 0:
+            result.gross_weight_kg = _coord_gw
         result.success = bool(result.bl_no)
         # v8.4.5: carrier_id/carrier_name BLData에 저장 → 선사 뱃지 표시용
         if carrier_id:
@@ -425,10 +463,32 @@ class BLMixin:
         for field, box in table.items():
             if not isinstance(box, tuple) or len(box) != 4:
                 continue
-            raw = self._by_coord(words, box[0], box[1], box[2], box[3], page=0)
+            _page_idx = 1 if field in ("gross_weight_p1",) else 0
+            raw = self._by_coord(words, box[0], box[1], box[2], box[3], page=_page_idx)
             if not raw:
                 continue
-            if field == "bl_no":
+            if field in ("gross_weight_p0", "gross_weight_p1"):
+                _gw_m = re.search(r"([\d,.]+)", raw)
+                if _gw_m:
+                    _gw_s = _gw_m.group(1)
+                    # 쉼표 형식 판별:
+                    #   American "102,625"   → 앞 1~3자리, 뒤 3자리 → 천단위 구분자
+                    #   European "102625,000" → 앞 4+자리, 뒤 3자리 → 소수점 구분자
+                    if "." in _gw_s:
+                        _gw_s = _gw_s.replace(",", "")  # "102,625.000" → 102625.0
+                    else:
+                        _parts = _gw_s.split(",")
+                        if len(_parts) == 2 and len(_parts[0]) <= 3 and len(_parts[1]) == 3:
+                            _gw_s = _gw_s.replace(",", "")  # American "102,625" → 102625
+                        else:
+                            _gw_s = _gw_s.replace(",", ".")  # European "102625,000" → 102625.0
+                    try:
+                        _gw_v = float(_gw_s)
+                        if _gw_v > 0:
+                            parsed["gross_weight_coord"] = _gw_v
+                    except (ValueError, TypeError):
+                        pass
+            elif field == "bl_no":
                 clean = self._clean_bl_no(raw)
                 if clean:
                     parsed[field] = clean

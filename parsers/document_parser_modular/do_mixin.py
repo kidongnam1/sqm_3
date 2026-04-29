@@ -55,6 +55,7 @@ class DOMixin:
             W    = page.rect.width
             H    = page.rect.height
             words_raw = page.get_text("words")
+            all_text = page.get_text("text") or ""
             doc.close()
         except Exception as e:
             raise RuntimeError(f"[DO-MAERSK] PDF 읽기 실패: {e}")
@@ -139,6 +140,35 @@ class DOMixin:
                     "return_yard":  return_yard,
                 })
 
+        # 좌표 범위가 4행으로 제한된 레이아웃도 있어 원문 표에서 누락 행을 보강한다.
+        text_containers = list(dict.fromkeys(
+            re.findall(r"\b[A-Z]{4}\d{7}\b", all_text.upper())
+        ))
+        if len(text_containers) > len(containers):
+            containers = text_containers
+
+        ft_by_container = {
+            row["container_no"]: row
+            for row in free_time_rows
+            if row.get("container_no")
+        }
+        for m in re.finditer(
+            r"\b([A-Z]{4}\d{7})\b\s*/\s*(\d{4}-\d{2}-\d{2})\s*/\s*([A-Z]{6,8})",
+            all_text.upper(),
+            re.DOTALL,
+        ):
+            ft_by_container[m.group(1)] = {
+                "container_no": m.group(1),
+                "free_time": m.group(2),
+                "return_yard": m.group(3),
+            }
+        if ft_by_container:
+            free_time_rows = [
+                ft_by_container[ct]
+                for ct in containers
+                if ct in ft_by_container
+            ]
+
         # ── DOData 조립 ────────────────────────────────────────
         from ..document_models import DOData, ContainerInfo, FreeTimeInfo
 
@@ -147,7 +177,7 @@ class DOMixin:
         result.do_no         = do_no
         result.bl_no         = bl_no
         result.vessel        = vessel
-        result.voyage_no     = voyage
+        result.voyage        = voyage  # fix: voyage_no → voyage (DOData field)
         result.port_of_loading   = pol
         result.port_of_discharge = pod
         result.issue_date    = issue_date
@@ -166,7 +196,10 @@ class DOMixin:
         result.free_time_info = []
 
         for i, ct_no in enumerate(containers):
-            ft_info = free_time_rows[i] if i < len(free_time_rows) else {}
+            ft_info = next(
+                (row for row in free_time_rows if row.get("container_no") == ct_no),
+                free_time_rows[i] if i < len(free_time_rows) else {},
+            )
             _ft = ft_info.get("free_time", "") or _max_ft_date
             _return_yard = ft_info.get("return_yard", "")
             ci = ContainerInfo()
@@ -239,8 +272,9 @@ class DOMixin:
         vessel = by_xy(3.0, 23.0, 28.0, 30.0)
         # Voyage(FY611A): x=29.1%, y=28.7%
         voyage = by_xy(26.0, 40.0, 28.0, 30.0)
-        pol = by_xy(30.0, 58.0, 28.0, 31.5)
-        pod = by_xy(30.0, 58.0, 31.0, 34.5)
+        # v8.6.5: CLPAG x=7.7% y=32.7%, KRKAN x=29.1% y=32.7% (실측 수정)
+        pol = by_xy(5.0, 25.0, 32.0, 34.0)
+        pod = by_xy(27.0, 50.0, 32.0, 34.0)
         ship_raw = by_xy(15.0, 55.0, 86.0, 95.0)
 
         issue_d = None
@@ -278,6 +312,8 @@ class DOMixin:
         result.bl_no = bl_no
         result.vessel = vessel
         result.voyage = voyage
+        result.mrn = ''  # v8.6.5 fix: mrn/msn extracted below via regex
+        result.msn = ''
         result.port_of_loading = pol
         result.port_of_discharge = pod
         if issue_d is not None:
@@ -290,9 +326,19 @@ class DOMixin:
         do_no_m = _re.search(r'D/O\s*No\.?\s*([A-Z0-9]{8,20})', do_no_raw, _re.IGNORECASE)
         if do_no_m:
             result.do_no = do_no_m.group(1).strip()
+        if not result.do_no:
+            do_no_m = _re.search(r'D\s*/\s*O\s*No\.?\s*[\r\n\s]+([A-Z0-9]{8,20})', all_text, _re.IGNORECASE)
+            if do_no_m:
+                result.do_no = do_no_m.group(1).strip()
 
         # 총 중량: "123,150 KGS" 패턴
         wt_m = _re.search(r'(\d[\d,]+)\s*KGS', all_text, _re.IGNORECASE)
+        if not wt_m:
+            wt_m = _re.search(
+                r'Gross\s*Weight\s*\(\s*KGS\s*\)\s*[\s\S]{0,80}?(\d[\d,]+)',
+                all_text,
+                _re.IGNORECASE,
+            )
         if wt_m:
             try:
                 result.gross_weight_kg = float(wt_m.group(1).replace(',', ''))
@@ -518,6 +564,24 @@ class DOMixin:
                 _seen[_ct] = None
         containers_found = list(_seen.keys())
 
+        # ── MRN-MSN: all_text 정규식 — ONE DO는 "26HDM UK026I - 5019" 형식
+        # PyMuPDF 문자 분리 특성상 좌표 추출보다 all_text 정규식이 안정적
+        _mrn_m = _re.search(r'(\d{2}[A-Z0-9 ]{3,20})\s+-\s+(\d{3,6})', all_text)
+        if _mrn_m:
+            _mrn_raw  = _mrn_m.group(1).strip()
+            msn_clean = _mrn_m.group(2).strip()
+            # PyMuPDF가 글자 단위로 분리하면 "26H D M U K026I" 형태로 들어옴
+            # → 전체 공백 제거 후 한국 세관 MRN 포맷 "YYXXX AANNNZ" 로 재분리
+            _mrn_compact = _re.sub(r'\s+', '', _mrn_raw)
+            _mrn_fmt = _re.match(r'^(\d{2}[A-Z]{2,5})([A-Z]{2,3}\d{2,5}[A-Z0-9]?)$', _mrn_compact)
+            if _mrn_fmt:
+                mrn_raw = _mrn_fmt.group(1) + ' ' + _mrn_fmt.group(2)
+            else:
+                mrn_raw = _mrn_compact  # 포맷 불일치 시 공백 없는 형태로 저장
+        else:
+            mrn_raw   = ""
+            msn_clean = ""
+
         # ── DOData 조립
         result = DOData()
         result.source_file = pdf_path
@@ -526,7 +590,9 @@ class DOMixin:
         result.issue_date = issue_date
         result.arrival_date = arrival_date
         result.vessel = vessel
-        result.voyage_no = voyage
+        result.voyage = voyage
+        result.mrn = mrn_raw
+        result.msn = msn_clean
         result.port_of_loading = pol
         result.port_of_discharge = pod
         result.gross_weight_kg = gross_weight_kg
@@ -642,8 +708,8 @@ class DOMixin:
         # ── Port of Loading: x=20~45%, y=30.0~31.5% → "CLPAG"
         pol = by_xy(20.0, 45.0, 30.0, 31.5)
 
-        # ── Port of Discharge: x=20~45%, y=34.7~36.0% → "KRPUS"
-        pod = by_xy(20.0, 45.0, 34.7, 36.0)
+        # ── Port of Discharge: x=20~38%, y=34.7~36.0% → "KRPUS" (x2 45→38: gross_weight 42%와 겹침 방지)
+        pod = by_xy(20.0, 38.0, 34.7, 36.0)
 
         # ── Gross Weight: x=42~55%, y=34.7~36.0% → "102625.000"
         gw_raw = by_xy(42.0, 55.0, 34.7, 36.0)
@@ -656,6 +722,12 @@ class DOMixin:
         # ── Free Time: x=67~82%, y=29.0~30.5% → "20260424" → "2026-04-24"
         ft_raw = by_xy(67.0, 82.0, 29.0, 30.5)
         free_time_val = parse_yyyymmdd(ft_raw)
+
+        # ── MRN: x=50~67%, y=12.0~14.0% → "26HLCU9401I"
+        hapag_mrn = by_xy(50.0, 63.5, 12.0, 14.0)  # narrow: exclude "-" separator
+
+        # ── MSN: x=65~72%, y=12.0~14.0% → "6006"
+        hapag_msn = by_xy(65.0, 72.0, 12.0, 14.0).strip()
 
         # ── 컨테이너: HAPAG DO는 완전 토큰 "HAMU2050957" — 정규식 직접 추출
         # y=28.5~40.5% x=51~63% 영역에서 행 우선 추출
@@ -674,7 +746,9 @@ class DOMixin:
         result.issue_date = issue_date
         result.arrival_date = arrival_date
         result.vessel = vessel
-        result.voyage_no = voyage
+        result.voyage = voyage
+        result.mrn = hapag_mrn
+        result.msn = hapag_msn
         result.port_of_loading = pol
         result.port_of_discharge = pod
         result.gross_weight_kg = gross_weight_kg
