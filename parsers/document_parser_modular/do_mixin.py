@@ -1059,7 +1059,7 @@ class DOMixin:
                     _carrier = "MSC"
                 elif "HAPAG" in _txt or "HLCU" in _txt or "HAMBURG SUD" in _txt:
                     _carrier = "HAPAG"
-                elif "OCEAN NETWORK" in _txt or "ONEU" in _txt or " ONE " in _txt:
+                elif "OCEAN NETWORK" in _txt or "ONEU" in _txt or " ONE " in _txt or "ONEYS" in _txt or "ONE-LINE" in _txt or "ONE" in _os.path.basename(pdf_path).upper().split("_")[0:1]:
                     _carrier = "ONE"
                 elif "HMM" in _txt or "HYUNDAI" in _txt or "HMMU" in _txt:
                     _carrier = "HMM"

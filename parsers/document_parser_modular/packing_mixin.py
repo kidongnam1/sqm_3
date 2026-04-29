@@ -280,15 +280,31 @@ class PackingMixin:
                  and abs(ww["top"] - w["top"]) < 3],
                 key=lambda x: x["x0"]
             )
-            # 컨테이너: x=8~18%
+            # 컨테이너: x=8~18% (단일 토큰 우선, 분열 포맷 fallback)
+            FOUR_ALPHA = re.compile(r'^[A-Z]{4}$')
+            NUM_PART   = re.compile(r'^\d{5,7}-?\d?$')
             _ct_raw = next(
                 (ww["text"] for ww in row
                  if 7 <= ww["x0"]/page_w*100 <= 19
                  and CT_RE.match(ww["text"])), ""
             )
+            if not _ct_raw:
+                # HAPAG split format: 'HAMU' + '272359-6' as two PDF words
+                _prefix_w = next(
+                    (ww for ww in row
+                     if FOUR_ALPHA.match(ww["text"])
+                     and 5 <= ww["x0"]/page_w*100 <= 12), None
+                )
+                if _prefix_w:
+                    _suffix = next(
+                        (ww["text"] for ww in row
+                         if NUM_PART.match(ww["text"])
+                         and ww["x0"] > _prefix_w["x1"]), ""
+                    )
+                    if _suffix:
+                        _ct_raw = _prefix_w["text"] + _suffix
             # Normalize check digit hyphen: TCLU640435-3 → TCLU6404353
-            import re as _re_ct
-            container = _re_ct.sub(r'^([A-Z]{4}\d+)-(\d)$', r'\1\2', _ct_raw)
+            container = re.sub(r'^([A-Z]{4}\d+)-(\d)$', r'\1\2', _ct_raw)
             # LOT SQM: x=27~35% (6~7자리 — 실측 1015616 등)
             lot_sqm = next(
                 (ww["text"] for ww in row
