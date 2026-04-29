@@ -1,0 +1,175 @@
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<title>SQM v8.6.5 파싱 비교 (좌표 vs Gemini)</title>
+<style>
+body{font-family:'Malgun Gothic',sans-serif;font-size:12px;background:#12121f;color:#ddd;padding:16px;margin:0}
+h1{color:#7ec8e3;font-size:20px;margin-bottom:4px}
+.meta{color:#666;font-size:11px;margin-bottom:10px}
+.sum{display:flex;gap:16px;background:#1e1e35;border-radius:8px;padding:14px;margin-bottom:10px}
+.si{text-align:center}.si .n{font-size:24px;font-weight:bold}.si .l{font-size:10px;color:#888}
+.filter{background:#1a1a35;border-radius:8px;padding:10px 14px;margin-bottom:10px;display:flex;gap:20px;align-items:center}
+.filter label{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px}
+.filter button{background:#2a4a7a;color:#7ec8e3;border:none;border-radius:4px;padding:4px 12px;cursor:pointer}
+.leg{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.leg span{padding:2px 10px;border-radius:4px;font-size:11px}
+table{border-collapse:collapse;width:100%}
+th{background:#1e1e35;color:#7ec8e3;padding:6px 10px;text-align:left;position:sticky;top:0;z-index:9}
+td{padding:4px 8px;border-bottom:1px solid #2a2a3a;vertical-align:middle}
+.carr{font-size:13px;color:#fff;text-align:center;width:60px;border-right:2px solid #444;font-weight:bold}
+.hdr td{background:#1a1a30}
+.ml{font-weight:bold;font-size:11px;text-align:center;padding:4px;min-width:120px}
+.c1{background:#122012;color:#7ec87e}.c2{background:#201212;color:#e87e7e}
+.strow td{text-align:center;font-size:11px}
+.fn{color:#999;width:140px;font-size:11px}
+.v1{color:#7ec87e;font-weight:bold;min-width:120px}
+.ok{color:#7ec87e}.fail{color:#e87e7e;font-size:10px;line-height:1.3}
+.nk{color:#777;font-size:10px}
+.mt{color:#7ec87e}.df{color:#f0a060;font-weight:bold;background:#201808}.em{color:#444}
+.sp td{height:8px;background:#0d0d1a}
+small{font-size:9px;color:#888}
+</style></head><body>
+<h1>SQM v8.6.5 — 파싱 비교: ① 좌표 파싱 vs ② Gemini</h1>
+<div class="meta">생성: 2026-04-29 23:23 | 4선사×4문서=16건 | 노란 셀 = 좌표와 다른 값</div>
+<div class="sum">
+  <div class="si"><div class="n" style="color:#7ec87e">16/16</div><div class="l">① 좌표(기준)</div></div>
+  <div class="si"><div class="n" style="color:#e87e7e">16/16</div><div class="l">② Gemini</div></div>
+  <div class="si"><div class="n" style="color:#f0a060">92.6%</div><div class="l">Gemini 정확도</div></div>
+</div>
+<div class="filter">
+  <span style="color:#7ec8e3;font-weight:bold">파싱 결과 표시:</span>
+  <label><input type="checkbox" disabled checked> ① 좌표(기준)</label>
+  <label><input type="checkbox" id="cb-gemini" checked onchange="toggleGemini(this)"> ② Gemini</label>
+  <button onclick="document.getElementById('cb-gemini').checked=true;toggleGemini(document.getElementById('cb-gemini'))">전체 표시</button>
+</div>
+<div class="leg">
+  <span style="background:#122012;color:#7ec87e">일치 (좌표와 동일)</span>
+  <span style="background:#201808;color:#f0a060">불일치 (값이 다름)</span>
+  <span style="background:#201010;color:#e87e7e">실패 (파싱 에러)</span>
+  <span style="background:#1a1a30;color:#aaa">빈 값</span>
+</div>
+<table>
+<thead><tr>
+  <th>선사/문서</th>
+  <th>① 좌표(기준)</th>
+  <th class="col-gemini">② Gemini</th>
+</tr>
+
+<tr style="background:#1a1a2e;font-weight:bold;font-size:13px">
+  <td class="carr" style="background:#333">정확도<br>합계</td>
+  <td class="ok" style="text-align:center">100%<br><small>(기준값)</small></td>
+  <td class="df" style="text-align:center">
+    <b>92.6%</b><br><small>126/136</small>
+  </td>
+</tr>
+</thead>
+<tbody>
+<tr class="hdr">
+  <td rowspan="12" class="carr" style="background:#0d3b6e">ONE<br><b>DO</b></td>
+  <td class="ml c1">①좌표(기준)</td>
+  <td class="ml c2">②Gemini</td>
+</tr><tr class="strow"><td class="ok">✅ OK<br><small>0.0s</small></td><td class="ok">✅ OK<br><small>16.5s</small></td></tr><tr><td class="fn">bl_no</td><td class="v1">ONEYSCLG01825300</td><td class="mt">ONEYSCLG01825300</td></tr><tr><td class="fn">vessel</td><td class="v1">HMM EMERALD</td><td class="mt">HMM EMERALD</td></tr><tr><td class="fn">voyage</td><td class="v1">0012W</td><td class="mt">0012W</td></tr><tr><td class="fn">port_of_loading</td><td class="v1">CLPAG</td><td class="mt">CLPAG</td></tr><tr><td class="fn">port_of_discharge</td><td class="v1">KRKAN</td><td class="mt">KRKAN</td></tr><tr><td class="fn">arrival_date</td><td class="v1">2026-04-11</td><td class="mt">2026-04-11</td></tr><tr><td class="fn">gross_weight_kg</td><td class="v1">102625.0</td><td class="mt">102625.0</td></tr><tr><td class="fn">container_count</td><td class="v1">5</td><td class="mt">5</td></tr><tr><td class="fn">mrn</td><td class="v1">26HDM UK026I</td><td class="df" title="기준: 26HDM UK026I">26HDMUK026I</td></tr><tr><td class="fn">msn</td><td class="v1">5019</td><td class="mt">5019</td></tr><tr class="sp"><td colspan="4"></td></tr>
+<tr class="hdr">
+  <td rowspan="9" class="carr" style="background:#0d3b6e">ONE<br><b>BL</b></td>
+  <td class="ml c1">①좌표(기준)</td>
+  <td class="ml c2">②Gemini</td>
+</tr><tr class="strow"><td class="ok">✅ OK<br><small>0.0s</small></td><td class="ok">✅ OK<br><small>28.6s</small></td></tr><tr><td class="fn">bl_no</td><td class="v1">ONEYSCLG01825300</td><td class="mt">ONEYSCLG01825300</td></tr><tr><td class="fn">vessel</td><td class="v1">RIO DE JANEIRO EXPRESS</td><td class="mt">RIO DE JANEIRO EXPRESS</td></tr><tr><td class="fn">voyage</td><td class="v1">2601W</td><td class="mt">2601W</td></tr><tr><td class="fn">port_of_loading</td><td class="v1">PUERTO ANGAMOS, CHILE</td><td class="mt">PUERTO ANGAMOS, CHILE</td></tr><tr><td class="fn">port_of_discharge</td><td class="v1">KWANGYANG</td><td class="mt">KWANGYANG</td></tr><tr><td class="fn">gross_weight_kg</td><td class="v1">102625.0</td><td class="mt">102625.0</td></tr><tr><td class="fn">carrier_id</td><td class="v1">ONE</td><td class="mt">ONE</td></tr><tr class="sp"><td colspan="4"></td></tr>
+<tr class="hdr">
+  <td rowspan="13" class="carr" style="background:#0d3b6e">ONE<br><b>FA</b></td>
+  <td class="ml c1">①좌표(기준)</td>
+  <td class="ml c2">②Gemini</td>
+</tr><tr class="strow"><td class="ok">✅ OK<br><small>0.0s</small></td><td class="ok">✅ OK<br><small>15.7s</small></td></tr><tr><td class="fn">sap_no</td><td class="v1">2200034590</td><td class="mt">2200034590</td></tr><tr><td class="fn">invoice_no</td><td class="v1">17653</td><td class="mt">17653</td></tr><tr><td class="fn">bl_no</td><td class="v1">ONEYSCLG01825300</td><td class="mt">ONEYSCLG01825300</td></tr><tr><td class="fn">quantity_mt</td><td class="v1">100.02</td><td class="mt">100.02</td></tr><tr><td class="fn">unit_price</td><td class="v1">20154.0</td><td class="mt">20154.0</td></tr><tr><td class="fn">total_amount</td><td class="v1">2015803.08</td><td class="mt">2015803.08</td></tr><tr><td class="fn">currency</td><td class="v1">USD</td><td class="mt">USD</td></tr><tr><td class="fn">gross_weight_kg</td><td class="v1">102625.0</td><td class="mt">102625.0</td></tr><tr><td class="fn">net_weight_kg</td><td class="v1">100020.0</td><td class="mt">100020.0</td></tr><tr><td class="fn">package_count</td><td class="v1">200</td><td class="mt">200</td></tr><tr><td class="fn">lot_count</td><td class="v1">20</td><td class="mt">20</td></tr><tr class="sp"><td colspan="4"></td></tr>
+<tr class="hdr">
+  <td rowspan="8" class="carr" style="background:#0d3b6e">ONE<br><b>PL</b></td>
+  <td class="ml c1">①좌표(기준)</td>
+  <td class="ml c2">②Gemini</td>
+</tr><tr class="strow"><td class="ok">✅ OK<br><small>0.0s</small></td><td class="ok">✅ OK<br><small>42.1s</small></td></tr><tr><td class="fn">folio</td><td class="v1">3807572</td><td class="mt">3807572</td></tr><tr><td class="fn">total_lots</td><td class="v1">20</td><td class="mt">20</td></tr><tr><td class="fn">total_net_weight_kg</td><td class="v1">100020.0</td><td class="mt">100020.0</td></tr><tr><td class="fn">total_gross_weight_kg</td><td class="v1">102625.0</td><td class="mt">102625.0</td></tr><tr><td class="fn">total_maxibag</td><td class="v1">200</td><td class="mt">200</td></tr><tr><td class="fn">container_count</td><td class="v1">5</td><td class="mt">5</td></tr><tr class="sp"><td colspan="4"></td></tr>
+<tr class="hdr">
+  <td rowspan="12" class="carr" style="background:#6e0d0d">HAPAG<br><b>DO</b></td>
+  <td class="ml c1">①좌표(기준)</td>
+  <td class="ml c2">②Gemini</td>
+</tr><tr class="strow"><td class="ok">✅ OK<br><small>0.0s</small></td><td class="ok">✅ OK<br><small>16.3s</small></td></tr><tr><td class="fn">bl_no</td><td class="v1">HLCUSCL260148627</td><td class="df" title="기준: HLCUSCL260148627">260148627</td></tr><tr><td class="fn">vessel</td><td class="v1">BUENAVENTURA EXPRESS</td><td class="mt">BUENAVENTURA EXPRESS</td></tr><tr><td class="fn">voyage</td><td class="v1">2602W</td><td class="mt">2602W</td></tr><tr><td class="fn">port_of_loading</td><td class="v1">CLPAG</td><td class="mt">CLPAG</td></tr><tr><td class="fn">port_of_discharge</td><td class="v1">KRPUS</td><td class="mt">KRPUS</td></tr><tr><td class="fn">arrival_date</td><td class="v1">2026-04-11</td><td class="mt">2026-04-11</td></tr><tr><td class="fn">gross_weight_kg</td><td class="v1">102625.0</td><td class="mt">102625.0</td></tr><tr><td class="fn">container_count</td><td class="v1">5</td><td class="mt">5</td></tr><tr><td class="fn">mrn</td><td class="v1">26HLCU9401I</td><td class="mt">26HLCU9401I</td></tr><tr><td class="fn">msn</td><td class="v1">6006</td><td class="mt">6006</td></tr><tr class="sp"><td colspan="4"></td></tr>
+<tr class="hdr">
+  <td rowspan="9" class="carr" style="background:#6e0d0d">HAPAG<br><b>BL</b></td>
+  <td class="ml c1">①좌표(기준)</td>
+  <td class="ml c2">②Gemini</td>
+</tr><tr class="strow"><td class="ok">✅ OK<br><small>0.0s</small></td><td class="ok">✅ OK<br><small>27.7s</small></td></tr><tr><td class="fn">bl_no</td><td class="v1">HLCUSCL260148627</td><td class="mt">HLCUSCL260148627</td></tr><tr><td class="fn">vessel</td><td class="v1">BUENAVENTURA EXPRESS</td><td class="mt">BUENAVENTURA EXPRESS</td></tr><tr><td class="fn">voyage</td><td class="v1">2602W</td><td class="mt">2602W</td></tr><tr><td class="fn">port_of_loading</td><td class="v1">PUERTO ANGAMOS, CHILE</td><td class="mt">PUERTO ANGAMOS, CHILE</td></tr><tr><td class="fn">port_of_discharge</td><td class="v1">BUSAN, SOUTH KOREA</td><td class="df" title="기준: BUSAN, SOUTH KOREA">GWANGYANG, SOUTH KOREA</td></tr><tr><td class="fn">gross_weight_kg</td><td class="v1">102625.0</td><td class="mt">102625.0</td></tr><tr><td class="fn">carrier_id</td><td class="v1">HAPAG</td><td class="df" title="기준: HAPAG">UNKNOWN</td></tr><tr class="sp"><td colspan="4"></td></tr>
+<tr class="hdr">
+  <td rowspan="13" class="carr" style="background:#6e0d0d">HAPAG<br><b>FA</b></td>
+  <td class="ml c1">①좌표(기준)</td>
+  <td class="ml c2">②Gemini</td>
+</tr><tr class="strow"><td class="ok">✅ OK<br><small>0.0s</small></td><td class="ok">✅ OK<br><small>14.7s</small></td></tr><tr><td class="fn">sap_no</td><td class="v1">2200034659</td><td class="mt">2200034659</td></tr><tr><td class="fn">invoice_no</td><td class="v1">17760</td><td class="mt">17760</td></tr><tr><td class="fn">bl_no</td><td class="v1">HLCUSCL260148627</td><td class="mt">HLCUSCL260148627</td></tr><tr><td class="fn">quantity_mt</td><td class="v1">100.02</td><td class="mt">100.02</td></tr><tr><td class="fn">unit_price</td><td class="v1">17416.0</td><td class="mt">17416.0</td></tr><tr><td class="fn">total_amount</td><td class="v1">1741948.32</td><td class="mt">1741948.32</td></tr><tr><td class="fn">currency</td><td class="v1">USD</td><td class="mt">USD</td></tr><tr><td class="fn">gross_weight_kg</td><td class="v1">102625.0</td><td class="mt">102625.0</td></tr><tr><td class="fn">net_weight_kg</td><td class="v1">100020.0</td><td class="mt">100020.0</td></tr><tr><td class="fn">package_count</td><td class="v1">200</td><td class="mt">200</td></tr><tr><td class="fn">lot_count</td><td class="v1">20</td><td class="mt">20</td></tr><tr class="sp"><td colspan="4"></td></tr>
+<tr class="hdr">
+  <td rowspan="8" class="carr" style="background:#6e0d0d">HAPAG<br><b>PL</b></td>
+  <td class="ml c1">①좌표(기준)</td>
+  <td class="ml c2">②Gemini</td>
+</tr><tr class="strow"><td class="ok">✅ OK<br><small>0.0s</small></td><td class="ok">✅ OK<br><small>44.9s</small></td></tr><tr><td class="fn">folio</td><td class="v1">3812291</td><td class="mt">3812291</td></tr><tr><td class="fn">total_lots</td><td class="v1">20</td><td class="mt">20</td></tr><tr><td class="fn">total_net_weight_kg</td><td class="v1">100020.0</td><td class="mt">100020.0</td></tr><tr><td class="fn">total_gross_weight_kg</td><td class="v1">102625.0</td><td class="mt">102625.0</td></tr><tr><td class="fn">total_maxibag</td><td class="v1">200</td><td class="mt">200</td></tr><tr><td class="fn">container_count</td><td class="v1">5</td><td class="mt">5</td></tr><tr class="sp"><td colspan="4"></td></tr>
+<tr class="hdr">
+  <td rowspan="12" class="carr" style="background:#0d4a6e">MAERSK<br><b>DO</b></td>
+  <td class="ml c1">①좌표(기준)</td>
+  <td class="ml c2">②Gemini</td>
+</tr><tr class="strow"><td class="ok">✅ OK<br><small>0.0s</small></td><td class="ok">✅ OK<br><small>14.0s</small></td></tr><tr><td class="fn">bl_no</td><td class="v1">MAEU265083673</td><td class="df" title="기준: MAEU265083673">265083673</td></tr><tr><td class="fn">vessel</td><td class="v1">GUNVOR MAERSK</td><td class="mt">GUNVOR MAERSK</td></tr><tr><td class="fn">voyage</td><td class="v1">614E</td><td class="mt">614E</td></tr><tr><td class="fn">port_of_loading</td><td class="v1">CLMJS</td><td class="mt">CLMJS</td></tr><tr><td class="fn">port_of_discharge</td><td class="v1">KRKAN</td><td class="mt">KRKAN</td></tr><tr><td class="fn">arrival_date</td><td class="v1">2026-04-10</td><td class="mt">2026-04-10</td></tr><tr><td class="fn">gross_weight_kg</td><td class="v1">102625.0</td><td class="df" title="기준: 102625.0">102.625</td></tr><tr><td class="fn">container_count</td><td class="v1">5</td><td class="mt">5</td></tr><tr><td class="fn">mrn</td><td class="v1">-</td><td>26MAEUK0711</td></tr><tr><td class="fn">msn</td><td class="v1">-</td><td>1020</td></tr><tr class="sp"><td colspan="4"></td></tr>
+<tr class="hdr">
+  <td rowspan="9" class="carr" style="background:#0d4a6e">MAERSK<br><b>BL</b></td>
+  <td class="ml c1">①좌표(기준)</td>
+  <td class="ml c2">②Gemini</td>
+</tr><tr class="strow"><td class="ok">✅ OK<br><small>0.0s</small></td><td class="ok">✅ OK<br><small>40.0s</small></td></tr><tr><td class="fn">bl_no</td><td class="v1">MAEU265083673</td><td class="df" title="기준: MAEU265083673">265083673</td></tr><tr><td class="fn">vessel</td><td class="v1">MAERSK SKARSTIND</td><td class="mt">MAERSK SKARSTIND</td></tr><tr><td class="fn">voyage</td><td class="v1">607W</td><td class="mt">607W</td></tr><tr><td class="fn">port_of_loading</td><td class="v1">Puerto Angamos, Chile</td><td class="mt">Puerto Angamos, Chile</td></tr><tr><td class="fn">port_of_discharge</td><td class="v1">GWANGYANG,SOUTH KOREA</td><td class="mt">GWANGYANG,SOUTH KOREA</td></tr><tr><td class="fn">gross_weight_kg</td><td class="v1">102625.0</td><td class="mt">102625.0</td></tr><tr><td class="fn">carrier_id</td><td class="v1">MAERSK</td><td class="mt">MAERSK</td></tr><tr class="sp"><td colspan="4"></td></tr>
+<tr class="hdr">
+  <td rowspan="13" class="carr" style="background:#0d4a6e">MAERSK<br><b>FA</b></td>
+  <td class="ml c1">①좌표(기준)</td>
+  <td class="ml c2">②Gemini</td>
+</tr><tr class="strow"><td class="ok">✅ OK<br><small>0.0s</small></td><td class="ok">✅ OK<br><small>14.4s</small></td></tr><tr><td class="fn">sap_no</td><td class="v1">2200034449</td><td class="mt">2200034449</td></tr><tr><td class="fn">invoice_no</td><td class="v1">17703</td><td class="mt">17703</td></tr><tr><td class="fn">bl_no</td><td class="v1">MAEU265083673</td><td class="df" title="기준: MAEU265083673">265083673</td></tr><tr><td class="fn">quantity_mt</td><td class="v1">100.02</td><td class="mt">100.02</td></tr><tr><td class="fn">unit_price</td><td class="v1">19562.0</td><td class="mt">19562.0</td></tr><tr><td class="fn">total_amount</td><td class="v1">1956591.24</td><td class="mt">1956591.24</td></tr><tr><td class="fn">currency</td><td class="v1">USD</td><td class="mt">USD</td></tr><tr><td class="fn">gross_weight_kg</td><td class="v1">102625.0</td><td class="mt">102625.0</td></tr><tr><td class="fn">net_weight_kg</td><td class="v1">100020.0</td><td class="mt">100020.0</td></tr><tr><td class="fn">package_count</td><td class="v1">200</td><td class="mt">200</td></tr><tr><td class="fn">lot_count</td><td class="v1">20</td><td class="mt">20</td></tr><tr class="sp"><td colspan="4"></td></tr>
+<tr class="hdr">
+  <td rowspan="8" class="carr" style="background:#0d4a6e">MAERSK<br><b>PL</b></td>
+  <td class="ml c1">①좌표(기준)</td>
+  <td class="ml c2">②Gemini</td>
+</tr><tr class="strow"><td class="ok">✅ OK<br><small>0.0s</small></td><td class="ok">✅ OK<br><small>49.6s</small></td></tr><tr><td class="fn">folio</td><td class="v1">3809458</td><td class="mt">3809458</td></tr><tr><td class="fn">total_lots</td><td class="v1">20</td><td class="mt">20</td></tr><tr><td class="fn">total_net_weight_kg</td><td class="v1">100020.0</td><td class="mt">100020.0</td></tr><tr><td class="fn">total_gross_weight_kg</td><td class="v1">102625.0</td><td class="mt">102625.0</td></tr><tr><td class="fn">total_maxibag</td><td class="v1">200</td><td class="mt">200</td></tr><tr><td class="fn">container_count</td><td class="v1">5</td><td class="mt">5</td></tr><tr class="sp"><td colspan="4"></td></tr>
+<tr class="hdr">
+  <td rowspan="12" class="carr" style="background:#0d6e2e">MSC<br><b>DO</b></td>
+  <td class="ml c1">①좌표(기준)</td>
+  <td class="ml c2">②Gemini</td>
+</tr><tr class="strow"><td class="ok">✅ OK<br><small>0.0s</small></td><td class="ok">✅ OK<br><small>14.9s</small></td></tr><tr><td class="fn">bl_no</td><td class="v1">MEDUW9018104</td><td class="mt">MEDUW9018104</td></tr><tr><td class="fn">vessel</td><td class="v1">MSC APOLLINE</td><td class="mt">MSC APOLLINE</td></tr><tr><td class="fn">voyage</td><td class="v1">FY612A</td><td class="mt">FY612A</td></tr><tr><td class="fn">port_of_loading</td><td class="v1">CLPAG</td><td class="mt">CLPAG</td></tr><tr><td class="fn">port_of_discharge</td><td class="v1">KRKAN</td><td class="mt">KRKAN</td></tr><tr><td class="fn">arrival_date</td><td class="v1">2026-04-01</td><td class="mt">2026-04-01</td></tr><tr><td class="fn">gross_weight_kg</td><td class="v1">41050.0</td><td class="mt">41050.0</td></tr><tr><td class="fn">container_count</td><td class="v1">2</td><td class="mt">2</td></tr><tr><td class="fn">mrn</td><td class="v1">26MSCU3084I</td><td class="mt">26MSCU3084I</td></tr><tr><td class="fn">msn</td><td class="v1">0101</td><td class="mt">0101</td></tr><tr class="sp"><td colspan="4"></td></tr>
+<tr class="hdr">
+  <td rowspan="9" class="carr" style="background:#0d6e2e">MSC<br><b>BL</b></td>
+  <td class="ml c1">①좌표(기준)</td>
+  <td class="ml c2">②Gemini</td>
+</tr><tr class="strow"><td class="ok">✅ OK<br><small>0.0s</small></td><td class="ok">✅ OK<br><small>26.7s</small></td></tr><tr><td class="fn">bl_no</td><td class="v1">MEDUW9018104</td><td class="mt">MEDUW9018104</td></tr><tr><td class="fn">vessel</td><td class="v1">MANZANILLO EXPRESS</td><td class="mt">MANZANILLO EXPRESS</td></tr><tr><td class="fn">voyage</td><td class="v1">2551W</td><td class="mt">2551W</td></tr><tr><td class="fn">port_of_loading</td><td class="v1">Puerto Angamos, Chile</td><td class="mt">Puerto Angamos, Chile</td></tr><tr><td class="fn">port_of_discharge</td><td class="v1">Gwangyang, Korea</td><td class="mt">Gwangyang, Korea</td></tr><tr><td class="fn">gross_weight_kg</td><td class="v1">41050.0</td><td class="mt">41050.0</td></tr><tr><td class="fn">carrier_id</td><td class="v1">MSC</td><td class="mt">MSC</td></tr><tr class="sp"><td colspan="4"></td></tr>
+<tr class="hdr">
+  <td rowspan="13" class="carr" style="background:#0d6e2e">MSC<br><b>FA</b></td>
+  <td class="ml c1">①좌표(기준)</td>
+  <td class="ml c2">②Gemini</td>
+</tr><tr class="strow"><td class="ok">✅ OK<br><small>0.0s</small></td><td class="ok">✅ OK<br><small>13.6s</small></td></tr><tr><td class="fn">sap_no</td><td class="v1">2200034702</td><td class="mt">2200034702</td></tr><tr><td class="fn">invoice_no</td><td class="v1">17586</td><td class="mt">17586</td></tr><tr><td class="fn">bl_no</td><td class="v1">MEDUW9018104</td><td class="mt">MEDUW9018104</td></tr><tr><td class="fn">quantity_mt</td><td class="v1">40.008</td><td class="mt">40.008</td></tr><tr><td class="fn">unit_price</td><td class="v1">20646.0</td><td class="mt">20646.0</td></tr><tr><td class="fn">total_amount</td><td class="v1">826005.17</td><td class="mt">826005.17</td></tr><tr><td class="fn">currency</td><td class="v1">USD</td><td class="mt">USD</td></tr><tr><td class="fn">gross_weight_kg</td><td class="v1">41050.0</td><td class="mt">41050.0</td></tr><tr><td class="fn">net_weight_kg</td><td class="v1">40008.0</td><td class="mt">40008.0</td></tr><tr><td class="fn">package_count</td><td class="v1">80</td><td class="mt">80</td></tr><tr><td class="fn">lot_count</td><td class="v1">8</td><td class="mt">8</td></tr><tr class="sp"><td colspan="4"></td></tr>
+<tr class="hdr">
+  <td rowspan="8" class="carr" style="background:#0d6e2e">MSC<br><b>PL</b></td>
+  <td class="ml c1">①좌표(기준)</td>
+  <td class="ml c2">②Gemini</td>
+</tr><tr class="strow"><td class="ok">✅ OK<br><small>0.0s</small></td><td class="ok">✅ OK<br><small>32.4s</small></td></tr><tr><td class="fn">folio</td><td class="v1">3806579</td><td class="mt">3806579</td></tr><tr><td class="fn">total_lots</td><td class="v1">8</td><td class="mt">8</td></tr><tr><td class="fn">total_net_weight_kg</td><td class="v1">40008.0</td><td class="mt">40008.0</td></tr><tr><td class="fn">total_gross_weight_kg</td><td class="v1">41050.0</td><td class="mt">41050.0</td></tr><tr><td class="fn">total_maxibag</td><td class="v1">80</td><td class="mt">80</td></tr><tr><td class="fn">container_count</td><td class="v1">2</td><td class="mt">2</td></tr><tr class="sp"><td colspan="4"></td></tr></tbody>
+</table>
+
+<h2 style="color:#7ec8e3;margin-top:20px">정확도 요약</h2>
+<table style="width:auto">
+<thead><tr><th>방식</th><th>일치 필드</th><th>전체 필드</th><th>정확도(%)</th></tr></thead>
+<tbody>
+<tr><td>① 좌표 (기준)</td><td>-</td><td>-</td><td class="ok">100% (기준)</td></tr>
+<tr><td>② Gemini</td>
+  <td>126</td>
+  <td>136</td>
+  <td class="df">92.6%</td>
+</tr>
+</tbody>
+</table>
+
+<script>
+function toggleGemini(cb) {
+  document.querySelectorAll('.col-gemini').forEach(function(el) {
+    el.style.display = cb.checked ? '' : 'none';
+  });
+  localStorage.setItem('sqm-show-gemini', cb.checked);
+}
+(function() {
+  var saved = localStorage.getItem('sqm-show-gemini');
+  if (saved === 'false') {
+    var cb = document.getElementById('cb-gemini');
+    if (cb) { cb.checked = false; toggleGemini(cb); }
+  }
+})();
+</script>
+</body></html>

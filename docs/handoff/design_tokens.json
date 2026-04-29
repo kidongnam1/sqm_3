@@ -1,0 +1,375 @@
+{
+  "generated": "2026-04-21",
+  "theme_library": "ttkbootstrap",
+  "default_theme": "darkly",
+  "themes_available": {
+    "light": ["cosmo", "litera", "minty", "lumen", "sandstone", "yeti", "pulse", "united", "morph", "journal", "simplex", "cerculean"],
+    "dark": ["darkly", "cyborg", "superhero", "solar", "vapor"]
+  },
+  "themes": {
+    "light": {
+      "semantic": {
+        "primary": "#162040",
+        "success": "#147848",
+        "danger":  "#b83030",
+        "warning": "#a86020",
+        "info":    "#1060a8",
+        "accent":  "#1460c8",
+        "accent_light": "#4080e0"
+      },
+      "background": {
+        "bg_primary":   "#f0f5fc",
+        "bg_secondary": "#e4edf8",
+        "bg_tertiary":  "#d0dff0",
+        "bg_hover":     "#d0dff0",
+        "bg_toolbar":   "#162040",
+        "bg_card":      "#ffffff"
+      },
+      "text": {
+        "text_primary":   "#162040",
+        "text_secondary": "#3d5878",
+        "text_muted":     "#7898b8",
+        "text_on_dark":   "#ffffff"
+      },
+      "menu_buttons": {
+        "_note": "VERIFIED from toolbar_mixin.py _build_all_menus — menu label text color accents (file & help use default toolbar fg)",
+        "file":     null,
+        "inbound":  "#4ade80",
+        "outbound": "#facc15",
+        "inventory":"#38bdf8",
+        "reports":  "#a78bfa",
+        "settings": "#94a3b8",
+        "help":     null,
+        "_legacy_btn_palette": {
+          "btn_inbound":        "#147848",
+          "btn_inbound_hover":  "#189858",
+          "btn_outbound":       "#a86020",
+          "btn_outbound_hover": "#c87828",
+          "btn_report":         "#1840a0",
+          "btn_report_hover":   "#2050c0",
+          "btn_neutral":        "#405878",
+          "btn_neutral_hover":  "#506888"
+        }
+      },
+      "sidebar_icons": {
+        "inventory":  "#4ade80",
+        "allocation": "#facc15",
+        "picked":     "#a78bfa",
+        "sold":       "#38bdf8",
+        "return":     "#f87171",
+        "move":       "#22d3ee",
+        "dashboard":  "#00e676",
+        "log":        "#94a3b8",
+        "scan":       "#fb923c"
+      },
+      "action_toolbar": {
+        "pdf_inbound":     {"bg": "#22c55e", "hover": "#16a34a"},
+        "quick_outbound":  {"bg": "#3b82f6", "hover": "#2563eb"},
+        "return":          {"bg": "#64748b", "hover": "#475569"},
+        "inventory_check": {"bg": "#0ea5e9", "hover": "#0284c7"},
+        "integrity":       {"bg": "#06b6d4", "hover": "#0891b2"},
+        "backup":          {"bg": "#64748b", "hover": "#475569"},
+        "settings":        {"bg": "#64748b", "hover": "#475569"}
+      },
+      "status_badges": {
+        "available": {"bg": "#EAF3DE", "fg": "#166534", "row_bg": "#e4f4ec"},
+        "reserved":  {"bg": "#EFF6FF", "fg": "#1e40af", "row_bg": "#faf0e0"},
+        "picked":    {"bg": "#FFFBEB", "fg": "#92400e", "row_bg": "#ede8f8"},
+        "outbound":  {"bg": "#F8FAFC", "fg": "#475569", "row_bg": "#e0eef8"},
+        "return":    {"bg": "#FEF2F2", "fg": "#991b1b"}
+      },
+      "treeview": {
+        "select_bg": "#c0d4f0",
+        "select_fg": "#0a1830",
+        "stripe":    "#f5f9ff"
+      },
+      "search_bar": {
+        "bg":          "#ffffff",
+        "fg":          "#162040",
+        "border":      "#bdd0ea",
+        "placeholder": "#7898b8",
+        "cursor":      "#1460c8"
+      },
+      "status_bar": {
+        "bg":            "#162040",
+        "fg":            "#8aaac8",
+        "icon_ok":       "#147848",
+        "icon_warn":     "#a86020",
+        "icon_err":      "#b83030",
+        "progress":      "#1460c8",
+        "progress_done": "#147848",
+        "track":         "#1e2e58"
+      },
+      "badges": {
+        "db":      "#1060a8",
+        "version": "#1840a0",
+        "text":    "#ffffff"
+      },
+      "charts": {
+        "bg":   "#ffffff",
+        "grid": "#e4edf8"
+      },
+      "borders": {
+        "default": "#bdd0ea",
+        "focus":   "#1460c8"
+      },
+      "accents_extended": {
+        "error": "#dc2626", "warning": "#d97706", "success": "#059669",
+        "info":  "#2563eb", "muted":   "#6b7280", "purple":  "#7c3aed",
+        "draft": "#6366f1", "wait":    "#d97706", "final":   "#059669",
+        "review": "#ea580c", "hardstop": "#dc2626"
+      }
+    },
+    "dark": {
+      "semantic": {
+        "primary": "#38bdf8",
+        "success": "#52c87e",
+        "danger":  "#e06868",
+        "warning": "#e8943a",
+        "info":    "#4ab0e8",
+        "accent":  "#38bdf8",
+        "accent_light": "#7dd4fa"
+      },
+      "background": {
+        "bg_primary":   "#0b1322",
+        "bg_secondary": "#101c34",
+        "bg_tertiary":  "#182840",
+        "bg_hover":     "#182840",
+        "bg_toolbar":   "#07101e",
+        "bg_card":      "#13203c"
+      },
+      "text": {
+        "text_primary":   "#dce8fa",
+        "text_secondary": "#6e92be",
+        "text_muted":     "#8098b8",
+        "text_on_dark":   "#ffffff"
+      },
+      "menu_buttons": {
+        "_note": "Same accent palette as light — menu labels use bright sidebar colors in both themes",
+        "file":     null,
+        "inbound":  "#4ade80",
+        "outbound": "#facc15",
+        "inventory":"#38bdf8",
+        "reports":  "#a78bfa",
+        "settings": "#94a3b8",
+        "help":     null,
+        "_legacy_btn_palette": {
+          "btn_inbound":        "#1a6e40",
+          "btn_inbound_hover":  "#228850",
+          "btn_outbound":       "#8a5a10",
+          "btn_outbound_hover": "#aa7018",
+          "btn_report":         "#183898",
+          "btn_report_hover":   "#2048b8",
+          "btn_neutral":        "#2c4060",
+          "btn_neutral_hover":  "#384e78"
+        }
+      },
+      "sidebar_icons": {
+        "inventory":  "#4ade80",
+        "allocation": "#facc15",
+        "picked":     "#a78bfa",
+        "sold":       "#38bdf8",
+        "return":     "#f87171",
+        "move":       "#22d3ee",
+        "dashboard":  "#00e676",
+        "log":        "#94a3b8",
+        "scan":       "#fb923c"
+      },
+      "action_toolbar": {
+        "pdf_inbound":     {"bg": "#22c55e", "hover": "#16a34a"},
+        "quick_outbound":  {"bg": "#3b82f6", "hover": "#2563eb"},
+        "return":          {"bg": "#64748b", "hover": "#475569"},
+        "inventory_check": {"bg": "#0ea5e9", "hover": "#0284c7"},
+        "integrity":       {"bg": "#06b6d4", "hover": "#0891b2"},
+        "backup":          {"bg": "#64748b", "hover": "#475569"},
+        "settings":        {"bg": "#64748b", "hover": "#475569"}
+      },
+      "status_badges": {
+        "available": {"bg": "#052e16", "fg": "#4ade80", "row_bg": "#0d2018"},
+        "reserved":  {"bg": "#1e1b4b", "fg": "#a5b4fc", "row_bg": "#1e1608"},
+        "picked":    {"bg": "#1c1917", "fg": "#fcd34d", "row_bg": "#18102e"},
+        "outbound":  {"bg": "#1e293b", "fg": "#94a3b8", "row_bg": "#0a1826"},
+        "return":    {"bg": "#1f0a0a", "fg": "#fca5a5"}
+      },
+      "treeview": {
+        "select_bg": "#102e58",
+        "select_fg": "#dce8fa",
+        "stripe":    "#101c34"
+      },
+      "search_bar": {
+        "bg":          "#13203c",
+        "fg":          "#dce8fa",
+        "border":      "#1c3358",
+        "placeholder": "#6888a8",
+        "cursor":      "#38bdf8"
+      },
+      "status_bar": {
+        "bg":            "#07101e",
+        "fg":            "#6e92be",
+        "icon_ok":       "#52c87e",
+        "icon_warn":     "#e8943a",
+        "icon_err":      "#e06868",
+        "progress":      "#38bdf8",
+        "progress_done": "#52c87e",
+        "track":         "#1c3358"
+      },
+      "badges": {
+        "db":      "#0e5878",
+        "version": "#183898",
+        "text":    "#ffffff"
+      },
+      "charts": {
+        "bg":   "#0b1322",
+        "grid": "#1c3358"
+      },
+      "borders": {
+        "default": "#1c3358",
+        "focus":   "#38bdf8"
+      },
+      "accents_extended": {
+        "error": "#f87171", "warning": "#fbbf24", "success": "#34d399",
+        "info":  "#60a5fa", "muted":   "#9ca3af", "purple":  "#a78bfa",
+        "draft": "#818cf8", "wait":    "#fbbf24", "final":   "#34d399",
+        "review": "#fb923c", "hardstop": "#f87171"
+      }
+    }
+  },
+  "typography": {
+    "font_family_primary":  "Malgun Gothic",
+    "font_family_korean":   "맑은 고딕",
+    "font_family_fallback": "Segoe UI",
+    "font_family_mono":     "Consolas",
+    "sizes": {
+      "tiny":    "10pt",
+      "small":   "12pt",
+      "body":    "13pt",
+      "medium":  "15pt",
+      "heading": "16pt",
+      "subtitle":"18pt",
+      "title":   "21pt",
+      "mono":    "13pt"
+    },
+    "base_sizes_at_96dpi": {
+      "TITLE": 21, "SUBTITLE": 18, "HEADING": 16,
+      "BODY":  13, "SMALL":    12, "TINY":     10, "MONO": 13
+    },
+    "menu_font":     ["맑은 고딕", 13, "bold"],
+    "dropdown_font": ["맑은 고딕", 11, "normal"],
+    "scale_note": "v3.8.7: 30% 확대 from earlier v3 baseline; DPI-aware via FontScale class"
+  },
+  "spacing": {
+    "grid_unit": "8px",
+    "scale": {
+      "xs":  "4px",
+      "sm":  "8px",
+      "md":  "16px",
+      "lg":  "24px",
+      "xl":  "32px",
+      "xxl": "48px"
+    },
+    "padding": {
+      "dialog":       20,
+      "frame":        12,
+      "labelframe":   20,
+      "button_group": 10,
+      "section":      28
+    },
+    "tab": {
+      "outer_padx":    24,
+      "header_height": 44,
+      "header_pady":   [8, 12],
+      "btn_bar_padx":  [24, 24],
+      "btn_bar_pady":  [6, 10],
+      "btn_gap":       8,
+      "filter_pady":   [6, 10],
+      "tree_padx":     [24, 24],
+      "tree_pady":     [6, 16],
+      "tree_min_rows": 15
+    },
+    "dialog_sizes": {
+      "small":  {"ratio": [0.25, 0.20], "min": [350, 200],  "max": [500, 350]},
+      "medium": {"ratio": [0.40, 0.50], "min": [500, 400],  "max": [800, 600]},
+      "large":  {"ratio": [0.60, 0.70], "min": [700, 500],  "max": [1200, 900]},
+      "full":   {"ratio": [0.85, 0.85], "min": [1000, 700], "max": [1600, 1000]}
+    },
+    "window": {
+      "default_ratio":  [0.75, 0.80],
+      "min_size":       [1000, 700],
+      "max_size":       [1800, 1200],
+      "base_resolution":[1920, 1080],
+      "base_dpi":       96
+    },
+    "menubar": {
+      "padx": 16,
+      "pady": 7,
+      "frame_padx": 6,
+      "frame_pady": 3
+    }
+  },
+  "components": {
+    "treeview":   {"row_height": "40px", "relief": "flat", "stripe_enabled": true},
+    "notebook":   {"tab_padding": "16x8px"},
+    "button":     {"padding": "10x6px", "relief": "flat"},
+    "entry":      {"padding": "6x4px"},
+    "labelframe": {"border": "1px solid", "header_weight": "bold", "padding": 20},
+    "menu":       {"tearoff": 0, "relief": "flat", "activeborderwidth": 3, "borderwidth": 3}
+  },
+  "icons": {
+    "menu": {
+      "file":      "📁",
+      "inbound":   "📥",
+      "outbound":  "📤",
+      "inventory": "📊",
+      "reports":   "📝",
+      "settings":  "🔧",
+      "help":      "❓"
+    },
+    "toolbar": {
+      "pdf_inbound":     "📄",
+      "quick_outbound":  "🚀",
+      "return":          "🔄",
+      "inventory_check": "📊",
+      "integrity":       "🔍",
+      "backup":          "💾",
+      "settings":        "⚙️"
+    },
+    "sidebar": {
+      "inventory":  "📦",
+      "allocation": "📋",
+      "picked":     "🚛",
+      "outbound":   "📤",
+      "return":     "🔄",
+      "move":       "🔀",
+      "dashboard":  "📊",
+      "log":        "📝",
+      "scan":       "📷"
+    }
+  },
+  "status_display": {
+    "AVAILABLE": "판매가능",
+    "RESERVED":  "판매배정",
+    "PICKED":    "판매화물 결정",
+    "OUTBOUND":  "출고완료",
+    "SOLD":      "출고완료",
+    "RETURN":    "반품대기",
+    "SHIPPED":   "선적",
+    "DEPLETED":  "소진",
+    "RETURNED":  "반품",
+    "PARTIAL":   "부분출고"
+  },
+  "source_refs": [
+    "gui_app_modular/utils/ui_constants.py",
+    "theme_aware.py",
+    "gui_app_modular/mixins/theme_mixin.py",
+    "gui_app_modular/mixins/toolbar_mixin.py",
+    "gui_app_modular/mixins/custom_menubar.py"
+  ],
+  "discrepancies_vs_guide": [
+    "Menu button colors in guide (e.g. 파일=#6c757d, 입고=#147848) do NOT match actual toolbar_mixin.py _build_all_menus. Actual values: 입고=#4ade80, 출고=#facc15, 재고=#38bdf8, 보고서=#a78bfa, 설정/도구=#94a3b8; 파일 and 도움말 use default toolbar fg (no override).",
+    "Legacy btn_inbound/btn_outbound/btn_report/btn_neutral palette preserved under menu_buttons._legacy_btn_palette (these match the guide's 'verified' menu colors and are used by other subsystems).",
+    "Status badge light fg for RESERVED is #1e40af and bg #EFF6FF (blue-tinted, not amber) — PICKED uses the amber tones.",
+    "Font sizes: base SMALL=12pt (not 11pt as guide), HEADING=16pt, SUBTITLE=18pt inserted between medium and title.",
+    "Menu icons: 재고=📊, 보고서=📝, 설정/도구=🔧 (guide had 📦/📊/⚙️).",
+    "Dark text_muted recently bumped to #8098b8 (v8.6.5) for contrast; earlier fallback still lists #364e6e."
+  ]
+}

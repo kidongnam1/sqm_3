@@ -1,0 +1,633 @@
+{
+  "version": "v864-3",
+  "extracted_at": "2026-04-24",
+  "variant": "WebView (FastAPI backend + pywebview-loaded HTML frontend)",
+  "structure": {
+    "has_sidebar": true,
+    "top_menubar_count": 7,
+    "tab_count": 9,
+    "layout": "top_menubar (7 groups) + action_toolbar (7 quick buttons) + sidebar 9 tabs + main content + right-side unit radio (돈백/LOT/MT) + alerts + statusbar",
+    "menubar_order_note": "v864-3 menubar differs from v864-2. Order in frontend/index.html:20-180 is [📤 출고 ▼][📁 파일 ▼][📝 보고서 ▼][🔧 도구 ▼][👁️ View ▼][❓ 도움말 ▼][📦 품목 ▼]. Right-side utility buttons (outside dropdowns): [🔄 새로고침] | [🌙 Dark] [☀️ Light]. No 'Inbound / Outbound / 재고 / 검색' top-level groups — inbound items live under 파일 > 📥 입고; outbound actions live under the 출고 menu; 재고 is merged into 품목+View+도구; 🔍 검색 button does NOT exist in v864-3.",
+    "frontend_entrypoint": "frontend/index.html (loads only js/sqm-inline.js?v=864.3.40 — a single 3469-line bundle that owns dispatch, modals and pages). Note: frontend/js/main.js + frontend/js/pages/*.js and frontend/js/handlers/{menubar,toolbar,topbar}.js exist and export ES-modules, but index.html does NOT include them; they are dead code superseded by sqm-inline.js.",
+    "dispatch_source": "frontend/js/sqm-inline.js function dispatchAction (line 3154) with ENDPOINTS table starting near line 3015; JS-handled actions (conf.m === 'JS') open native HTML modals, GET actions go through renderInfoModal, POST actions go to FastAPI.",
+    "backend_entrypoint": "backend/api/menubar.py — 634 lines, 62 endpoints auto-generated, all currently raise NotReadyError('… GUI 재구현 필요 (Phase 4-B)'). Modals in sqm-inline.js bypass this by calling real endpoints under /api/inbound, /api/outbound, /api/allocation, /api/action*, /api/q*, etc."
+  },
+  "top_menubar": [
+    {
+      "id": "outbound",
+      "label": "📤 출고 ▼",
+      "source": "frontend/index.html:22-45",
+      "item_count": 13,
+      "separator_count": 3,
+      "items": [
+        {"label": "🚀 즉시 출고 (원스톱)", "handler": "onOnQuickOutbound", "dispatch": "JS:quick-outbound → showQuickOutboundModal (sqm-inline.js:1644)"},
+        {"label": "📤 빠른 출고 (붙여넣기)", "handler": "onQuickOutboundPaste", "dispatch": "JS:quick-outbound-paste → showQuickOutboundPasteModal (sqm-inline.js:2098)"},
+        {"separator": true, "section_label": "스캔/피킹"},
+        {"label": "📋 Picking List 업로드 (PDF)", "handler": "onPickingListUpload", "dispatch": "JS:picking-list-pdf → showPickingListPdfModal (sqm-inline.js:2075, _showPdfUploadModal — 1 slot)"},
+        {"label": "📊 바코드 스캔 업로드", "handler": "onBarcodeScanUpload", "dispatch": "JS:barcode-scan-upload → showBarcodeScanUploadModal (sqm-inline.js:2666, _showExcelUploadModal — 1 slot)"},
+        {"label": "📷 스캔 탭으로 이동", "handler": "onGoScanTab", "dispatch": "JS:scan (renderPage)"},
+        {"separator": true, "section_label": "Allocation (사전 예약)"},
+        {"label": "📋 Allocation 입력", "handler": "onInventoryAllocation", "dispatch": "JS:allocation-upload → showAllocationUploadModal (sqm-inline.js:1616, _showExcelUploadModal — 1 slot)"},
+        {"label": "✅ 승인 대기", "handler": "onApprovalQueue", "dispatch": "JS:approval-queue → showApprovalQueueModal (sqm-inline.js:2379)"},
+        {"label": "📌 예약 반영 (승인분)", "handler": "onApplyApproved", "dispatch": "POST /api/allocation/apply-approved"},
+        {"label": "📜 승인 이력 조회", "handler": "onApprovalHistory", "dispatch": "GET /api/q/approval-history → renderInfoModal"},
+        {"label": "📋 판매 배정 탭으로 이동", "handler": "onGoAllocationTab", "dispatch": "JS:allocation (renderPage)"},
+        {"separator": true, "section_label": "조회/기타"},
+        {"label": "📋 출고 현황 조회", "handler": "onOutboundStatus", "dispatch": "JS:outbound (renderPage)"},
+        {"label": "✅ 출고 확정", "handler": "onOutboundConfirm", "dispatch": "JS:outbound-confirm → showOutboundConfirmModal (sqm-inline.js:2209)"},
+        {"label": "📦 출고 피킹 템플릿 관리", "handler": "onPickingTemplateManage", "dispatch": "JS:picking-template → showPickingTemplateModal (sqm-inline.js:2734)"}
+      ]
+    },
+    {
+      "id": "file",
+      "label": "📁 파일 ▼",
+      "source": "frontend/index.html:48-86",
+      "item_count": 24,
+      "separator_count": 6,
+      "items": [
+        {"section_label": "📥 입고"},
+        {"label": "📄 PDF 스캔 입고", "handler": "onOnPdfInbound", "dispatch": "JS:pdf-inbound-upload → showPdfInboundUploadModal (sqm-inline.js:2053, _showPdfUploadModal — ONLY 1 FILE SLOT)"},
+        {"label": "📊 엑셀 파일 수동 입고", "handler": "onInboundManual", "dispatch": "JS:inbound-upload → showInboundManualUploadModal (sqm-inline.js:1575, _showExcelUploadModal — 1 slot)"},
+        {"separator": true},
+        {"label": "📋 D/O 후속 연결", "handler": "onDoUpdate", "dispatch": "JS:do-update → showDoUpdateModal (sqm-inline.js:1820)"},
+        {"label": "📍 톤백 위치 매핑", "handler": "onInventoryMove", "dispatch": "JS:tonbag-location-upload → showTonbagLocationUploadModal (sqm-inline.js:1796, _showExcelUploadModal — 1 slot)"},
+        {"label": "✅ 대량 이동 승인", "handler": "onMoveApprovalQueue", "dispatch": "JS:move-approval-queue → showMoveApprovalQueueModal (sqm-inline.js:2747)"},
+        {"separator": true, "section_label": "반품"},
+        {"label": "🔄 반품 (재입고)", "handler": "onReturnDialog", "dispatch": "JS:return-dialog → showReturnDialog (sqm-inline.js:2483)"},
+        {"label": "📂 반품 입고 (Excel)", "handler": "onReturnInboundUpload", "dispatch": "JS:return-upload → showReturnInboundUploadModal (sqm-inline.js:1597, _showExcelUploadModal — 1 slot)"},
+        {"label": "📊 반품 사유 통계", "handler": "onReturnStatistics", "dispatch": "GET /api/q2/return-stats → renderInfoModal"},
+        {"separator": true},
+        {"label": "📋 입고 현황 조회", "handler": "onInboundList", "dispatch": "JS:inbound (renderPage — stub)"},
+        {"label": "📝 입고 파싱 템플릿 관리", "handler": "onInboundTemplateManage", "dispatch": "JS:inbound-template → showInboundTemplateModal (sqm-inline.js:2724)"},
+        {"label": "📦 제품 마스터 관리", "handler": "onProductMaster", "dispatch": "GET /api/info/system-info → renderInfoModal"},
+        {"label": "⚙️ 이메일 설정", "handler": "onEmailConfig", "dispatch": "JS:email-config → showEmailConfigModal (sqm-inline.js:2703)"},
+        {"separator": true},
+        {"label": "🔍 정합성 검증 (시각화)", "handler": "onIntegrityReport", "dispatch": "GET /api/action/integrity-check → renderInfoModal"},
+        {"label": "🛠️ LOT 상태 정합성 복구", "handler": "onFixLotIntegrity", "dispatch": "GET /api/action/integrity-check → renderInfoModal"},
+        {"separator": true, "section_label": "💾 내보내기"},
+        {"label": "📋 통관요청 양식", "handler": "onExportCustoms", "dispatch": "GET /api/action/export-lot-excel"},
+        {"label": "📊 루비리 양식", "handler": "onExportRubyli", "dispatch": "GET /api/action/export-lot-excel"},
+        {"label": "🎒 톤백 현황", "handler": "onExportTonbag", "dispatch": "GET /api/action2/export-tonbag-excel"},
+        {"label": "⭐ 통합 현황", "handler": "onExportIntegrated", "dispatch": "GET /api/action/export-lot-excel"},
+        {"separator": true, "section_label": "🔐 백업"},
+        {"label": "💾 백업 생성", "handler": "onOnBackup", "dispatch": "POST /api/action/backup-create"},
+        {"label": "🔄 복원", "handler": "onRestore", "dispatch": "JS:restore → showRestoreModal (sqm-inline.js:2406)"},
+        {"label": "📋 백업 목록", "handler": "onBackupList", "dispatch": "GET /api/q/backup-list → renderInfoModal"},
+        {"label": "⏰ 자동 백업 설정", "handler": "onAutoBackupSettings", "dispatch": "JS:auto-backup-settings → showAutoBackupSettingsModal (sqm-inline.js:2714)"},
+        {"separator": true},
+        {"label": "📂 최근 파일", "handler": "onRecentFiles", "dispatch": "GET /api/q2/recent-files → renderInfoModal"},
+        {"label": "❌ 종료", "handler": "onExit", "dispatch": "JS:exit (pywebview.exit_app)"}
+      ]
+    },
+    {
+      "id": "report",
+      "label": "📝 보고서 ▼",
+      "source": "frontend/index.html:89-107",
+      "item_count": 12,
+      "separator_count": 3,
+      "items": [
+        {"label": "📄 거래명세서 생성", "handler": "onInvoiceGenerate", "dispatch": "GET /api/action3/export-invoice-excel"},
+        {"separator": true},
+        {"label": "📦 Detail of Outbound", "handler": "onDetailOfOutbound", "dispatch": "GET /api/q2/detail-outbound"},
+        {"label": "📋 Sales Order DN", "handler": "onSalesOrderDN", "dispatch": "GET /api/q3/sales-order-dn"},
+        {"label": "🔍 DN 교차검증", "handler": "onDnCrossCheck", "dispatch": "GET /api/q3/dn-cross-check"},
+        {"separator": true},
+        {"label": "📝 고객 보고서 생성", "handler": "onReportCustom", "dispatch": "GET /api/q/inventory-report"},
+        {"label": "📂 보고서 양식 관리", "handler": "onReportTemplates", "dispatch": "GET /api/q/audit-log (WRONG ENDPOINT — reuses audit-log)"},
+        {"label": "📋 보고서 이력 조회", "handler": "onReportHistory", "dispatch": "GET /api/q/audit-log (WRONG ENDPOINT — reuses audit-log)"},
+        {"separator": true},
+        {"label": "📦 재고 현황 보고서", "handler": "onInventoryReport", "dispatch": "GET /api/q/inventory-report"},
+        {"label": "📈 입출고 내역", "handler": "onMovementHistory", "dispatch": "GET /api/q/movement-history"},
+        {"label": "📅 월간 실적 PDF", "handler": "onReportMonthly", "dispatch": "GET /api/q2/report-monthly"},
+        {"label": "📊 일일 현황 PDF", "handler": "onReportDaily", "dispatch": "GET /api/q2/report-daily"},
+        {"label": "🔖 LOT 상세", "handler": "onLotDetailPdf", "dispatch": "GET /api/action/lot-detail"}
+      ]
+    },
+    {
+      "id": "tools",
+      "label": "🔧 도구 ▼",
+      "source": "frontend/index.html:110-128",
+      "item_count": 10,
+      "separator_count": 5,
+      "items": [
+        {"label": "📦 제품 마스터 관리", "handler": "onProductMaster", "dispatch": "GET /api/info/system-info"},
+        {"label": "📊 제품별 재고 현황", "handler": "onProductInventoryReport", "dispatch": "GET /api/q/product-inventory"},
+        {"label": "📊 LOT Allocation 톤백 현황", "handler": "onLotAllocationAudit", "dispatch": "JS:lot-allocation-audit → showLotAllocationAuditModal (sqm-inline.js:2576)"},
+        {"separator": true},
+        {"label": "📋 D/O 후속 연결", "handler": "onDoUpdate", "dispatch": "(duplicate of 파일>D/O)"},
+        {"separator": true},
+        {"label": "📷 문서 변환 (OCR/PDF)", "handler": "onDocConvert", "dispatch": "JS:doc-convert → showDocConvertModal (sqm-inline.js:2773, 1 file slot)"},
+        {"separator": true},
+        {"label": "🩺 데이터 정합성 검사", "handler": "onIntegrityCheck", "dispatch": "GET /api/action/integrity-check"},
+        {"separator": true},
+        {"label": "🔧 DB 최적화", "handler": "onOptimizeDb", "dispatch": "POST /api/action3/optimize-db"},
+        {"label": "📋 로그 정리", "handler": "onCleanupLogs", "dispatch": "POST /api/action3/cleanup-logs"},
+        {"label": "ℹ️ DB 정보", "handler": "onDbInfo", "dispatch": "GET /api/info/system-info"},
+        {"separator": true},
+        {"label": "🗑️ 테스트 DB 초기화", "handler": "onTestDbReset", "dispatch": "JS:test-db-reset → showTestDbResetModal (sqm-inline.js:2616)"}
+      ]
+    },
+    {
+      "id": "view",
+      "label": "👁️ View ▼",
+      "source": "frontend/index.html:131-148",
+      "item_count": 11,
+      "separator_count": 3,
+      "items": [
+        {"label": "🔄 Refresh (F5)", "handler": "refresh-all", "dispatch": "JS:refresh → renderPage(current)"},
+        {"separator": true},
+        {"label": "📦 Inventory", "handler": "onGoInventoryTab", "dispatch": "JS:inventory (renderPage)"},
+        {"label": "📋 Allocation", "handler": "onGoAllocationTab", "dispatch": "JS:allocation (renderPage)"},
+        {"label": "🚛 Picked", "handler": "onGoPickedTab", "dispatch": "JS:picked (renderPage)"},
+        {"label": "📤 Outbound", "handler": "onGoOutboundTab", "dispatch": "JS:outbound (renderPage)"},
+        {"label": "🔄 Return", "handler": "onGoReturnTab", "dispatch": "JS:return (renderPage)"},
+        {"label": "🔀 Move", "handler": "onGoMoveTab", "dispatch": "JS:move (renderPage)"},
+        {"separator": true},
+        {"label": "📊 Dashboard", "handler": "onGoDashboardTab", "dispatch": "JS:dashboard (renderPage)"},
+        {"label": "📝 Log", "handler": "onGoLogTab", "dispatch": "JS:log (renderPage)"},
+        {"label": "📷 Scan", "handler": "onGoScanTab", "dispatch": "JS:scan (renderPage)"},
+        {"separator": true},
+        {"label": "🎨 Theme", "handler": "onToggleTheme", "dispatch": "JS:theme (toggleTheme)"}
+      ]
+    },
+    {
+      "id": "help",
+      "label": "❓ 도움말 ▼",
+      "source": "frontend/index.html:151-162",
+      "item_count": 6,
+      "separator_count": 2,
+      "items": [
+        {"label": "📖 사용법", "handler": "onHelp", "dispatch": "GET /api/info/usage"},
+        {"label": "⌨️ 단축키 안내", "handler": "onShortcuts", "dispatch": "GET /api/info/shortcuts"},
+        {"separator": true},
+        {"label": "📊 STATUS 상태값 안내", "handler": "onStatusGuide", "dispatch": "GET /api/info/status-guide"},
+        {"label": "💾 DB 백업/복구 가이드", "handler": "onBackupGuide", "dispatch": "GET /api/info/backup-guide"},
+        {"separator": true},
+        {"label": "ℹ️ 시스템 정보", "handler": "onSystemInfo", "dispatch": "GET /api/q3/settings-info"},
+        {"label": "📝 버전 정보", "handler": "onAbout", "dispatch": "GET /api/info/version"}
+      ]
+    },
+    {
+      "id": "product",
+      "label": "📦 품목 ▼",
+      "source": "frontend/index.html:165-172",
+      "item_count": 3,
+      "separator_count": 1,
+      "items": [
+        {"label": "📋 품목별 재고 요약", "handler": "onProductSummary", "dispatch": "JS:product-summary → showProductSummaryModal (sqm-inline.js:2823)"},
+        {"label": "🔍 품목별 LOT 조회", "handler": "onProductLotLookup", "dispatch": "JS:product-lot-lookup → showProductLotLookupModal (sqm-inline.js:2857)"},
+        {"separator": true},
+        {"label": "📊 품목별 입출고 현황", "handler": "onProductMovement", "dispatch": "JS:product-movement → showProductMovementModal (sqm-inline.js:2896)"}
+      ]
+    }
+  ],
+  "action_toolbar": {
+    "source": "frontend/index.html:185-193",
+    "button_count": 7,
+    "buttons": [
+      {"label": "📄 PDF 입고", "action": "tb-pdf-inbound", "dispatch": "JS:pdf-inbound-upload → showPdfInboundUploadModal (1 file slot)"},
+      {"label": "🚀 즉시 출고", "action": "tb-quick-outbound", "dispatch": "JS:quick-outbound → showQuickOutboundModal"},
+      {"label": "🔄 반품", "action": "tb-return", "dispatch": "JS:return (renderPage) — NOTE: opens Return TAB, not ReturnDialog"},
+      {"label": "📋 재고 조회", "action": "tb-inventory", "dispatch": "JS:inventory (renderPage)"},
+      {"label": "✅ 정합성", "action": "tb-integrity", "dispatch": "GET /api/action/integrity-check"},
+      {"label": "💾 백업", "action": "tb-backup", "dispatch": "POST /api/action/backup-create"},
+      {"label": "⚙️ 설정", "action": "tb-settings", "dispatch": "POST /api/menu/-on-settings (NOT_READY)"}
+    ]
+  },
+  "right_side_buttons": [
+    {"label": "🔄 새로고침", "action": "refresh-all"},
+    {"label": "🌙 Dark", "action": "theme-dark"},
+    {"label": "☀️ Light", "action": "theme-light"}
+  ],
+  "tabs": [
+    {
+      "id": "inventory",
+      "label": "📦 Inventory",
+      "source_file": "frontend/js/sqm-inline.js:578-636 (loadInventoryPage)",
+      "file_lines": "inline in sqm-inline.js",
+      "widgets": {
+        "buttons": ["🔁 새로고침", "Detail (per row)"],
+        "table_columns": ["#", "LOT", "SAP", "BL", "Product", "Status", "Balance(MT)", "NET(MT)", "Container", "MXBG", "Avail", "Invoice", "Ship", "Arrival", "Con Return", "Free", "WH", "Customs", "Inbound(MT)", "Outbound(MT)", "Location", "(detail btn)"],
+        "column_count": 22,
+        "has_filter_bar": false,
+        "has_search": false,
+        "notable_features": [
+          "22-column <table class='data-table'> rendered via innerHTML",
+          "Per-row Detail button calls window.showLotDetail(lot)",
+          "No sort, no filter bar, no status chip row",
+          "API: GET /api/inventory — response.rows mapped into template strings",
+          "NOTE: v864-2 has 24 columns with sort/filter; v864-3 dropped ↓Avail개, ↓Resv개, ↓Pick개, ↓Sold개 tonbag counters and the status filter."
+        ]
+      }
+    },
+    {
+      "id": "allocation",
+      "label": "📋 Allocation",
+      "source_file": "frontend/js/sqm-inline.js:646-756 (loadAllocationPage)",
+      "widgets": {
+        "buttons": ["🔁 새로고침"],
+        "table_columns_lot": ["expand", "LOT No", "제품", "고객사", "Sale Ref", "배정량(MT)", "톤백수", "출고예정일", "상태"],
+        "column_count_lot": 9,
+        "table_columns_detail": "hydrated on click; shows 톤백 상세",
+        "has_filter_bar": false,
+        "has_search": false,
+        "notable_features": [
+          "2-tier layout (LOT summary → expand → Detail tonbag list)",
+          "API: GET /api/q/allocation-summary then GET /api/q/allocation-detail?lot=...",
+          "v864-2 equivalent has 7-col LOT view + 6-col detail + SALE REF batch cancel + status-revert buttons (all absent here)"
+        ]
+      }
+    },
+    {
+      "id": "picked",
+      "label": "🚛 Picked",
+      "source_file": "frontend/js/sqm-inline.js:757-917 (loadPickedPage)",
+      "widgets": {
+        "buttons": ["🔁 새로고침"],
+        "notable_features": ["2-tier LOT summary + detail similar to Allocation", "API: GET /api/q/picked-summary"]
+      }
+    },
+    {
+      "id": "outbound",
+      "label": "📤 Outbound",
+      "source_file": "frontend/js/sqm-inline.js:987-1090 (loadOutboundPage)",
+      "widgets": {
+        "buttons": ["🔁 새로고침"],
+        "notable_features": ["LOT summary + detail", "API: GET /api/q/outbound-status"]
+      }
+    },
+    {
+      "id": "return",
+      "label": "🔄 Return",
+      "source_file": "frontend/js/sqm-inline.js:1091-1131 (loadReturnPage)",
+      "widgets": {
+        "buttons": ["🔁 새로고침", "(uses alerts-panel / table below)"],
+        "notable_features": ["Simple list view from GET /api/q/return-history"]
+      }
+    },
+    {
+      "id": "move",
+      "label": "🔀 Move",
+      "source_file": "frontend/js/sqm-inline.js:1132-1192 (loadMovePage)",
+      "widgets": {
+        "buttons": ["🔁 새로고침"],
+        "notable_features": ["Move history list from GET /api/q/movement-history"]
+      }
+    },
+    {
+      "id": "dashboard",
+      "label": "📊 Dashboard",
+      "source_file": "frontend/js/sqm-inline.js:423-577 (loadDashboard + loadKpi + renderStatusCards + renderProductMatrix + renderIntegrity)",
+      "widgets": {
+        "buttons": [],
+        "treeview_columns": [],
+        "has_filter_bar": false,
+        "has_search": false,
+        "notable_features": [
+          "4 KPI cards at top (오늘 입고 / 오늘 출고 / 현재 재고 LOT / 위치 미배정)",
+          "5-status card row (Available/Reserved/Picked/Outbound/Return)",
+          "Product matrix table + integrity traffic-light",
+          "KPI polling every 5s when visible",
+          "View-mode radio 돈백/LOT/MT lives in right side (global)",
+          "Default tab on launch"
+        ]
+      }
+    },
+    {
+      "id": "log",
+      "label": "📝 Log",
+      "source_file": "frontend/js/sqm-inline.js:1193-1236 (loadLogPage)",
+      "widgets": {
+        "buttons": ["Refresh", "Last 100/500/1000 select"],
+        "table_columns": ["Time", "Type", "LOT", "Detail"],
+        "column_count": 4,
+        "has_filter_bar": false,
+        "has_search": false,
+        "notable_features": ["HTML <table> bound to GET /api/q/audit-log?limit=N"]
+      }
+    },
+    {
+      "id": "scan",
+      "label": "📷 Scan",
+      "source_file": "frontend/js/sqm-inline.js:1241-1372 (loadScanPage)",
+      "widgets": {
+        "buttons": ["Inbound", "Outbound", "Move", "Upload & Process (PDF)"],
+        "table_columns": ["Time", "Barcode", "Action", "Result"],
+        "has_filter_bar": false,
+        "has_search": false,
+        "file_upload_slots": 1,
+        "notable_features": [
+          "2-panel layout: [left] Barcode input + 3 quick-action buttons + history table; [right] PDF Drop zone (1 file slot, pdf-file-input at line 1270) feeding window.PdfInbound",
+          "v864-2 has 5 state-transition buttons (배정 등록 / 화물 결정 / 출고확정 / 반품등록 / 재입고); v864-3 only has 3 (Inbound/Outbound/Move)"
+        ]
+      }
+    }
+  ],
+  "handlers": {
+    "onOnPdfInbound": {
+      "dialog_function": "showPdfInboundUploadModal",
+      "file": "frontend/js/sqm-inline.js",
+      "line": 2053,
+      "modal_helper": "_showPdfUploadModal (line 1949)",
+      "title": "📄 PDF 스캔 입고 (Packing List)",
+      "endpoint": "POST /api/inbound/pdf-upload",
+      "upload_slots": [
+        {"id": "pdf-drop2-input", "label": "단일 PDF 파일 (Packing List)", "accept": ".pdf", "required": true}
+      ],
+      "upload_slot_count": 1,
+      "v864_2_equivalent_slot_count": 4,
+      "v864_2_equivalent_slots": ["BL (Bill of Loading)", "PACKING_LIST (Packing List)", "INVOICE (Invoice, FA)", "DO (Delivery Order, optional)"],
+      "gap_vs_v864_2": "v864-2 OneStopInboundDialog accepts 4 document types (BL + PL + Invoice + D/O); v864-3 collapses this into a single PDF slot that only accepts a Packing List. BL/Invoice/D/O uploads and parsing are missing. No per-slot file selection buttons. No 선사 combobox. No 적용 템플릿 Combobox. No 18-col preview table. No undo/redo stack. No parse-error recovery sub-dialog. No 📋 D/O 나중에 button. No 📋 템플릿 저장 button.",
+      "primary_buttons": ["(drop-zone click → file picker)", "닫기", "업로드"],
+      "form_fields": [],
+      "tables": [],
+      "notes": [
+        "Drag-and-drop supported via dz.addEventListener('drop',…) line 1999",
+        "Single XHR POST with form.append('file', f, f.name)",
+        "Progress bar during upload (10–100%)"
+      ]
+    },
+    "onInboundManual": {
+      "dialog_function": "showInboundManualUploadModal",
+      "file": "frontend/js/sqm-inline.js",
+      "line": 1575,
+      "modal_helper": "_showExcelUploadModal (line 1437)",
+      "title": "📊 수동 입고 — Excel 업로드",
+      "endpoint": "POST /api/inbound/bulk-import-excel",
+      "upload_slot_count": 1,
+      "upload_slots": [{"id": "xls-file-input", "accept": ".xlsx,.xls", "required": true}]
+    },
+    "onReturnInboundUpload": {
+      "dialog_function": "showReturnInboundUploadModal",
+      "file": "frontend/js/sqm-inline.js",
+      "line": 1597,
+      "modal_helper": "_showExcelUploadModal",
+      "title": "🔄 반품 입고 — Excel 업로드",
+      "endpoint": "POST /api/inbound/return-excel",
+      "upload_slot_count": 1
+    },
+    "onInventoryAllocation": {
+      "dialog_function": "showAllocationUploadModal",
+      "file": "frontend/js/sqm-inline.js",
+      "line": 1616,
+      "modal_helper": "_showExcelUploadModal",
+      "title": "📍 Allocation 입력 — Excel 업로드",
+      "endpoint": "POST /api/allocation/bulk-import-excel",
+      "upload_slot_count": 1
+    },
+    "onPickingListUpload": {
+      "dialog_function": "showPickingListPdfModal",
+      "file": "frontend/js/sqm-inline.js",
+      "line": 2075,
+      "modal_helper": "_showPdfUploadModal",
+      "title": "📋 Picking List PDF 업로드",
+      "endpoint": "POST /api/outbound/picking-list-pdf",
+      "upload_slot_count": 1
+    },
+    "onBarcodeScanUpload": {
+      "dialog_function": "showBarcodeScanUploadModal",
+      "file": "frontend/js/sqm-inline.js",
+      "line": 2666,
+      "modal_helper": "_showExcelUploadModal",
+      "title": "📊 바코드 스캔 업로드",
+      "endpoint": "POST /api/inbound/bulk-import-excel",
+      "upload_slot_count": 1
+    },
+    "onInventoryMove": {
+      "dialog_function": "showTonbagLocationUploadModal",
+      "file": "frontend/js/sqm-inline.js",
+      "line": 1796,
+      "modal_helper": "_showExcelUploadModal",
+      "title": "📍 톤백 위치 매핑 — Excel 업로드",
+      "upload_slot_count": 1
+    },
+    "onOnQuickOutbound": {
+      "dialog_function": "showQuickOutboundModal",
+      "file": "frontend/js/sqm-inline.js",
+      "line": 1644,
+      "title": "🚀 즉시 출고 (원스톱)",
+      "endpoint": "POST /api/outbound/quick",
+      "form_fields": ["qo-lot", "qo-count", "qo-customer", "qo-reason", "qo-operator"],
+      "primary_buttons": ["닫기", "출고 확정"]
+    },
+    "onQuickOutboundPaste": {
+      "dialog_function": "showQuickOutboundPasteModal",
+      "file": "frontend/js/sqm-inline.js",
+      "line": 2098,
+      "title": "📤 빠른 출고 (붙여넣기)",
+      "endpoint": "POST /api/outbound/quick-paste",
+      "form_fields": ["qop-text (textarea)", "qop-customer", "qop-reason", "qop-operator"]
+    },
+    "onOutboundConfirm": {
+      "dialog_function": "showOutboundConfirmModal",
+      "file": "frontend/js/sqm-inline.js",
+      "line": 2209,
+      "title": "✅ 출고 확정 — PICKED → OUTBOUND"
+    },
+    "onReturnDialog": {
+      "dialog_function": "showReturnDialog",
+      "file": "frontend/js/sqm-inline.js",
+      "line": 2483,
+      "title": "🔄 반품 (재입고)",
+      "notable": "Two sub-tabs: 📝 소량 반품 (수동) / 📂 다량 반품 (Excel). Excel path delegates to showReturnInboundUploadModal (1 slot)."
+    },
+    "onDoUpdate": {
+      "dialog_function": "showDoUpdateModal",
+      "file": "frontend/js/sqm-inline.js",
+      "line": 1820,
+      "title": "📋 D/O 후속 연결"
+    },
+    "onApprovalQueue": {
+      "dialog_function": "showApprovalQueueModal",
+      "file": "frontend/js/sqm-inline.js",
+      "line": 2379
+    },
+    "onRestore": {
+      "dialog_function": "showRestoreModal",
+      "file": "frontend/js/sqm-inline.js",
+      "line": 2406
+    },
+    "onLotAllocationAudit": {
+      "dialog_function": "showLotAllocationAuditModal",
+      "file": "frontend/js/sqm-inline.js",
+      "line": 2576
+    },
+    "onTestDbReset": {
+      "dialog_function": "showTestDbResetModal",
+      "file": "frontend/js/sqm-inline.js",
+      "line": 2616
+    },
+    "onEmailConfig": {"dialog_function": "showEmailConfigModal", "file": "frontend/js/sqm-inline.js", "line": 2703, "helper": "showSettingsDialog"},
+    "onAutoBackupSettings": {"dialog_function": "showAutoBackupSettingsModal", "file": "frontend/js/sqm-inline.js", "line": 2714, "helper": "showSettingsDialog"},
+    "onInboundTemplateManage": {"dialog_function": "showInboundTemplateModal", "file": "frontend/js/sqm-inline.js", "line": 2724, "helper": "showSettingsDialog"},
+    "onPickingTemplateManage": {"dialog_function": "showPickingTemplateModal", "file": "frontend/js/sqm-inline.js", "line": 2734, "helper": "showSettingsDialog"},
+    "onMoveApprovalQueue": {"dialog_function": "showMoveApprovalQueueModal", "file": "frontend/js/sqm-inline.js", "line": 2747},
+    "onDocConvert": {"dialog_function": "showDocConvertModal", "file": "frontend/js/sqm-inline.js", "line": 2773, "upload_slot_count": 1},
+    "onProductSummary": {"dialog_function": "showProductSummaryModal", "file": "frontend/js/sqm-inline.js", "line": 2823},
+    "onProductLotLookup": {"dialog_function": "showProductLotLookupModal", "file": "frontend/js/sqm-inline.js", "line": 2857},
+    "onProductMovement": {"dialog_function": "showProductMovementModal", "file": "frontend/js/sqm-inline.js", "line": 2896},
+    "onApplyApproved": {"dispatch": "POST /api/allocation/apply-approved", "modal": "(no modal, direct API call)"},
+    "onApprovalHistory": {"dispatch": "GET /api/q/approval-history → renderInfoModal (read-only JSON render, no dialog class)"},
+    "onReturnStatistics": {"dispatch": "GET /api/q2/return-stats → renderInfoModal (no dialog)"},
+    "onIntegrityReport": {"dispatch": "GET /api/action/integrity-check → renderInfoModal (no rich visualization dialog — gap vs v864-2 which has a dedicated traffic-light popup)"},
+    "onFixLotIntegrity": {"dispatch": "GET /api/action/integrity-check (duplicate of onIntegrityReport — no dedicated repair dialog)"},
+    "onExportCustoms": {"dispatch": "GET /api/action/export-lot-excel"},
+    "onExportRubyli": {"dispatch": "GET /api/action/export-lot-excel"},
+    "onExportTonbag": {"dispatch": "GET /api/action2/export-tonbag-excel"},
+    "onExportIntegrated": {"dispatch": "GET /api/action/export-lot-excel"},
+    "onProductMaster": {"dispatch": "GET /api/info/system-info → renderInfoModal (NO dedicated product-master CRUD dialog — gap)"},
+    "onReportTemplates": {"dispatch": "GET /api/q/audit-log (WRONG endpoint — reuses audit-log)", "gap": "no real template manager dialog"},
+    "onReportHistory": {"dispatch": "GET /api/q/audit-log (WRONG endpoint — reuses audit-log)", "gap": "no history dialog"},
+    "onInvoiceGenerate": {"dispatch": "GET /api/action3/export-invoice-excel"},
+    "onDetailOfOutbound": {"dispatch": "GET /api/q2/detail-outbound"},
+    "onSalesOrderDN": {"dispatch": "GET /api/q3/sales-order-dn"},
+    "onDnCrossCheck": {"dispatch": "GET /api/q3/dn-cross-check (no dedicated DN-compare dialog — gap vs v864-2 DNCheckDialog)"},
+    "onReportCustom": {"dispatch": "GET /api/q/inventory-report"},
+    "onInventoryReport": {"dispatch": "GET /api/q/inventory-report"},
+    "onMovementHistory": {"dispatch": "GET /api/q/movement-history"},
+    "onReportMonthly": {"dispatch": "GET /api/q2/report-monthly"},
+    "onReportDaily": {"dispatch": "GET /api/q2/report-daily"},
+    "onLotDetailPdf": {"dispatch": "GET /api/action/lot-detail"},
+    "onOnBackup": {"dispatch": "POST /api/action/backup-create"},
+    "onBackupList": {"dispatch": "GET /api/q/backup-list → renderInfoModal"},
+    "onRecentFiles": {"dispatch": "GET /api/q2/recent-files"},
+    "onIntegrityCheck": {"dispatch": "GET /api/action/integrity-check"},
+    "onProductInventoryReport": {"dispatch": "GET /api/q/product-inventory"},
+    "onOptimizeDb": {"dispatch": "POST /api/action3/optimize-db"},
+    "onCleanupLogs": {"dispatch": "POST /api/action3/cleanup-logs"},
+    "onDbInfo": {"dispatch": "GET /api/info/system-info"},
+    "onSettings": {"dispatch": "POST /api/menu/-on-settings (NOT_READY)", "gap": "no settings dialog implemented (v864-2 has SettingsDialogMixin with carrier rules and API keys)"}
+  },
+  "tier_b_dialogs": [
+    {"source": "frontend/js/sqm-inline.js", "function": "showPdfInboundUploadModal", "line": 2053, "title": "📄 PDF 스캔 입고 (Packing List)", "handler": "onOnPdfInbound", "upload_slot_count": 1},
+    {"source": "frontend/js/sqm-inline.js", "function": "showInboundManualUploadModal", "line": 1575, "title": "📊 수동 입고 — Excel 업로드", "handler": "onInboundManual", "upload_slot_count": 1},
+    {"source": "frontend/js/sqm-inline.js", "function": "showReturnInboundUploadModal", "line": 1597, "title": "🔄 반품 입고 — Excel 업로드", "handler": "onReturnInboundUpload", "upload_slot_count": 1},
+    {"source": "frontend/js/sqm-inline.js", "function": "showAllocationUploadModal", "line": 1616, "title": "📍 Allocation 입력 — Excel 업로드", "handler": "onInventoryAllocation", "upload_slot_count": 1},
+    {"source": "frontend/js/sqm-inline.js", "function": "showQuickOutboundModal", "line": 1644, "title": "🚀 즉시 출고 (원스톱)", "handler": "onOnQuickOutbound", "upload_slot_count": 0},
+    {"source": "frontend/js/sqm-inline.js", "function": "showTonbagLocationUploadModal", "line": 1796, "title": "📍 톤백 위치 매핑 — Excel 업로드", "handler": "onInventoryMove", "upload_slot_count": 1},
+    {"source": "frontend/js/sqm-inline.js", "function": "showDoUpdateModal", "line": 1820, "title": "📋 D/O 후속 연결", "handler": "onDoUpdate", "upload_slot_count": 0},
+    {"source": "frontend/js/sqm-inline.js", "function": "showApplyApprovedAllocationModal", "line": 1899, "title": "📌 예약 반영 (승인분)"},
+    {"source": "frontend/js/sqm-inline.js", "function": "showPickingListPdfModal", "line": 2075, "title": "📋 Picking List PDF 업로드", "handler": "onPickingListUpload", "upload_slot_count": 1},
+    {"source": "frontend/js/sqm-inline.js", "function": "showQuickOutboundPasteModal", "line": 2098, "title": "📤 빠른 출고 (붙여넣기)", "handler": "onQuickOutboundPaste"},
+    {"source": "frontend/js/sqm-inline.js", "function": "showOutboundConfirmModal", "line": 2209, "title": "✅ 출고 확정 — PICKED → OUTBOUND", "handler": "onOutboundConfirm"},
+    {"source": "frontend/js/sqm-inline.js", "function": "showInboundCancelModal", "line": 2325, "title": "입고 취소"},
+    {"source": "frontend/js/sqm-inline.js", "function": "showApprovalQueueModal", "line": 2379, "title": "✅ 승인 대기", "handler": "onApprovalQueue"},
+    {"source": "frontend/js/sqm-inline.js", "function": "showRestoreModal", "line": 2406, "title": "🔄 복원", "handler": "onRestore"},
+    {"source": "frontend/js/sqm-inline.js", "function": "showReturnDialog", "line": 2483, "title": "🔄 반품 (재입고)", "handler": "onReturnDialog"},
+    {"source": "frontend/js/sqm-inline.js", "function": "showLotAllocationAuditModal", "line": 2576, "title": "📊 LOT Allocation·톤백 현황", "handler": "onLotAllocationAudit"},
+    {"source": "frontend/js/sqm-inline.js", "function": "showTestDbResetModal", "line": 2616, "title": "🗑️ 테스트 DB 초기화", "handler": "onTestDbReset"},
+    {"source": "frontend/js/sqm-inline.js", "function": "showBarcodeScanUploadModal", "line": 2666, "title": "📊 바코드 스캔 업로드", "handler": "onBarcodeScanUpload", "upload_slot_count": 1},
+    {"source": "frontend/js/sqm-inline.js", "function": "showEmailConfigModal", "line": 2703, "title": "⚙️ 이메일 설정", "handler": "onEmailConfig", "note": "uses showSettingsDialog helper"},
+    {"source": "frontend/js/sqm-inline.js", "function": "showAutoBackupSettingsModal", "line": 2714, "title": "⏰ 자동 백업 설정", "handler": "onAutoBackupSettings", "note": "uses showSettingsDialog helper"},
+    {"source": "frontend/js/sqm-inline.js", "function": "showInboundTemplateModal", "line": 2724, "title": "📝 입고 파싱 템플릿 관리", "handler": "onInboundTemplateManage", "note": "uses showSettingsDialog — stub (settings fields only, no real CRUD)"},
+    {"source": "frontend/js/sqm-inline.js", "function": "showPickingTemplateModal", "line": 2734, "title": "📦 출고 피킹 템플릿 관리", "handler": "onPickingTemplateManage", "note": "uses showSettingsDialog — stub (settings fields only, no real CRUD)"},
+    {"source": "frontend/js/sqm-inline.js", "function": "showMoveApprovalQueueModal", "line": 2747, "title": "✅ 대량 이동 승인", "handler": "onMoveApprovalQueue"},
+    {"source": "frontend/js/sqm-inline.js", "function": "showDocConvertModal", "line": 2773, "title": "📷 문서 변환 (OCR/PDF)", "handler": "onDocConvert", "upload_slot_count": 1},
+    {"source": "frontend/js/sqm-inline.js", "function": "showProductSummaryModal", "line": 2823, "title": "📋 품목별 재고 요약", "handler": "onProductSummary"},
+    {"source": "frontend/js/sqm-inline.js", "function": "showProductLotLookupModal", "line": 2857, "title": "🔍 품목별 LOT 조회", "handler": "onProductLotLookup"},
+    {"source": "frontend/js/sqm-inline.js", "function": "showProductMovementModal", "line": 2896, "title": "📊 품목별 입출고 현황", "handler": "onProductMovement"},
+    {"source": "frontend/js/sqm-inline.js", "function": "_showPdfUploadModal (helper)", "line": 1949, "title": "(reused by PDF-inbound + Picking-List-PDF)", "upload_slot_count_each_invocation": 1},
+    {"source": "frontend/js/sqm-inline.js", "function": "_showExcelUploadModal (helper)", "line": 1437, "title": "(reused by 수동입고 + 반품 + Allocation + 톤백위치 + 바코드)", "upload_slot_count_each_invocation": 1},
+    {"source": "frontend/js/sqm-inline.js", "function": "showDataModal (helper)", "line": 1428, "title": "(generic modal container — #sqm-modal)"},
+    {"source": "frontend/js/sqm-inline.js", "function": "renderInfoModal (helper)", "line": 2929, "title": "(generic JSON/info response modal — used by all GET endpoints that have no dedicated dialog)"},
+    {"source": "frontend/js/sqm-inline.js", "function": "showSettingsDialog (helper)", "line": 2681, "title": "(generic settings helper — used by 4 stub modals above)"}
+  ],
+  "v864_2_handler_map": {
+    "_on_pdf_inbound": "onOnPdfInbound",
+    "_bulk_import_inventory_simple": "onInboundManual (or onBulkImportInventorySimple per handlers/menubar.js)",
+    "_on_do_update": "onDoUpdate",
+    "_on_tonbag_location_upload": "onInventoryMove",
+    "_on_move_approval_queue": "onMoveApprovalQueue",
+    "_show_return_dialog": "onReturnDialog",
+    "_on_return_inbound_upload": "onReturnInboundUpload",
+    "_show_return_statistics": "onReturnStatistics",
+    "_bulk_import_inventory": "onInboundList",
+    "_on_inbound_template_manage": "onInboundTemplateManage",
+    "_show_product_master": "onProductMaster",
+    "_show_email_config": "onEmailConfig",
+    "_on_integrity_report_v760": "onIntegrityReport",
+    "_on_fix_lot_status_integrity": "onFixLotIntegrity",
+    "_on_s1_onestop_outbound": "onOnQuickOutbound",
+    "_on_quick_outbound_paste": "onQuickOutboundPaste",
+    "_on_picking_list_upload": "onPickingListUpload",
+    "_on_barcode_scan_upload": "onBarcodeScanUpload",
+    "_on_go_scan_tab": "onGoScanTab",
+    "_on_allocation_input_unified": "onInventoryAllocation",
+    "_show_allocation_approval_queue": "onApprovalQueue",
+    "_apply_approved_allocation": "onApplyApproved",
+    "_show_allocation_approval_history": "onApprovalHistory",
+    "_on_go_allocation_tab": "onGoAllocationTab",
+    "_show_outbound_history": "onOutboundStatus (or onOutboundHistory)",
+    "_on_sales_order_upload": "(MISSING — no handler in v864-3)",
+    "_show_swap_report_dialog": "(MISSING — no handler in v864-3)",
+    "_on_picking_template_manage": "onPickingTemplateManage",
+    "_on_backup_click": "onOnBackup",
+    "_on_restore_click": "onRestore",
+    "_show_backup_list": "onBackupList",
+    "_on_bl_carrier_register": "(MISSING — no handler in v864-3)",
+    "_on_bl_carrier_analyze": "(MISSING — no handler in v864-3)",
+    "_s1_open_audit_viewer": "(MISSING — no dedicated audit viewer dialog, only onAuditLog renderInfoModal)",
+    "_on_export_click": "onExportCustoms / onExportRubyli / onExportTonbag / onExportIntegrated (4 variants)",
+    "_show_snapshot_chart": "(MISSING)",
+    "_generate_outbound_invoice": "onInvoiceGenerate",
+    "_on_detail_of_outbound_report": "onDetailOfOutbound",
+    "_on_sales_order_dn_report": "onSalesOrderDN",
+    "_on_dn_cross_check": "onDnCrossCheck",
+    "_generate_customer_report": "onReportCustom",
+    "_manage_report_templates": "onReportTemplates (stub — wrong endpoint)",
+    "_show_report_history": "onReportHistory (stub — wrong endpoint)",
+    "_generate_inventory_pdf_report": "onInventoryReport",
+    "_generate_transaction_pdf": "onMovementHistory",
+    "_generate_monthly_pdf_v398": "onReportMonthly",
+    "_generate_daily_pdf_v398": "onReportDaily",
+    "_generate_lot_detail_pdf": "onLotDetailPdf",
+    "_refresh_all_data": "refresh-all (toolbar/menubar both)",
+    "_on_save_window_size": "onSaveWindowSize",
+    "_on_reset_window_size": "onResetWindowSize",
+    "_show_product_inventory_report": "onProductInventoryReport",
+    "_show_help": "onHelp",
+    "_show_shortcuts": "onShortcuts",
+    "_show_status_guide": "onStatusGuide",
+    "_show_backup_guide": "onBackupGuide",
+    "_show_system_info": "onSystemInfo",
+    "_show_about": "onAbout",
+    "_open_ai_chat": "(MISSING — Gemini AI integration not ported)",
+    "_show_api_settings": "(MISSING — no Settings dialog)",
+    "_test_gemini_api_connection": "(MISSING)",
+    "_toggle_gemini": "(MISSING)",
+    "_convert_pdf_to_excel": "onDocConvert (merged, not dispatched per-format)",
+    "_convert_pdf_to_word": "onDocConvert (merged)",
+    "_batch_convert_pdf_excel": "(MISSING)",
+    "_analyze_pdf": "(MISSING)"
+  },
+  "missing_menu_actions": {
+    "top_3_no_handler": [
+      "onSalesOrderUpload (v864-2 F026 Sales Order 업로드 — backend/api/menubar.py has F026 endpoint but NO button in v864-3 index.html and NO entry in ENDPOINTS dispatch table)",
+      "onSwapReportDialog (v864-2 F027 Swap 리포트 — backend endpoint exists, no UI in v864-3)",
+      "onBlCarrierRegister / onBlCarrierAnalyze (v864-2 🚢 선사 BL 도구 — backend endpoints F032/F033 exist, no UI entries anywhere in v864-3 frontend)",
+      "onGemini* (v864-2 🤖 Gemini AI submenu — fully absent in v864-3)",
+      "Search button (🔍 검색) — v864-2 has global search; v864-3 completely lacks it"
+    ]
+  },
+  "missing_modals": {
+    "top_3_handler_no_ui": [
+      "onSettings / tb-settings → posts to /api/menu/-on-settings which returns NOT_READY; NO showSettingsModal exists → toolbar ⚙️ 설정 button is dead (only renders a toast)",
+      "onIntegrityReport / onFixLotIntegrity → both GET the same /api/action/integrity-check and fall through renderInfoModal (raw JSON); v864-2 has a dedicated 정합성 신호등 traffic-light visualization dialog — entirely missing in v864-3",
+      "onReportTemplates / onReportHistory → dispatched to /api/q/audit-log (wrong endpoint) with no dedicated dialog; the handler exists, but opening either item shows audit-log JSON instead of template/history UI",
+      "onDnCrossCheck → GET only, no DNCheckDialog equivalent (v864-2 has dn_cross_check_dialog.py)",
+      "onProductMaster → GET /api/info/system-info; no product-master CRUD dialog (v864-2 has product_master_dialog.py)",
+      "onInboundTemplateManage / onPickingTemplateManage → open showSettingsDialog stubs with 4 disconnected fields; no real template CRUD",
+      "onApprovalHistory / onReturnStatistics → read-only renderInfoModal; no charts/tables/filters (v864-2 has ReturnStatisticsDialog)",
+      "onLotDetailPdf → GET only, no detail preview dialog",
+      "onExit → calls pywebview.exit_app but never shows a confirm dialog"
+    ]
+  },
+  "notes": [
+    "v864-3 is a WebView (HTML/JS) re-implementation of v864-2 (Tkinter). The heavyweight OneStopInboundDialog (4302 lines, 4 file-upload slots + B/L/PL/Invoice/D/O parsing + preview table + undo/redo) has been reduced to a single generic _showPdfUploadModal helper (103 lines, 1 file slot).",
+    "frontend/js/sqm-inline.js is the ACTIVE bundle. The ES-module structure (main.js + handlers/ + pages/ + components/) is legacy and not loaded from index.html. Any discrepancies between handlers/menubar.js MENUBAR_MAP (62 auto-generated POST-to-/api/menu entries) and sqm-inline.js ENDPOINTS (hand-tuned JS/GET/POST routing) are resolved by sqm-inline.js at runtime.",
+    "Inventory tab has 22 columns (v864-2 has 24). Scan tab has 3 quick-action buttons (v864-2 has 5).",
+    "Dashboard has 4 KPI cards + 5 status cards + product matrix + integrity — closer to parity with v864-2 but smaller.",
+    "Backend /api/menu/* (62 endpoints) all raise NotReadyError — they are never actually invoked because sqm-inline.js routes to real endpoints under /api/inbound, /api/outbound, /api/allocation, /api/action*, /api/q*, /api/info.",
+    "The data-action attribute in index.html sometimes uses camelCase names that do NOT appear in the ENDPOINTS table; those fall through the catch-all '[unregistered] action=…' toast (see dispatchAction line 3155)."
+  ]
+}
