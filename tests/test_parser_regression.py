@@ -29,6 +29,18 @@ def _check(result, expected, label):
         elif field == 'containers':
             c = getattr(result, 'containers', [])
             act = [getattr(x, 'container_no', str(x)) for x in c]
+        elif field == 'free_time_dates_present':
+            infos = getattr(result, 'free_time_info', []) or []
+            act = bool(infos) and all(
+                bool(getattr(x, 'free_time_date', '') or (x.get('free_time_date', '') if isinstance(x, dict) else ''))
+                for x in infos
+            )
+        elif field == 'free_time_days_positive':
+            infos = getattr(result, 'free_time_info', []) or []
+            act = bool(infos) and all(
+                int(getattr(x, 'storage_free_days', 0) or (x.get('storage_free_days', 0) if isinstance(x, dict) else 0)) > 0
+                for x in infos
+            )
         elif field == 'lot_count':
             lots = getattr(result, 'lots', None) or getattr(result, 'lot_numbers', [])
             act = len(lots) if lots else 0
@@ -56,6 +68,7 @@ class TestONE:
             'gross_weight_kg': 102625.0, 'container_count': 5,
             'mrn': '26HDM UK026I', 'msn': '5019',
             'containers': ['FDCU0445465','NYKU4915247','TCLU6404353','TGBU4681720','TGCU5305383'],
+            'free_time_dates_present': True, 'free_time_days_positive': True,
         }, 'ONE_DO')
 
     def test_bl(self, parser):
@@ -103,6 +116,7 @@ class TestHAPAG:
             'arrival_date': '2026-04-11', 'gross_weight_kg': 102625.0,
             'container_count': 5, 'mrn': '26HLCU9401I', 'msn': '6006',
             'containers': ['HAMU2050957','HAMU2354538','HAMU2410117','HAMU2655932','HAMU2723596'],
+            'free_time_dates_present': True, 'free_time_days_positive': True,
         }, 'HAPAG_DO')
 
     def test_bl(self, parser):
@@ -150,6 +164,7 @@ class TestMAERSK:
             'arrival_date': '2026-04-10', 'gross_weight_kg': 102625.0,
             'container_count': 5,
             'containers': ['GAOU7530868','MRSU5835586','MRSU5916543','MRSU8417023','TCLU4946885'],
+            'free_time_dates_present': True, 'free_time_days_positive': True,
         }, 'MAERSK_DO')
 
     def test_bl(self, parser):
@@ -197,6 +212,7 @@ class TestMSC:
             'arrival_date': '2026-04-01', 'gross_weight_kg': 41050.0,
             'container_count': 2, 'mrn': '26MSCU3084I', 'msn': '0101',
             'containers': ['MSMU5531984','UETU6117887'],
+            'free_time_dates_present': True, 'free_time_days_positive': True,
         }, 'MSC_DO')
 
     def test_bl(self, parser):

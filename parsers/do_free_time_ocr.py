@@ -16,7 +16,7 @@ import os
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
-_RE_DATE = re.compile(r"(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4})")
+_RE_DATE = re.compile(r"(\d{8}|\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{4})")
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +30,11 @@ def _safe_run(fn, *args, **kwargs):
 
 def _has_ocr_deps() -> Tuple[bool, str]:
     try:
+        import fitz  # noqa: F401
+        import cv2  # noqa: F401
+        import numpy  # noqa: F401
+        import PIL  # noqa: F401
+        import pytesseract  # noqa: F401
         return True, ""
     except ImportError as e:
         return False, f"OCR 의존성 미설치: {e}"
@@ -42,9 +47,15 @@ def normalize_container(s: str) -> str:
     s = str(s).upper()
     s = re.sub(r"\s+", "", s)
     s = s.replace("-", "")
-    s = s.replace("O", "0")
     m = re.search(r"([A-Z]{4}\d{7})", s)
-    return m.group(1) if m else s
+    if m:
+        return m.group(1)
+    digit_fix = str.maketrans({"O": "0", "I": "1", "L": "1", "S": "5", "B": "8"})
+    for m in re.finditer(r"([A-Z]{4})([0-9OILSB]{7})", s):
+        candidate = m.group(1) + m.group(2).translate(digit_fix)
+        if re.fullmatch(r"[A-Z]{4}\d{7}", candidate):
+            return candidate
+    return s
 
 
 def best_fuzzy_match(target: str, candidates: List[str], min_ratio: float = 0.78) -> Optional[Tuple[str, float]]:
@@ -67,6 +78,13 @@ def best_fuzzy_match(target: str, candidates: List[str], min_ratio: float = 0.78
 
 def normalize_date_str(s: str) -> Optional[str]:
     """날짜 문자열을 YYYY-MM-DD로 정규화"""
+    try:
+        from utils.date_utils import normalize_date_str as _normalize_date_str
+        normalized = _normalize_date_str(s)
+        if normalized:
+            return normalized
+    except Exception as e:
+        logger.debug("[DO OCR] shared date normalize skipped: %s", e)
     s = str(s).strip()
     m = re.match(r"(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})", s)
     if m:
@@ -152,11 +170,11 @@ def _extract_containers_from_do(bin_page) -> List[str]:
         x0, y0, x1, y1 = anchor
         roi = bin_page[max(0, y0-40):min(h, y0+520), max(0, x0-40):min(w, x0+720)]
     text = _ocr_text(roi, psm=6)
-    glued = re.sub(r"\s+", "", text.upper()).replace("-", "").replace("O", "0")
-    found = re.findall(r"[A-Z]{4}\d{7}", glued)
+    glued = re.sub(r"\s+", "", text.upper()).replace("-", "")
+    found = [normalize_container(x) for x in re.findall(r"[A-Z]{4}[0-9OILSB]{7}", glued)]
     uniq = []
     for c in found:
-        if c not in uniq:
+        if c and re.fullmatch(r"[A-Z]{4}\d{7}", c) and c not in uniq:
             uniq.append(c)
     return uniq
 

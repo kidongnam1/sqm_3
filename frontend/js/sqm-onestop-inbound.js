@@ -165,13 +165,7 @@
       '<div class="onestop-modal">',
       '  <h2 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">📥 입고 — SQM v8.6.5 (OneStop)'
       +'<span id="onestop-step-badge" style="font-size:12px;font-weight:600;padding:2px 12px;border-radius:20px;background:var(--sidebar-active-bg,#3b82f6);color:var(--sidebar-active-fg,#fff);white-space:nowrap;">① 서류 선택</span></h2>',
-      /* 템플릿 줄 */
-      '  <div class="onestop-row">',
-      '    <label>적용 템플릿:</label>',
-      '    <select id="onestop-template" disabled><option value="">— 템플릿 없음 —</option></select>',
-      '    <span class="chip">Sprint 2 예정</span>',
-      '    <button class="btn" style="margin-left:auto" onclick="window.onestopSkipDo()">📋 D/O 나중에</button>',
-      '  </div>',
+      /* 템플릿 줄 — Sprint 2 예정 행 제거, D/O 나중에 버튼은 액션 바로 이동 */
       /* 선사 줄 */
       '  <div class="onestop-row">',
       '    <label>🚢 선사:</label>',
@@ -196,12 +190,7 @@
       '      <span style="font-size:11px;color:var(--text-muted)">일</span>',
       '    </span>',
       '  </div>',
-            /* 템플릿 상태 행 */
-      '  <div class="onestop-row" id="onestop-template-row" style="display:none">',
-      '    <label>📋 템플릿:</label>',
-      '    <span id="onestop-tpl-label" style="flex:1;padding:4px 10px;background:var(--bg-hover);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text-muted)">미선택</span>',
-      '    <button class="btn btn-sm" onclick="window.onestopOpenTemplatePicker()">📋 선택/수정</button>',
-      '  </div>',
+      /* 템플릿 상태 행 — _onestopActiveTemplate 미사용으로 숨김 */
       /* DB 파싱 템플릿 행 */
       '  <div class="onestop-row" id="onestop-db-tpl-row">',
       '    <label>🏋️ 파싱 템플릿:</label>',
@@ -213,6 +202,7 @@
       /* 액션 버튼 */
       '  <div class="onestop-actions">',
       '    <button class="btn" onclick="window.onestopMultiPick()">📁 멀티 선택</button>',
+      '    <button class="btn" onclick="window.onestopSkipDo()">📋 D/O 나중에</button>',
       '    <button class="btn btn-primary" id="onestop-parse-btn" onclick="window.onestopParseStart()" disabled>▶ 파싱 시작</button>',
       '    <button class="btn" id="onestop-reparse-btn" onclick="window.onestopParseRedo()" disabled>↻ 다시 파싱</button>',
       '    <label id="onestop-gemini-label" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted);cursor:pointer;margin-left:4px" title="좌표 파싱과 Gemini AI 파싱을 동시에 실행하여 결과를 비교합니다">'
@@ -859,12 +849,13 @@
         /* 18열 미리보기 테이블 채우기 + 편집 상태 초기화 */
         var rows = d.preview_rows || [];
         /* compare_mode: show side-by-side, let user pick */
+        var _showCompareAfterPreview = false;
         if (d.compare_mode && d.coord_rows && d.gemini_rows) {
           _onestopState.previewRows = d.coord_rows.slice();
           _onestopState.originalRows = JSON.parse(JSON.stringify(d.coord_rows));
           _onestopState.editedCells = {};
           _onestopState.parsed = d.coord_rows.length > 0;
-          _showGeminiComparePanel(d.coord_rows, d.gemini_rows);
+          _showCompareAfterPreview = true;
         } else {
           _onestopState.previewRows = rows.slice();  /* 편집 대상 */
           _onestopState.originalRows = JSON.parse(JSON.stringify(rows));  /* deep copy */
@@ -888,6 +879,9 @@
         var _cEl2 = document.getElementById('onestop-carrier');
         _openParseResultWindow(_cEl2 ? _cEl2.value : '', rows.length);
         _onestopRenderPreview(_onestopState.previewRows);
+        if (_showCompareAfterPreview) {
+          _showGeminiComparePanel(d.coord_rows, d.gemini_rows);
+        }
         _onestopUpdateHistoryButtons();
 
         _onestopSetStep(3);
@@ -1231,9 +1225,9 @@
 
     var p = document.createElement('div');
     p.id = 'sqm-gemini-compare';
-    p.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);width:min(98vw,1300px);max-height:80vh;'
+    p.style.cssText = 'position:fixed;top:32px;left:50%;transform:translateX(-50%);width:min(98vw,1400px);max-height:90vh;'
       + 'background:var(--bg-card);border:1px solid var(--panel-border);border-radius:10px;'
-      + 'box-shadow:0 8px 40px rgba(0,0,0,.55);z-index:10060;display:flex;flex-direction:column';
+      + 'box-shadow:0 8px 40px rgba(0,0,0,.55);z-index:10100;display:flex;flex-direction:column';
 
     /* header */
     p.innerHTML = '<div id="sgc-hdr" style="cursor:move;user-select:none;padding:9px 14px;border-bottom:1px solid var(--panel-border);'

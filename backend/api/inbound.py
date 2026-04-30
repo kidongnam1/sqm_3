@@ -709,14 +709,19 @@ async def onestop_inbound_upload(
             else:
                 _ftd = getattr(_ft, "free_time_date", "") or getattr(_ft, "free_time_until", "") or ""
             if _ftd and str(_ftd) not in ("", "None"):
-                con_return = str(_ftd)[:10]
-                break
+                try:
+                    from utils.date_utils import normalize_date_str as _norm_date_str
+                    con_return = _norm_date_str(_ftd) or str(_ftd)[:10]
+                    break
+                except Exception:
+                    con_return = str(_ftd)[:10]
+                    break
         if con_return and arrival and str(arrival) not in ("", "None"):
             try:
-                from datetime import datetime as _dt
-                _cr_dt = _dt.strptime(con_return, "%Y-%m-%d").date()
-                _ar_dt = _dt.strptime(str(arrival)[:10], "%Y-%m-%d").date()
-                free_time = str(max(0, (_cr_dt - _ar_dt).days))
+                from utils.date_utils import calculate_free_days as _calc_free_days
+                _days = _calc_free_days(arrival, con_return)
+                if _days is not None:
+                    free_time = str(_days)
             except Exception:
                 pass
         wh = (getattr(_do_obj, "warehouse_name", "") or getattr(_do_obj, "warehouse", "")) if _do_obj else ""
@@ -724,13 +729,17 @@ async def onestop_inbound_upload(
         if not arrival and manual_arrival:
             arrival = manual_arrival
         if not con_return and manual_con_return:
-            con_return = manual_con_return
+            try:
+                from utils.date_utils import normalize_date_str as _norm_date_str
+                con_return = _norm_date_str(manual_con_return) or manual_con_return
+            except Exception:
+                con_return = manual_con_return
             if not free_time and arrival:
                 try:
-                    from datetime import datetime as _dtm
-                    _cr = _dtm.strptime(manual_con_return, "%Y-%m-%d").date()
-                    _ar = _dtm.strptime(str(arrival)[:10], "%Y-%m-%d").date()
-                    free_time = str(max(0, (_cr - _ar).days))
+                    from utils.date_utils import calculate_free_days as _calc_free_days
+                    _days = _calc_free_days(arrival, con_return)
+                    if _days is not None:
+                        free_time = str(_days)
                 except Exception:
                     pass
 
@@ -1696,18 +1705,48 @@ async def inbound_do(file: UploadFile = File(...)):
         do = parsed
         logger.info(f"[do-upload] do_no={do.do_no} bl_no={do.bl_no} arrival={do.arrival_date}")
 
+        _arrival_date = str(getattr(do, "arrival_date", "") or "")
+        try:
+            from utils.date_utils import normalize_date_str as _norm_date_str
+            _arrival_date = _norm_date_str(_arrival_date) or _arrival_date
+        except Exception:
+            pass
+
         update_dict = {
-            "arrival_date": str(getattr(do, "arrival_date", "") or ""),
+            "arrival_date": _arrival_date,
             "do_no":        getattr(do, "do_no", "") or "",
             "bl_no":        getattr(do, "bl_no", "") or "",
         }
 
-        # free_time: free_time_info 리스트에서 첫 번째 값 추출
+        # free_time: free_time_info contains the DO container return date.
         free_time_info = getattr(do, "free_time_info", []) or []
-        if free_time_info and isinstance(free_time_info[0], dict):
-            ft = free_time_info[0].get("free_time") or free_time_info[0].get("days") or ""
-            if ft:
-                update_dict["free_time"] = str(ft)
+        _con_return = ""
+        for _ft in free_time_info:
+            if isinstance(_ft, dict):
+                _ftd = _ft.get("free_time_date") or _ft.get("free_time_until") or _ft.get("con_return") or ""
+                _days = _ft.get("storage_free_days") or _ft.get("free_time") or _ft.get("days") or ""
+            else:
+                _ftd = getattr(_ft, "free_time_date", "") or getattr(_ft, "free_time_until", "") or ""
+                _days = getattr(_ft, "storage_free_days", 0) or ""
+            if _ftd and str(_ftd) not in ("", "None"):
+                try:
+                    from utils.date_utils import normalize_date_str as _norm_date_str
+                    _con_return = _norm_date_str(_ftd) or str(_ftd)[:10]
+                except Exception:
+                    _con_return = str(_ftd)[:10]
+                if _days:
+                    update_dict["free_time"] = str(_days)
+                break
+        if _con_return:
+            update_dict["con_return"] = _con_return
+            if not update_dict.get("free_time"):
+                try:
+                    from utils.date_utils import calculate_free_days as _calc_free_days
+                    _days = _calc_free_days(_arrival_date, _con_return)
+                    if _days is not None:
+                        update_dict["free_time"] = str(_days)
+                except Exception:
+                    pass
 
         con = _open_db()
         result_total = {"updated": 0, "lots": []}

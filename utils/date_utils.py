@@ -76,6 +76,14 @@ def normalize_date(date_str: Any) -> Optional[date]:
         except ValueError as e:
             logger.debug(f"Suppressed: {e}")
 
+    # 1b) Compact ISO: YYYYMMDD
+    m = re.match(r'^(\d{4})(\d{2})(\d{2})$', s)
+    if m:
+        try:
+            return date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+        except ValueError as e:
+            logger.debug(f"Suppressed: {e}")
+
     # 2) YYYY/MM/DD
     m = re.match(r'^(\d{4})/(\d{1,2})/(\d{1,2})', s)
     if m:
@@ -337,6 +345,26 @@ def calculate_free_time_status(arrival_date: date, free_days: int = 14) -> Dict[
 # ═══════════════════════════════════════════════════════════════
 # 5. PDF 텍스트 추출 헬퍼
 # ═══════════════════════════════════════════════════════════════
+
+def normalize_date_str(date_str: Any) -> Optional[str]:
+    """Normalize a supported date value to YYYY-MM-DD."""
+    parsed = normalize_date(date_str)
+    return parsed.isoformat() if parsed else None
+
+
+def calculate_free_days(arrival_date: Any, return_date: Any) -> Optional[int]:
+    """
+    Calculate DO free time days from arrival date and container return date.
+
+    Returns None when either date cannot be parsed. Negative results are clamped
+    to 0 so invalid OCR ordering does not create negative free-time values.
+    """
+    arrival = normalize_date(arrival_date)
+    returned = normalize_date(return_date)
+    if not arrival or not returned:
+        return None
+    return max(0, (returned - arrival).days)
+
 
 def extract_pdf_text(pdf_path: str, max_pages: int = 5) -> str:
     """

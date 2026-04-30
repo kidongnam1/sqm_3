@@ -615,11 +615,28 @@
     document.querySelectorAll('.menu-btn.open').forEach(function(el){
       el.classList.remove('open');
     });
+    document.querySelectorAll('.submenu-parent.open').forEach(function(el){
+      el.classList.remove('open');
+    });
+    document.querySelectorAll('.submenu-dropdown').forEach(function(el){
+      el.style.display = '';
+    });
     document.querySelectorAll('.menu-dropdown.open,.menu-dropdown.active').forEach(function(el){
       el.classList.remove('open'); el.classList.remove('active');
     });
     document.querySelectorAll('.menu-item.active,.nav-item.open').forEach(function(el){
       el.classList.remove('active'); el.classList.remove('open');
+    });
+  }
+
+  function closeSiblingSubmenus(parent) {
+    var menu = parent && parent.closest ? parent.closest('.menu-dropdown') : null;
+    if (!menu) return;
+    menu.querySelectorAll('.submenu-parent.open').forEach(function(el){
+      if (el !== parent) el.classList.remove('open');
+    });
+    menu.querySelectorAll('.submenu-dropdown').forEach(function(el){
+      if (!parent.contains(el)) el.style.display = '';
     });
   }
 
@@ -3403,6 +3420,112 @@
     });
   }
   window.showTonbagLocationUploadModal = showTonbagLocationUploadModal;
+  /* ===================================================
+     대량 이동 승인 모달 (F004-B) — PENDING 배치 목록 조회 + 승인/반려
+     =================================================== */
+  function showBatchMoveApprovalModal() {
+    var REASONS = {
+      RELOCATE: '일반 재배치', RACK_REPAIR: '랙 수리',
+      INVENTORY_AUDIT: '재고 실사', PICKING_OPT: '피킹 최적화',
+      RETURN_PUTAWAY: '반품 적치', CORRECTION: '위치 보정', OTHER: '기타'
+    };
+
+    function renderBatches(rows) {
+      if (!rows || !rows.length) {
+        return '<p style="color:var(--text-muted);text-align:center;padding:24px">대기 중인 이동 요청이 없습니다.</p>';
+      }
+      var html = '<table class="data-table" style="width:100%;font-size:.85rem"><thead><tr>'
+        + '<th>배치 ID</th><th>건수</th><th>사유</th><th>요청자</th><th>요청시각</th><th>비고</th><th>처리</th>'
+        + '</tr></thead><tbody>';
+      rows.forEach(function(b) {
+        var reasonLabel = REASONS[b.reason_code] || b.reason_code || '-';
+        html += '<tr>'
+          + '<td style="font-family:monospace;font-size:.8rem">' + escapeHtml(b.batch_id || '-') + '</td>'
+          + '<td style="text-align:center">' + (b.total_count || 0) + '</td>'
+          + '<td>' + escapeHtml(reasonLabel) + '</td>'
+          + '<td>' + escapeHtml(b.submitted_by || '-') + '</td>'
+          + '<td style="font-size:.78rem">' + escapeHtml((b.submitted_at || '').replace('T',' ').substring(0,16)) + '</td>'
+          + '<td style="font-size:.78rem;max-width:120px;overflow:hidden;text-overflow:ellipsis">' + escapeHtml(b.note || '') + '</td>'
+          + '<td style="white-space:nowrap">'
+          + '<button class="btn btn-sm" style="background:var(--accent);color:#fff;margin-right:4px" '
+          + 'onclick="window._batchMoveAction(\'approve\',\'' + escapeHtml(b.batch_id) + '\')">'
+          + '✅ 승인</button>'
+          + '<button class="btn btn-sm" style="background:var(--danger,#c62828);color:#fff" '
+          + 'onclick="window._batchMoveAction(\'reject\',\'' + escapeHtml(b.batch_id) + '\')">'
+          + '❌ 반려</button>'
+          + '</td></tr>';
+      });
+      html += '</tbody></table>';
+      return html;
+    }
+
+    function openModal() {
+      var html = [
+        '<div style="width:860px;max-width:94vw">',
+        '  <h2 style="margin:0 0 12px 0">📦 대량 이동 승인</h2>',
+        '  <p style="color:var(--text-muted);font-size:.88rem;margin:0 0 14px 0">',
+        '    PENDING 상태의 대량 이동 요청을 확인하고 승인 또는 반려합니다.<br>',
+        '    승인 시 All-or-Nothing 방식으로 즉시 DB에 반영됩니다.',
+        '  </p>',
+        '  <div id="bma-body" style="min-height:80px;display:flex;align-items:center;justify-content:center">',
+        '    <span style="color:var(--text-muted)">불러오는 중…</span>',
+        '  </div>',
+        '  <div style="display:flex;justify-content:flex-end;margin-top:14px;gap:8px">',
+        '    <button class="btn btn-ghost" onclick="window._bmaRefresh()">🔄 새로고침</button>',
+        '    <button class="btn btn-ghost" id="bma-close-btn">닫기</button>',
+        '  </div>',
+        '</div>'
+      ].join('\n');
+
+      var modal = showDataModal(html);
+      document.getElementById('bma-close-btn').onclick = function() { modal.close(); };
+
+      window._bmaRefresh = function() {
+        var el = document.getElementById('bma-body');
+        if (!el) return;
+        el.innerHTML = '<span style="color:var(--text-muted)">불러오는 중…</span>';
+        fetch(API + '/api/tonbag/batch-move/pending')
+          .then(function(r) { return r.json(); })
+          .then(function(res) {
+            if (el) el.innerHTML = renderBatches(res.data || []);
+          })
+          .catch(function(e) {
+            if (el) el.innerHTML = '<p style="color:var(--danger,#c62828)">로드 실패: ' + escapeHtml(String(e)) + '</p>';
+          });
+      };
+
+      window._batchMoveAction = function(action, batchId) {
+        var label = action === 'approve' ? '승인' : '반려';
+        var reason = '';
+        if (action === 'reject') {
+          reason = prompt('반려 사유를 입력하세요 (선택):', '') || '';
+        }
+        if (action === 'approve' && !confirm('배치 ' + batchId + ' 를 승인하시겠습니까?\n승인 즉시 DB에 반영됩니다.')) return;
+        var url = API + '/api/tonbag/batch-move/' + action + '/' + encodeURIComponent(batchId);
+        fetch(url, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({approver: 'supervisor', reason: reason})
+        })
+          .then(function(r) { return r.json(); })
+          .then(function(res) {
+            if (res.ok === false || res.detail) {
+              alert(label + ' 실패: ' + (res.detail || res.message || JSON.stringify(res)));
+            } else {
+              alert(label + ' 완료\n' + (res.message || ''));
+              window._bmaRefresh();
+            }
+          })
+          .catch(function(e) { alert(label + ' 오류: ' + String(e)); });
+      };
+
+      window._bmaRefresh();
+    }
+
+    openModal();
+  }
+  window.showBatchMoveApprovalModal = showBatchMoveApprovalModal;
+
 
   /* ===================================================
      8e. D/O 후속 연결 (F003) — 단건 필드 업데이트 폼
@@ -5262,6 +5385,8 @@
     'onInventoryList':   {m:'JS',   u:'inventory',                               lbl:'재고 조회'},
     /* v864.3 Phase 4-B: 톤백 위치 매핑 네이티브 Excel 업로드 */
     'onInventoryMove':   {m:'JS', u:'tonbag-location-upload', lbl:'위치 이동'},
+    /* v865: 대량 이동 승인 워크플로 */
+    'onBatchMoveApproval': {m:'JS', u:'batch-move-approval', lbl:'대량 이동 승인'},
     /* v864.3 Phase 4-B: Allocation 입력(출고 예약) 네이티브 Excel 업로드 */
     'onInventoryAllocation': {m:'JS', u:'allocation-upload', lbl:'Allocation 입력'},
     'onIntegrityCheck':  {m:'GET',  u:'/api/action/integrity-check',             lbl:'정합성 검사'},
@@ -5422,6 +5547,10 @@
       }
       if (conf.u === 'tonbag-location-upload') {
         showTonbagLocationUploadModal();
+        return;
+      }
+      if (conf.u === 'batch-move-approval') {
+        showBatchMoveApprovalModal();
         return;
       }
       if (conf.u === 'apply-approved-allocation') {
@@ -5600,6 +5729,7 @@
         var action = el.dataset.action;
         if (action==='toggle-theme'||action==='theme-toggle') { toggleTheme(); return; }
         if (action==='refresh-all') { renderPage(_currentRoute||'dashboard'); return; }
+        closeAllMenus();
         dispatchAction(action);
       });
     });
@@ -5626,6 +5756,11 @@
           dbgLog('⚡','MENU → action', ev.target.dataset.action, '#ffeb3b');
           return;
         }
+        if (ev.target.closest('.submenu-parent')) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          return;
+        }
         ev.preventDefault();
         ev.stopPropagation();
         var open = el.classList.contains('open');
@@ -5639,6 +5774,29 @@
         } else {
           console.log('[SQM MENU CLOSE]', menuName);
           dbgLog('📁','MENU CLOSE', menuName, '#ff9800');
+        }
+      });
+    });
+
+    // click-lock nested submenu. Hover still works through CSS, but click keeps it open
+    // while the pointer moves across the submenu gap.
+    document.querySelectorAll('.submenu-parent > .submenu-parent-btn').forEach(function(btn){
+      if (btn.dataset._sqmSubmenuBound) return;
+      btn.dataset._sqmSubmenuBound = '1';
+      btn.addEventListener('click', function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        var parent = btn.closest('.submenu-parent');
+        var dropdown = parent ? parent.querySelector('.submenu-dropdown') : null;
+        if (!parent || !dropdown) return;
+        var open = parent.classList.contains('open');
+        closeSiblingSubmenus(parent);
+        if (open) {
+          parent.classList.remove('open');
+          dropdown.style.display = '';
+        } else {
+          parent.classList.add('open');
+          dropdown.style.display = 'block';
         }
       });
     });
@@ -5673,6 +5831,10 @@
 
     // F5 shortcut — F8: debug panel toggle (handled in _dbgBuild)
     document.addEventListener('keydown', function(ev){
+      if (ev.key === 'Escape') {
+        closeAllMenus();
+        return;
+      }
       if (ev.key==='F5'&&!ev.ctrlKey&&!ev.metaKey){
         ev.preventDefault();
         renderPage(_currentRoute||'dashboard');
@@ -5719,6 +5881,18 @@
     window.SQM.currentRoute = function(){ return _currentRoute; };
     console.info('[SQM v864.3] boot complete. initial route:', initial);
   }
+
+  /* sqm-onestop-inbound.js 의존성 전역 노출 */
+  window.escapeHtml = escapeHtml;
+  window.showDataModal = showDataModal;
+  window._makeDraggableResizable = _makeDraggableResizable;
+  window.loadInventoryPage = loadInventoryPage;
+  window.loadKpi = loadKpi;
+  window.API = API;
+  Object.defineProperty(window, '_currentRoute', {
+    get: function() { return window.SQM && window.SQM.currentRoute ? window.SQM.currentRoute() : ''; },
+    configurable: true
+  });
 
   if (document.readyState==='loading') {
     document.addEventListener('DOMContentLoaded', boot);

@@ -83,6 +83,7 @@
           <button data-action="onOnPdfInbound" title="선사 BL + Packing List + Invoice + D/O를 한 번에 PDF 업로드하여 입고 처리합니다">📄 PDF 스캔 입고</button>
         </div>
       </div>
+      <button data-action="onInboundTemplateManage" title="선사별 PDF 파싱 템플릿을 생성·수정·삭제합니다">📝 인바운드 템플릿 관리</button>
       <!-- D/O만 남김: Invoice FA, B/L 삭제 -->
       <div class="submenu-parent" tabindex="0">
         <button class="submenu-parent-btn" type="button">📋 D/O</button>
@@ -103,7 +104,7 @@
         <button class="submenu-parent-btn" type="button">📊 조회/관리</button>
         <div class="submenu-dropdown">
           <button data-action="onInboundList" title="전체 입고 이력을 조회합니다. 날짜·선사·LOT별 필터 가능">📋 입고 현황 조회</button>
-          <button data-action="onInboundTemplateManage" title="선사별 PDF 파싱 템플릿을 생성·수정·삭제합니다">📝 파싱 템플릿 관리</button>
+          <button data-action="onInboundTemplateManage" title="선사별 PDF 파싱 템플릿을 생성·수정·삭제합니다">📝 입고 파싱 템플릿 관리</button>
           <button data-action="onProductMaster" title="제품 마스터 정보(SAP번호, 규격, 단위 등)를 관리합니다">📦 제품 마스터 관리</button>
           <button data-action="onEmailConfig" title="입고 알림 이메일 수신자 및 발송 조건을 설정합니다">⚙️ 이메일 설정</button>
         </div>
@@ -334,7 +335,7 @@
   <div id="alerts-content" class="alerts-content">🔔 알림 로딩 중...</div>
 </div>
 
-  <script src="js/sqm-inline.js?v=20260429c"></script>
+  <script src="js/sqm-inline.js?v=20260430b"></script>
     <script src="js/sqm-onestop-inbound.js?v=20260429"></script>
 <script>
 (function(){

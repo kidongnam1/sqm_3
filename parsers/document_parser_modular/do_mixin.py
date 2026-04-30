@@ -18,6 +18,25 @@ from ..document_models import DOData, ContainerInfo, FreeTimeInfo
 
 logger = logging.getLogger(__name__)
 
+
+def _normalize_do_date_str(value) -> str:
+    try:
+        from utils.date_utils import normalize_date_str
+        return normalize_date_str(value) or ""
+    except Exception as exc:
+        logger.debug("[DO] date normalize skipped: %s", exc)
+        return ""
+
+
+def _calc_storage_free_days(arrival_date, return_date) -> int:
+    try:
+        from utils.date_utils import calculate_free_days
+        days = calculate_free_days(arrival_date, return_date)
+        return int(days) if days is not None else 0
+    except Exception as exc:
+        logger.debug("[DO] free days calculation skipped: %s", exc)
+        return 0
+
 # Gemini API
 try:
     from google import genai
@@ -223,7 +242,7 @@ class DOMixin:
                     container_no=ct_no,
                     free_time_date=_ft,
                     return_location=_return_yard,
-                    storage_free_days=0,
+                    storage_free_days=_calc_storage_free_days(result.arrival_date, _ft),
                 ))
 
         result.success = bool(result.do_no and result.bl_no)
@@ -422,7 +441,7 @@ class DOMixin:
                     container_no=ct_no,
                     free_time_date=free_time_val,
                     return_location="",
-                    storage_free_days=0,
+                    storage_free_days=_calc_storage_free_days(result.arrival_date, free_time_val),
                 ))
 
         result.success = bool(result.bl_no)
@@ -618,7 +637,7 @@ class DOMixin:
                     container_no=ct_no,
                     free_time_date=free_time_val,
                     return_location="",
-                    storage_free_days=0,
+                    storage_free_days=_calc_storage_free_days(result.arrival_date, free_time_val),
                 ))
 
         result.success = bool(result.bl_no)
@@ -774,7 +793,7 @@ class DOMixin:
                     container_no=ct_no,
                     free_time_date=free_time_val,
                     return_location="",
-                    storage_free_days=0,
+                    storage_free_days=_calc_storage_free_days(result.arrival_date, free_time_val),
                 ))
 
         result.success = bool(result.bl_no)
@@ -971,7 +990,7 @@ class DOMixin:
                     container_no=ct_no,
                     free_time_date=ft,
                     return_location=ry,
-                    storage_free_days=0,
+                    storage_free_days=_calc_storage_free_days(result.arrival_date, ft),
                 ))
 
         result.success = bool(result.do_no or result.bl_no)
@@ -1299,9 +1318,7 @@ class DOMixin:
                                 getattr(c, 'free_time_date', '') or
                                 getattr(c, 'free_time', '') or '')
             if free_time_date:
-                free_time_date = str(free_time_date).strip()[:10]
-                if not re.match(r'^\d{4}-\d{1,2}-\d{1,2}$', free_time_date):
-                    free_time_date = ''
+                free_time_date = _normalize_do_date_str(free_time_date)
             if free_time_date:
                 logger.info(f"[DO con_return 추출됨] container_no={container_no or '(없음)'}, con_return(반납일)={free_time_date}")
             else:
@@ -1313,6 +1330,8 @@ class DOMixin:
                 or (c.get('return_place') or c.get('return_location', '') if isinstance(c, dict) else '')
             )
             storage_free_days = getattr(c, 'storage_free_days', 0) or 0
+            if not storage_free_days and free_time_date:
+                storage_free_days = _calc_storage_free_days(result.arrival_date, free_time_date)
 
             if container_no or free_time_date or return_location:
                 result.free_time_info.append(FreeTimeInfo(
@@ -1367,6 +1386,8 @@ class DOMixin:
                         norm = normalize_container(cno)
                         if norm in free_time_map and not (getattr(ft, 'free_time_date', '') or '').strip():
                             ft.free_time_date = free_time_map[norm]
+                            if not (getattr(ft, 'storage_free_days', 0) or 0):
+                                ft.storage_free_days = _calc_storage_free_days(result.arrival_date, free_time_map[norm])
                             logger.info(f"[DO] OCR 폴백 반납일 적용: {cno} -> {free_time_map[norm]}")
                     # 컨테이너는 있는데 free_time_info에 없는 경우 추가
                     for c in result.containers:
@@ -1386,7 +1407,7 @@ class DOMixin:
                             container_no=cno,
                             free_time_date=free_time_map[norm],
                             return_location="",
-                            storage_free_days=0,
+                            storage_free_days=_calc_storage_free_days(result.arrival_date, free_time_map[norm]),
                         ))
                         logger.info(f"[DO] OCR 폴백 FreeTimeInfo 추가: {cno} -> {free_time_map[norm]}")
                 for err in ocr_result.get("errors") or []:

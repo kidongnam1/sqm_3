@@ -14,6 +14,7 @@ export const MENUBAR_MAP = {
   "onShowReturnStatistics": { id: "F008", method: "POST", endpoint: "/api/menu/-show-return-statistics", label: "📊  반품 사유 통계" },
   "onBulkImportInventory": { id: "F009", method: "POST", endpoint: "/api/menu/-bulk-import-inventory", label: "📋  입고 현황 조회" },
   "onOnInboundTemplateManage": { id: "F010", method: "POST", endpoint: "/api/menu/-on-inbound-template-manage", label: "📝  입고 파싱 템플릿 관리" },
+  "onInboundTemplateManage": { id: "F010", method: "POST", endpoint: "/api/menu/-on-inbound-template-manage", label: "📝  입고 파싱 템플릿 관리" },
   "onShowProductMaster": { id: "F011", method: "POST", endpoint: "/api/menu/-show-product-master", label: "📦  제품 마스터 관리" },
   "onShowEmailConfig": { id: "F012", method: "POST", endpoint: "/api/menu/-show-email-config", label: "⚙️  이메일 설정" },
   "onOnIntegrityReportV760": { id: "F013", method: "POST", endpoint: "/api/menu/-on-integrity-report-v760", label: "🔍  정합성 검증 (시각화)" },

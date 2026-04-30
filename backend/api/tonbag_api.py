@@ -180,3 +180,108 @@ async def location_upload(file: UploadFile = File(...)):
                 os.unlink(tmp_path)
             except Exception:
                 pass
+
+
+# ═══════════════════════════════════════════════════════════════
+# 대량 이동 승인 워크플로 (submit → pending → approve / reject)
+# ═══════════════════════════════════════════════════════════════
+from pydantic import BaseModel
+from typing import List as _List, Optional as _Optional
+
+
+class _BatchMoveItem(BaseModel):
+    lot_no: str
+    sub_lt: int
+    to_location: str
+    from_location: str = ""
+    weight: float = 0.0
+
+
+class BatchMoveSubmitReq(BaseModel):
+    items: _List[_BatchMoveItem]
+    reason_code: str = "RELOCATE"
+    operator: str = "web_ui"
+    note: str = ""
+
+
+class BatchMoveDecisionReq(BaseModel):
+    approver: str = "supervisor"
+    reason: str = ""
+
+
+@router.post("/batch-move/submit", summary="📦 대량 이동 요청 제출 — PENDING (F004-B)")
+def batch_move_submit(req: BatchMoveSubmitReq):
+    """
+    validated_items 리스트를 move_batch 테이블에 PENDING 상태로 저장.
+    즉시 반영하지 않으며, approve 호출 시에만 DB 반영.
+    """
+    try:
+        from backend.api import engine, ENGINE_AVAILABLE
+    except Exception as e:
+        raise HTTPException(500, f"엔진 로드 실패: {e}")
+    if not ENGINE_AVAILABLE or engine is None or not hasattr(engine, "submit_batch_move"):
+        raise HTTPException(500, "엔진 submit_batch_move 없음")
+
+    items_dict = [i.dict() for i in req.items]
+    result = engine.submit_batch_move(
+        validated_items=items_dict,
+        reason_code=req.reason_code,
+        operator=req.operator,
+        note=req.note,
+    )
+    if not result.get("success"):
+        raise HTTPException(400, result.get("error") or "제출 실패")
+    return {"ok": True, "data": result, "message": f"대량 이동 요청 제출 완료 — batch_id: {result.get('batch_id')}"}
+
+
+@router.get("/batch-move/pending", summary="⏳ PENDING 대량 이동 요청 목록 (F004-B)")
+def batch_move_pending():
+    """PENDING 상태 대량 이동 요청 목록 반환."""
+    try:
+        from backend.api import engine, ENGINE_AVAILABLE
+    except Exception as e:
+        raise HTTPException(500, f"엔진 로드 실패: {e}")
+    if not ENGINE_AVAILABLE or engine is None or not hasattr(engine, "get_pending_batch_moves"):
+        raise HTTPException(500, "엔진 get_pending_batch_moves 없음")
+
+    rows = engine.get_pending_batch_moves()
+    return {"ok": True, "data": rows or [], "count": len(rows or [])}
+
+
+@router.post("/batch-move/approve/{batch_id}", summary="✅ 대량 이동 승인 (F004-B)")
+def batch_move_approve(batch_id: str, req: BatchMoveDecisionReq):
+    """
+    PENDING 배치를 All-or-Nothing으로 반영.
+    사전 검증 실패 시 전체 롤백 후 REJECTED 처리.
+    """
+    try:
+        from backend.api import engine, ENGINE_AVAILABLE
+    except Exception as e:
+        raise HTTPException(500, f"엔진 로드 실패: {e}")
+    if not ENGINE_AVAILABLE or engine is None or not hasattr(engine, "approve_batch_move"):
+        raise HTTPException(500, "엔진 approve_batch_move 없음")
+
+    result = engine.approve_batch_move(batch_id=batch_id, approver=req.approver)
+    if not result.get("success"):
+        raise HTTPException(400, result.get("error") or "승인 실패")
+    return {
+        "ok": True,
+        "data": result,
+        "message": f"승인 완료 — 반영 {result.get('applied',0)}건 / 스킵 {result.get('skipped',0)}건",
+    }
+
+
+@router.post("/batch-move/reject/{batch_id}", summary="❌ 대량 이동 반려 (F004-B)")
+def batch_move_reject(batch_id: str, req: BatchMoveDecisionReq):
+    """PENDING 배치를 REJECTED 처리 (DB 미반영)."""
+    try:
+        from backend.api import engine, ENGINE_AVAILABLE
+    except Exception as e:
+        raise HTTPException(500, f"엔진 로드 실패: {e}")
+    if not ENGINE_AVAILABLE or engine is None or not hasattr(engine, "reject_batch_move"):
+        raise HTTPException(500, "엔진 reject_batch_move 없음")
+
+    result = engine.reject_batch_move(batch_id=batch_id, rejector=req.approver, reason=req.reason)
+    if not result.get("success"):
+        raise HTTPException(400, result.get("error") or "반려 실패")
+    return {"ok": True, "message": f"배치 {batch_id} 반려 완료"}

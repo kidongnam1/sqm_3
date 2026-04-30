@@ -310,28 +310,34 @@ class InboundUploadMixin:
                 except (TypeError, ValueError):
                     _tonbag = 10
 
-                _arrival = str(row.get('arrival_date', '') or '').strip()[:10]
-                _con_return = str(row.get('con_return', '') or '').strip()[:10]
+                try:
+                    from utils.date_utils import normalize_date_str as _norm_date_str
+                except Exception:
+                    _norm_date_str = None
+                _arrival_raw = str(row.get('arrival_date', '') or '').strip()
+                _con_raw = str(row.get('con_return', '') or '').strip()
+                _arrival = (_norm_date_str(_arrival_raw) if _norm_date_str else None) or _arrival_raw[:10]
+                _con_return = (_norm_date_str(_con_raw) if _norm_date_str else None) or _con_raw[:10]
                 _free_time = 0
                 _ft_raw = str(row.get('free_time', '') or '').strip()
                 if _ft_raw:
                     try:
                         _free_time = int(float(_ft_raw.replace(',', '')))
-                    except (ValueError, TypeError):
+                    except Exception:
                         _free_time = 0
                 if not _con_return and do:
                     ft_infos = getattr(do, 'free_time_info', []) or []
                     for ft in ft_infos:
                         ftd = getattr(ft, 'free_time_date', '') or (ft.get('free_time_date', '') if isinstance(ft, dict) else '')
                         if ftd:
-                            _con_return = str(ftd)[:10]
+                            _con_return = (_norm_date_str(ftd) if _norm_date_str else None) or str(ftd)[:10]
                             break
                 if _con_return and _arrival and not _ft_raw:
                     try:
-                        _ft_dt = datetime.strptime(_con_return[:10], '%Y-%m-%d').date()
-                        _arr_dt = datetime.strptime(_arrival[:10], '%Y-%m-%d').date()
-                        _free_time = max(0, (_ft_dt - _arr_dt).days)
-                    except (ValueError, TypeError):
+                        from utils.date_utils import calculate_free_days as _calc_free_days
+                        _days = _calc_free_days(_arrival, _con_return)
+                        _free_time = int(_days) if _days is not None else 0
+                    except Exception:
                         _free_time = 0
 
                 packing_dict = {
@@ -475,7 +481,11 @@ class InboundUploadMixin:
                     for ft in ft_infos:
                         ftd = getattr(ft, 'free_time_date', '') or (ft.get('free_time_date', '') if isinstance(ft, dict) else '')
                         if ftd:
-                            _con_return = str(ftd)[:10]
+                            try:
+                                from utils.date_utils import normalize_date_str as _norm_date_str
+                                _con_return = _norm_date_str(ftd) or str(ftd)[:10]
+                            except Exception:
+                                _con_return = str(ftd)[:10]
                             break
                     _do_arr = getattr(do, 'arrival_date', None)
                     _do_arrival = (_do_arr.isoformat() if hasattr(_do_arr, 'isoformat') else str(_do_arr or '')) if _do_arr and str(_do_arr) != 'None' else ''
@@ -496,6 +506,14 @@ class InboundUploadMixin:
                                 break
                     except (TypeError, ValueError, AttributeError) as _fte:
                         logger.debug(f"free_time 추출 실패(무시): {_fte}")
+                    if not _ft_days and _do_arrival and _con_return:
+                        try:
+                            from utils.date_utils import calculate_free_days as _calc_free_days
+                            _days = _calc_free_days(_do_arrival, _con_return)
+                            if _days is not None:
+                                _ft_days = str(int(_days))
+                        except Exception as _fte:
+                            logger.debug(f"free_time 계산 실패(무시): {_fte}")
                     do_dict = {
                         'bl_no': str(getattr(do, 'bl_no', '') or ''),
                         'arrival_date': _do_arrival,
