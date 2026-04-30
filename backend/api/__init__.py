@@ -57,6 +57,54 @@ def _run_db_migrations():
             is_active       INTEGER DEFAULT 1
         )""")
         con.commit()
+
+        # ── carrier_rules 테이블 (v8.6.6) ──────────────────────────────
+        con.execute("""CREATE TABLE IF NOT EXISTS carrier_rules (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            carrier_id  TEXT NOT NULL,
+            doc_type    TEXT NOT NULL DEFAULT 'BL',
+            rule_name   TEXT NOT NULL,
+            pattern     TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            sample_value TEXT DEFAULT '',
+            is_active   INTEGER DEFAULT 1,
+            created_at  TEXT DEFAULT (datetime('now')),
+            updated_at  TEXT DEFAULT (datetime('now'))
+        )""")
+        con.commit()
+
+        # ── ONE BL 패턴 수정: ONEU → ONEY (v8.6.6 bugfix) ───────────
+        # 실제 ONE Sea Waybill 번호는 ONEY 접두사 (예: ONEYSCLG01825300)
+        con.execute("""
+            UPDATE carrier_rules
+            SET pattern      = 'ONEY[A-Z0-9]{8,15}',
+                description  = 'ONE Sea Waybill ONEY 형식 (ONEYSCLG01825300)',
+                sample_value = 'ONEYSCLG01825300',
+                updated_at   = datetime('now')
+            WHERE carrier_id = 'ONE'
+              AND doc_type   = 'BL'
+              AND rule_name  = 'BL_NO_MAIN'
+              AND pattern    = 'ONEU[A-Z0-9]{6,10}'
+        """)
+        # carrier_rules 기본 데이터 없으면 INSERT (최초 실행)
+        existing_rules = con.execute(
+            "SELECT COUNT(*) FROM carrier_rules WHERE carrier_id='ONE' AND doc_type='BL'"
+        ).fetchone()[0]
+        if existing_rules == 0:
+            con.executemany("""
+                INSERT OR IGNORE INTO carrier_rules
+                    (carrier_id, doc_type, rule_name, pattern, description, sample_value)
+                VALUES (?,?,?,?,?,?)
+            """, [
+                ('MAERSK', 'BL', 'BL_NO_MAIN',   r'MAEU\d{9}',           'Maersk BL (MAEU+숫자9자리)',         'MAEU263764814'),
+                ('MSC',    'BL', 'BL_NO_MSCU',   r'MSCU[A-Z0-9]{6,10}',  'MSC BL MSCU 형식',                  'MSCU1234567'),
+                ('MSC',    'BL', 'BL_NO_MEDU',   r'MEDU[A-Z0-9]{6,10}',  'MSC Sea Waybill MEDU 형식',         'MEDUFP963988'),
+                ('ONE',    'BL', 'BL_NO_MAIN',   r'ONEY[A-Z0-9]{8,15}',  'ONE Sea Waybill ONEY 형식',         'ONEYSCLG01825300'),
+                ('HAPAG',  'BL', 'BL_NO_MAIN',   r'HLCU[A-Z0-9]{6,15}',  'Hapag-Lloyd BL HLCU 형식',          'HLCUSCL260148627'),
+            ])
+        con.commit()
+        logging.info("[Migration] carrier_rules ONE BL 패턴 검증/수정 완료")
+
         con.close()
     except Exception as e:
         logging.warning(f"[Migration] DB 마이그레이션 실패: {e}")

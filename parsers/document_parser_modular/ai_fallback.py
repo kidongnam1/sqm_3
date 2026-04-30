@@ -41,7 +41,9 @@ _CARRIER_HINTS = {
         ),
         "DO": (
             "MAERSK D/O. Extract D/O No, B/L No, vessel, voyage, arrival date, "
-            "container list, Free Time date, and return yard per container."
+            "container list, Free Time date, and return yard per container. "
+            "Also extract MRN (수입신고번호, Korean customs reference, e.g. '25MAEU K2161') "
+            "and MSN (적하목록번호, manifest serial, numeric 3-5 digits) if present."
         ),
     },
     "MSC": {
@@ -51,7 +53,9 @@ _CARRIER_HINTS = {
         ),
         "DO": (
             "MSC D/O. BL No starts with MEDU/MSCU. Arrival date can be in the "
-            "For Local Use section. Extract return deadline/free time per container."
+            "For Local Use section. Extract return deadline/free time per container. "
+            "Also extract MRN (e.g. '25MSCU K1234' or '26MSCU K5678') "
+            "and MSN (numeric 3-5 digits) from the MRN-MSN row if present."
         ),
     },
     "HAPAG": {
@@ -61,7 +65,9 @@ _CARRIER_HINTS = {
         ),
         "DO": (
             "HAPAG-Lloyd D/O. Extract HLCU BL No, D/O No, vessel/voyage, "
-            "arrival date, containers, free time date, and return yard."
+            "arrival date, containers, free time date, and return yard. "
+            "Also extract MRN (Korean customs ref, e.g. '26HLCU K9401I') "
+            "and MSN (numeric 3-5 digits) from the MRN row near the top."
         ),
     },
     "ONE": {
@@ -71,7 +77,9 @@ _CARRIER_HINTS = {
         ),
         "DO": (
             "ONE e-D/O. BL No usually starts with ONEY. Extract split-letter "
-            "tokens carefully, plus demurrage/free-time dates per container."
+            "tokens carefully, plus demurrage/free-time dates per container. "
+            "Also extract MRN (e.g. '26HDM UK026I', split tokens must be joined) "
+            "and MSN (numeric 3-5 digits after '-' separator) from MRN-MSN row."
         ),
     },
 }
@@ -102,6 +110,13 @@ def build_ai_hint(doc_type: str, carrier_id: str = "", partial: Any = None) -> s
         "Do not invent missing values; leave unknown values blank.",
         "Normalize dates to YYYY-MM-DD and weights to kg.",
     ]
+    if doc_type == "DO":
+        parts.append(
+            "For D/O: always attempt to extract mrn (Korean customs MRN, 수입신고번호) "
+            "and msn (manifest serial number, 적하목록번호). "
+            "MRN format: 2-digit year + carrier code + sequence (e.g. 26HDM UK026I). "
+            "MSN: 3-5 digit number after '-' separator on same line as MRN."
+        )
     if carrier:
         parts.append(f"Selected carrier: {carrier}.")
         parts.append(_CARRIER_HINTS.get(carrier, {}).get(doc_type, ""))
@@ -119,6 +134,7 @@ def _partial_summary(obj: Any) -> str:
         return ""
     fields = (
         "sap_no", "invoice_no", "folio", "bl_no", "do_no", "vessel", "voyage",
+        "mrn", "msn",
         "voyage_no", "port_of_loading", "port_of_discharge", "quantity_mt",
         "net_weight_kg", "gross_weight_kg", "total_net_weight_kg",
         "total_gross_weight_kg", "total_lots", "total_containers",

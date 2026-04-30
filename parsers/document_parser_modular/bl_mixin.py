@@ -48,7 +48,7 @@ class BLMixin:
         'EVERGREEN':[('EVER', 7)],                 # EVER1234567
         'CMA CGM':  [('CMA', 7)],                  # CMA1234567
         'HMM':      [('HMMU', 7)],                 # HMMU1234567
-        'ONE':      [('ONEU', 7)],                 # ONEU1234567
+        'ONE':      [('ONEY', 12)],                # ONEYSCLG01825300 형식 (ONEY+8~12자리)
         'HAPAG':    [('HLCU', 7)],                 # HLCU1234567
         'YANG MING':[('YMLU', 7)],                 # YMLU1234567
         'PIL':      [('PILU', 7)],
@@ -58,7 +58,7 @@ class BLMixin:
     BL_TOKEN_RE = re.compile(r"^[A-Z0-9]{6,25}$")
     CARRIER_RE = re.compile(
         r"(?:MEDU[A-Z0-9]{6,10}|MSCU[A-Z0-9]{6,10}|COSU[A-Z0-9]{6,10}|EVER[A-Z0-9]{6,10}|"
-        r"YMLU[A-Z0-9]{6,10}|HMMU[A-Z0-9]{6,10}|ONEU[A-Z0-9]{6,10}|HLCU[A-Z0-9]{6,15}|"
+        r"YMLU[A-Z0-9]{6,10}|HMMU[A-Z0-9]{6,10}|ONEY[A-Z0-9]{8,15}|ONEU[A-Z0-9]{6,10}|HLCU[A-Z0-9]{6,15}|"
         r"CMA[A-Z0-9]{6,10}|PILU[A-Z0-9]{6,10}|SITC[A-Z0-9]{6,10}|"
         r"MAEU\d{9}|"           # v8.4.4: MAERSK BL No — MAEU + 숫자9자리
         r"\d{9,15})"            # 순수 숫자 폴백 (기타 선사 대비 유지)
@@ -79,6 +79,26 @@ class BLMixin:
     ]
     SHIPPED_PATTERN = re.compile(r"\bSHIPPED\b.*\bBOARD\b(?:.*\bDATE\b)?", re.IGNORECASE)
     URL_PATTERN = re.compile(r"https?://\S+|www\.\S+", re.IGNORECASE)
+
+    @staticmethod
+    def _normalize_carrier_id(value: str = "") -> str:
+        raw = str(value or "").upper().strip().replace("_", " ")
+        aliases = {
+            "MAEU": "MAERSK",
+            "MERSK": "MAERSK",
+            "MAERSK LINE": "MAERSK",
+            "MEDU": "MSC",
+            "MSCU": "MSC",
+            "MSC LINE": "MSC",
+            "HLCU": "HAPAG",
+            "HAPAG LLOYD": "HAPAG",
+            "HAPAG-LLOYD": "HAPAG",
+            "ONEY": "ONE",
+            "ONEU": "ONE",
+            "ONE LINE": "ONE",
+            "ONE-LINE": "ONE",
+        }
+        return aliases.get(raw, raw)
     # 좌표는 페이지 절대픽셀이 아닌 퍼센트(%) 기준.
     CARRIER_COORD_TABLE = {
         "MAERSK": {
@@ -116,8 +136,8 @@ class BLMixin:
             "port_of_loading": (30.0, 58.0, 29.0, 31.0),
             # Gwangyang,Korea: x=36%, y=32.8% → x=30~58%, y=32.0~34.0%
             "port_of_discharge": (30.0, 58.0, 32.0, 34.0),
-            # 선적일: 하단 박스 넓게 유지
-            "ship_date": (12.0, 58.0, 80.0, 95.0),
+            # 선적일: 실측 05-Feb-2026 at x=32.9%, y=95.1% → y2 95→96 상향 (v8.6.6)
+            "ship_date": (12.0, 58.0, 80.0, 96.0),
         },
         "HAPAG": {
             # HAPAG-Lloyd Sea Waybill PDF 실측 (HLCUSCL260148627)
@@ -206,7 +226,7 @@ class BLMixin:
         if not words and not full_text:
             raise RuntimeError("[BL] PDF 텍스트 추출 실패")
 
-        explicit_carrier = str(kwargs.get("carrier_id", "") or "").upper().strip()
+        explicit_carrier = self._normalize_carrier_id(kwargs.get("carrier_id", ""))
         _bl_format = str(kwargs.get("bl_format", "") or "").strip()
         carrier_id = self._detect_carrier_from_words(words, full_text=full_text, explicit=explicit_carrier)
         # region agent log
@@ -377,74 +397,28 @@ class BLMixin:
 
     def _detect_carrier_from_words(self, words: List[Dict], full_text: str = "", explicit: str = "") -> str:
         if explicit:
-            if explicit in ("MAEU", "MERSK"):
-                chosen = "MAERSK"
-            else:
-                chosen = explicit
+            chosen = self._normalize_carrier_id(explicit)
             logger.info(f"[BL] carrier: explicit={explicit!r} -> {chosen}")
             return chosen
-        page0_words = [w for w in words if int(w.get("page", 0)) == 0]
-        page0_text = " ".join(str(w.get("text", "")) for w in page0_words).upper()
-        if not page0_text:
-            page0_text = (full_text or "").upper()
-        score = {"MAERSK": 0, "MSC": 0, "ONE": 0, "HAPAG": 0}
-        # MAERSK
-        if any(k in page0_text for k in ("MAERSK", "SCAC")):
-            score["MAERSK"] += 2
-        if "NON-NEGOTIABLE WAYBILL" in page0_text:
-            score["MAERSK"] += 3
-        if re.search(r"\bMAEU\b", page0_text):
-            score["MAERSK"] += 2
-        # MSC
-        if "MEDITERRANEAN" in page0_text:
-            score["MSC"] += 2
-        if "MSC.COM" in page0_text or "WWW.MSC.COM" in page0_text:
-            score["MSC"] += 4
-        if re.search(r"\bMSC\b", page0_text):
-            score["MSC"] += 2
-        if re.search(r"\b(?:MSCU|MEDU)\b", page0_text):
-            score["MSC"] += 2
-        if re.search(r"\b(?:MEDU|MSCU)[A-Z0-9]{4,}\b", page0_text):
-            score["MSC"] += 3
-        # ONE (Ocean Network Express)
-        if "ONE-LINE.COM" in page0_text or "WWW.ONE-LINE.COM" in page0_text:
-            score["ONE"] += 4
-        if "OCEAN NETWORK EXPRESS" in page0_text:
-            score["ONE"] += 4
-        if re.search(r"\bONEY[A-Z]{3,4}\d{6,9}\b", page0_text):
-            score["ONE"] += 3
-        if re.search(r"\bONEU[A-Z0-9]{6,10}\b", page0_text):
-            score["ONE"] += 2
-        if "SEA WAYBILL" in page0_text and score["ONE"] > 0:
-            score["ONE"] += 1
-        elif "SEA WAYBILL" in page0_text:
-            score["MSC"] += 2
-        # HAPAG-Lloyd
-        if "HAPAG-LLOYD" in page0_text or "HAPAG LLOYD" in page0_text:
-            score["HAPAG"] += 5
-        if "HLAG.COM" in page0_text or "WWW.HLAG.COM" in page0_text:
-            score["HAPAG"] += 4
-        if re.search(r"\bHLCU[A-Z0-9]{6,}\b", page0_text):
-            score["HAPAG"] += 4
-        if re.search(r"\bHAPAG\b", page0_text):
-            score["HAPAG"] += 2
-        best = max(score, key=lambda k: score[k])
-        if score[best] == 0:
-            chosen = ""
-        elif list(score.values()).count(score[best]) > 1:
-            # 동점 처리
-            if score["HAPAG"] == score[best]:
-                chosen = "HAPAG"
-            elif score["ONE"] == score[best]:
-                chosen = "ONE"
-            elif "NON-NEGOTIABLE WAYBILL" in page0_text or re.search(r"\bMAEU\b", page0_text):
-                chosen = "MAERSK"
-            else:
-                chosen = "MSC"
-        else:
-            chosen = best
-        logger.info(f"[BL] carrier score: {score} -> {chosen or '(none)'}")
-        return chosen
+        # v9.2: explicit 없을 때 full_text 키워드/BL 번호 접두사로 선사 자동 감지
+        _ft = full_text.upper()
+        if "ONE-LINE.COM" in _ft or "OCEAN NETWORK EXPRESS" in _ft:
+            logger.info("[BL] carrier: auto-detected ONE (one-line.com)")
+            return "ONE"
+        if re.search(r"\bONEY[A-Z0-9]{6,15}\b", _ft):
+            logger.info("[BL] carrier: auto-detected ONE (ONEY BL prefix)")
+            return "ONE"
+        if "MAERSK" in _ft or re.search(r"\bMAEU\d{9}\b", _ft):
+            logger.info("[BL] carrier: auto-detected MAERSK")
+            return "MAERSK"
+        if "MSC.COM" in _ft or re.search(r"\b(?:MEDU|MSCU)[A-Z0-9]{6,10}\b", _ft):
+            logger.info("[BL] carrier: auto-detected MSC")
+            return "MSC"
+        if "HAPAG" in _ft or re.search(r"\bHLCU[A-Z0-9]{6,15}\b", _ft):
+            logger.info("[BL] carrier: auto-detected HAPAG")
+            return "HAPAG"
+        logger.info("[BL] carrier: auto-detect failed -> Gemini fallback 대상")
+        return ""
 
     def _clean_bl_no(self, value: str) -> str:
         token = self._norm(value)

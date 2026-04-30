@@ -627,30 +627,51 @@ async def onestop_inbound_upload(
             pl_kwargs["gemini_hint"] = gemini_hint
         _warn_messages: list = []
         tpl_product = ""
+        tpl_carrier_id = ""
         if template_id:
             try:
                 from config import DB_PATH as _DP
                 import sqlite3 as _sq
                 _con = _sq.connect(str(_DP))
                 _r = _con.execute(
-                    "SELECT product_hint FROM inbound_template WHERE template_name=?",
+                    "SELECT product_hint, carrier_id FROM inbound_template WHERE template_id=?",
                     (template_id,)
                 ).fetchone()
                 _con.close()
-                if _r and _r[0]:
-                    tpl_product = _r[0].strip()
+                if _r:
+                    tpl_product = (_r[0] or "").strip()
+                    tpl_carrier_id = (_r[1] or "").strip()
             except Exception as _e:
                 logger.warning(f"[onestop] 템플릿 조회 실패 (무시, fallback=빈 hint): {_e}")
                 tpl_product = ""
                 _warn_messages.append("템플릿 조회 실패")
-            logger.info(f"[onestop] DB 템플릿 #{template_id} 적용 — bag_weight={bag_weight_kg}kg, hint='{gemini_hint[:40]}', product='{tpl_product}'")
+            logger.info(f"[onestop] DB 템플릿 #{template_id} 적용 — bag_weight={bag_weight_kg}kg, hint='{gemini_hint[:40]}', product='{tpl_product}', carrier='{tpl_carrier_id}'")
 
         parsed = {
             "packing_list": _parse_one(parser, tmp_paths["pl"], "parse_packing_list", **pl_kwargs),
-            "bl":           _parse_one(parser, tmp_paths["bl"], "parse_bl"),
+            "bl":           _parse_one(parser, tmp_paths["bl"], "parse_bl", **({} if not tpl_carrier_id else {"carrier_id": tpl_carrier_id})),
             "invoice":      _parse_one(parser, tmp_paths["invoice"], "parse_invoice"),
-            "do":           _parse_one(parser, tmp_paths["do"], "parse_do"),
+            "do":           _parse_one(parser, tmp_paths["do"], "parse_do", **({} if not tpl_carrier_id else {"carrier_id": tpl_carrier_id})),
         }
+        # ── parse_alarm 체크 (v8.6.6) ──────────────────────────────
+        _alarm_reports: dict = {}
+        try:
+            from utils.parse_alarm import check_bl, check_do, check_invoice, check_packing
+            _alarm_reports = {
+                "bl":      check_bl(parsed["bl"],            tpl_carrier_id),
+                "do":      check_do(parsed["do"],            tpl_carrier_id),
+                "invoice": check_invoice(parsed["invoice"],  tpl_carrier_id),
+                "pl":      check_packing(parsed["packing_list"], tpl_carrier_id),
+            }
+            for _doc_key, _ar in _alarm_reports.items():
+                _ar.log()  # logger.warning 으로 CRITICAL/WARNING 출력
+                for _a in _ar.criticals:
+                    _warn_messages.append(f"[{_doc_key.upper()} CRITICAL] {_a.field}: {_a.message}")
+                for _a in _ar.warnings:
+                    _warn_messages.append(f"[{_doc_key.upper()} WARNING] {_a.field}: {_a.message}")
+        except Exception as _ae:
+            logger.warning(f"[onestop] parse_alarm 실행 실패 (건너뜀): {_ae}")
+            _alarm_reports = {}
 
         if parsed["packing_list"] is None:
             raise HTTPException(422, "Packing List 파싱 실패 (최소 1종은 파싱되어야 합니다)")
@@ -743,6 +764,10 @@ async def onestop_inbound_upload(
                 except Exception:
                     pass
 
+        # PL 헤더 레벨 공통값 (행별 아님 — 1페이지 고정 좌표 추출)
+        pl_header_product = str(getattr(pl_obj, "product", "") or "")
+        pl_header_code    = str(getattr(pl_obj, "code", "") or "")
+
         for idx, row in enumerate(pl_rows, start=1):
             lot = str(_safe_attr(row, "lot_no", "lot")).strip()
             xc_tag = xc.get_row_tag(lot) if xc and lot else None
@@ -751,10 +776,10 @@ async def onestop_inbound_upload(
                 "lot_no":      lot,
                 "sap_no":      str(_safe_attr(row, "sap_no") or inv_sap),
                 "bl_no":       str(bl_no),
-                "product":     str(_safe_attr(row, "product", "product_name") or tpl_product),
+                "product":     str(_safe_attr(row, "product", "product_name") or pl_header_product or tpl_product),
                 "status":      "NEW",
                 "container":   str(_safe_attr(row, "container_no", "container")),
-                "code":        str(_safe_attr(row, "product_code", "code")),
+                "code":        str(_safe_attr(row, "product_code", "code") or pl_header_code),
                 "lot_sqm":     str(_safe_attr(row, "lot_sqm")),
                 "mxbg":        str(_safe_attr(row, "mxbg_pallet", "maxibag")),
                 "net_kg":      str(_safe_attr(row, "net_weight", "net_kg")),
@@ -771,10 +796,15 @@ async def onestop_inbound_upload(
         # 4-B. Gemini 병행 파싱 (compare_mode)
         compare_mode = False
         gemini_preview_rows: list = []
+        gemini_compare_status = "not_requested"
+        gemini_compare_message = ""
         if use_gemini:
+            gemini_compare_status = "requested"
             try:
                 g_pl = _gemini_parse_pdf(tmp_paths["pl"], pl.filename if pl else "")
                 if g_pl is not None:
+                    _g_header_product = str(getattr(g_pl, "product", "") or "")
+                    _g_header_code    = str(getattr(g_pl, "code", "") or "")
                     g_rows = getattr(g_pl, "rows", None) or getattr(g_pl, "lots", None) or []
                     for _gi, _gr in enumerate(g_rows, start=1):
                         gemini_preview_rows.append({
@@ -782,10 +812,10 @@ async def onestop_inbound_upload(
                             "lot_no":     str(_safe_attr(_gr, "lot_no", "lot")).strip(),
                             "sap_no":     str(_safe_attr(_gr, "sap_no") or inv_sap),
                             "bl_no":      str(bl_no),
-                            "product":    str(_safe_attr(_gr, "product", "product_name") or tpl_product),
+                            "product":    str(_safe_attr(_gr, "product", "product_name") or _g_header_product or tpl_product),
                             "status":     "NEW",
                             "container":  str(_safe_attr(_gr, "container_no", "container")),
-                            "code":       str(_safe_attr(_gr, "product_code", "code")),
+                            "code":       str(_safe_attr(_gr, "product_code", "code") or _g_header_code),
                             "lot_sqm":    str(_safe_attr(_gr, "lot_sqm")),
                             "mxbg":       str(_safe_attr(_gr, "mxbg_pallet", "maxibag")),
                             "net_kg":     str(_safe_attr(_gr, "net_weight", "net_kg")),
@@ -799,11 +829,18 @@ async def onestop_inbound_upload(
                             "xc_tag":     None,
                         })
                     compare_mode = len(gemini_preview_rows) > 0
+                    gemini_compare_status = "ok" if compare_mode else "empty"
+                    if not compare_mode:
+                        gemini_compare_message = "Gemini 파싱 결과가 0건입니다."
                     logger.info(f"[compare] Gemini PL: {len(gemini_preview_rows)} rows")
                 else:
+                    gemini_compare_status = "failed"
+                    gemini_compare_message = "Gemini 파싱 실패 (결과 없음)"
                     _warn_messages.append("Gemini 파싱 실패 (결과 없음) — 좌표 결과만 표시")
             except Exception as _ge:
                 logger.warning(f"[compare] Gemini PL error: {_ge}")
+                gemini_compare_status = "error"
+                gemini_compare_message = f"Gemini 파싱 오류 ({_ge.__class__.__name__})"
                 _warn_messages.append(f"Gemini 파싱 오류 ({_ge.__class__.__name__}) — 좌표 결과만 표시")
 
         # 5. PL 데이터 DB 저장 — dry_run=True 면 스킵 (Sprint 1-2-C 기본값)
@@ -844,12 +881,88 @@ async def onestop_inbound_upload(
                     "invoice_loaded": parsed["invoice"] is not None,
                     "do_loaded":      parsed["do"] is not None,
                 },
+                # ── 파싱 알람 결과 (v8.6.6) ──
+                "parse_alarms": {
+                    k: v.to_dict() for k, v in _alarm_reports.items()
+                } if _alarm_reports else {},
+                "parse_alarms_summary": {
+                    k: {
+                        "has_critical": v.has_critical,
+                        "has_warning":  v.has_warning,
+                        "critical_count": len(v.criticals),
+                        "warning_count":  len(v.warnings),
+                    } for k, v in _alarm_reports.items()
+                } if _alarm_reports else {},
                 "saved_result": (saved_result.get("data") if isinstance(saved_result, dict) else None),
                 "compare_mode": compare_mode,
-                "coord_rows":   preview_rows if compare_mode else [],
+                "compare_requested": bool(use_gemini),
+                "compare_status": gemini_compare_status,
+                "compare_message": gemini_compare_message,
+                "coord_rows":   preview_rows if use_gemini else [],
                 "gemini_rows":  gemini_preview_rows,
                 "bl_no":      str(bl_no),
                 "invoice_no": str(inv_no),
+                # ── BL 상세 (v8.6.6) ──
+                "bl_detail": {
+                    "vessel":            str(getattr(parsed["bl"], "vessel", "") or ""),
+                    "voyage":            str(getattr(parsed["bl"], "voyage", "") or ""),
+                    "port_of_loading":   str(getattr(parsed["bl"], "port_of_loading", "") or ""),
+                    "port_of_discharge": str(getattr(parsed["bl"], "port_of_discharge", "") or ""),
+                    "shipper":           str(getattr(parsed["bl"], "shipper_name", "") or getattr(parsed["bl"], "shipper", "") or ""),
+                    "consignee":         str(getattr(parsed["bl"], "consignee_name", "") or getattr(parsed["bl"], "consignee", "") or ""),
+                    "ship_date":         str(ship_date),
+                    "gross_weight_kg":   getattr(parsed["bl"], "gross_weight_kg", None),
+                    "carrier_id":        str(getattr(parsed["bl"], "carrier_id", "") or ""),
+                } if parsed["bl"] else {},
+                # ── Invoice 상세 (v8.6.6) ──
+                "invoice_detail": {
+                    "sap_no":           str(getattr(parsed["invoice"], "sap_no", "") or ""),
+                    "invoice_no":       str(inv_no),
+                    "bl_no":            str(getattr(parsed["invoice"], "bl_no", "") or ""),
+                    "product_name":     str(getattr(parsed["invoice"], "product_name", "") or ""),
+                    "product_code":     str(getattr(parsed["invoice"], "product_code", "") or ""),
+                    "quantity_mt":      getattr(parsed["invoice"], "quantity_mt", None),
+                    "unit_price":       getattr(parsed["invoice"], "unit_price", None),
+                    "total_amount":     getattr(parsed["invoice"], "total_amount", None),
+                    "currency":         str(getattr(parsed["invoice"], "currency", "") or ""),
+                    "net_weight_kg":    getattr(parsed["invoice"], "net_weight_kg", None),
+                    "gross_weight_kg":  getattr(parsed["invoice"], "gross_weight_kg", None),
+                    "package_count":    getattr(parsed["invoice"], "package_count", None),
+                    "package_type":     str(getattr(parsed["invoice"], "package_type", "") or ""),
+                    "incoterm":         str(getattr(parsed["invoice"], "incoterm", "") or ""),
+                    "origin":           str(getattr(parsed["invoice"], "origin", "") or ""),
+                    "destination":      str(getattr(parsed["invoice"], "destination", "") or ""),
+                    "customer_name":    str(getattr(parsed["invoice"], "customer_name", "") or ""),
+                } if parsed["invoice"] else {},
+                # ── DO 상세 (v8.6.6) ──
+                "do_detail": {
+                    "do_no":            str(getattr(parsed["do"], "do_no", "") or ""),
+                    "bl_no":            str(getattr(parsed["do"], "bl_no", "") or ""),
+                    "vessel":           str(getattr(parsed["do"], "vessel", "") or ""),
+                    "voyage":           str(getattr(parsed["do"], "voyage", "") or ""),
+                    "arrival_date":     str(arrival),
+                    "issue_date":       str(getattr(parsed["do"], "issue_date", "") or ""),
+                    "con_return":       str(con_return),
+                    "free_time_days":   str(free_time),
+                    "gross_weight_kg":  getattr(parsed["do"], "gross_weight_kg", None),
+                    "mrn":              str(getattr(parsed["do"], "mrn", "") or ""),
+                    "cbm":              getattr(parsed["do"], "cbm", None),
+                } if parsed["do"] else {},
+                # ── PL 헤더 상세 (v8.6.6) ──
+                "pl_detail": {
+                    "folio":            str(getattr(pl_obj, "folio", "") or ""),
+                    "product":          str(getattr(pl_obj, "product", "") or ""),
+                    "code":             str(pl_header_code),
+                    "packing":          str(getattr(pl_obj, "packing", "") or ""),
+                    "vessel":           str(getattr(pl_obj, "vessel", "") or ""),
+                    "customer":         str(getattr(pl_obj, "customer", "") or ""),
+                    "destination":      str(getattr(pl_obj, "destination", "") or ""),
+                    "sap_no":           str(getattr(pl_obj, "sap_no", "") or getattr(parsed.get("invoice"), "sap_no", "") or ""),
+                    "total_lots":       getattr(pl_obj, "total_lots", 0),
+                    "total_maxibag":    getattr(pl_obj, "total_maxibag", 0),
+                    "total_net_kg":     getattr(pl_obj, "total_net_weight_kg", 0),
+                    "total_gross_kg":   getattr(pl_obj, "total_gross_weight_kg", 0),
+                } if pl_obj else {},
             },
         }
     finally:
@@ -1204,12 +1317,186 @@ def _db_update_lots(db_con, where_col: str, where_vals: list, update_dict: dict)
     return {"updated": cur.rowcount, "lots": lots, "skipped_empty": skipped}
 
 
+def _table_columns(con, table_name: str) -> set:
+    return {str(r[1]) for r in con.execute(f"PRAGMA table_info({table_name})").fetchall()}
+
+
+def _ensure_do_authority_columns(con) -> None:
+    """D/O 후속 업데이트 출처 추적용 컬럼/감사 테이블 보정."""
+    cols = _table_columns(con, "inventory")
+    alter_sql = []
+    if "arrival_date_source" not in cols:
+        alter_sql.append("ALTER TABLE inventory ADD COLUMN arrival_date_source TEXT DEFAULT ''")
+    if "do_updated_at" not in cols:
+        alter_sql.append("ALTER TABLE inventory ADD COLUMN do_updated_at TEXT DEFAULT ''")
+    for sql in alter_sql:
+        try:
+            con.execute(sql)
+        except Exception as e:
+            logger.debug("[do-upload] inventory 컬럼 보정 스킵: %s", e)
+
+    con.execute(
+        """
+        CREATE TABLE IF NOT EXISTS audit_log (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_type  TEXT NOT NULL,
+            event_data  TEXT,
+            batch_id    TEXT,
+            tonbag_id   TEXT,
+            user_note   TEXT,
+            created_at  TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+            created_by  TEXT DEFAULT 'WEBVIEW'
+        )
+        """
+    )
+    con.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_audit_event
+        ON audit_log(event_type, created_at)
+        """
+    )
+    con.commit()
+
+
+def _normalize_for_compare(v) -> str:
+    if v is None:
+        return ""
+    s = str(v).strip()
+    return "" if s in ("None", "null", "NULL") else s
+
+
+def _db_update_lots_from_do(con, *, bl_no: str, container_nos: list, update_dict: dict, source_file: str = "") -> dict:
+    """
+    D/O 후속 업로드 전용 권위 업데이트.
+
+    D/O arrival_date는 PL ETA/수동 입력보다 우선한다. 기존 값과 다르면
+    D/O 값으로 덮어쓰고 LOT별 변경 전후를 audit_log에 남긴다.
+    """
+    _ensure_do_authority_columns(con)
+
+    pairs = {k: v for k, v in update_dict.items() if v not in (None, "", [])}
+    if not pairs:
+        return {"updated": 0, "lots": [], "changes": [], "skipped_empty": len(update_dict)}
+
+    inv_cols = _table_columns(con, "inventory")
+    set_pairs = {k: v for k, v in pairs.items() if k in inv_cols}
+    now = _dt.now().isoformat(timespec="seconds")
+    if "arrival_date" in set_pairs and "arrival_date_source" in inv_cols:
+        set_pairs["arrival_date_source"] = "DO"
+    if "do_updated_at" in inv_cols:
+        set_pairs["do_updated_at"] = now
+    if "updated_at" in inv_cols:
+        set_pairs["updated_at"] = now
+    if not set_pairs:
+        return {"updated": 0, "lots": [], "changes": [], "skipped_empty": len(update_dict) - len(pairs)}
+
+    clauses = []
+    params = []
+    if bl_no:
+        clauses.append("bl_no = ?")
+        params.append(bl_no)
+    clean_containers = [str(c).strip() for c in container_nos or [] if str(c or "").strip()]
+    if clean_containers:
+        clauses.append("container_no IN (" + ",".join("?" * len(clean_containers)) + ")")
+        params.extend(clean_containers)
+    if not clauses:
+        return {"updated": 0, "lots": [], "changes": [], "skipped_empty": len(update_dict) - len(pairs)}
+
+    rows = [dict(r) for r in con.execute(
+        "SELECT * FROM inventory WHERE " + " OR ".join(f"({c})" for c in clauses),
+        params,
+    ).fetchall()]
+    if not rows:
+        return {"updated": 0, "lots": [], "changes": [], "skipped_empty": len(update_dict) - len(pairs)}
+
+    set_clause = ", ".join(f"{k}=?" for k in set_pairs)
+    update_values = list(set_pairs.values())
+    changed_lots = []
+    audit_changes = []
+
+    for row in rows:
+        row_changes = {}
+        for k, new_val in pairs.items():
+            if k not in inv_cols:
+                continue
+            old_val = _normalize_for_compare(row.get(k))
+            new_norm = _normalize_for_compare(new_val)
+            if old_val != new_norm:
+                row_changes[k] = {"old": old_val, "new": new_norm}
+
+        # 권위 출처 컬럼만 바뀌는 경우도 기록 가능하게 업데이트는 수행한다.
+        con.execute(
+            f"UPDATE inventory SET {set_clause} WHERE id=?",
+            update_values + [row.get("id")],
+        )
+        lot_no = str(row.get("lot_no") or "")
+        changed_lots.append(lot_no)
+        if row_changes:
+            audit_changes.append({"lot_no": lot_no, "changes": row_changes})
+            con.execute(
+                """
+                INSERT INTO audit_log
+                    (event_type, event_data, user_note, created_by, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    "DO_AUTHORITATIVE_UPDATE",
+                    json.dumps({
+                        "lot_no": lot_no,
+                        "bl_no": bl_no,
+                        "container_no": row.get("container_no"),
+                        "source_file": source_file or "",
+                        "changes": row_changes,
+                        "policy": "D/O arrival_date overrides PL ETA/manual values",
+                    }, ensure_ascii=False),
+                    f"D/O 후속 업로드 권위값 반영: {lot_no}",
+                    "WEBVIEW_DO_UPLOAD",
+                    now,
+                ),
+            )
+
+    con.commit()
+    return {
+        "updated": len(changed_lots),
+        "lots": list(dict.fromkeys(changed_lots)),
+        "changes": audit_changes,
+        "skipped_empty": len(update_dict) - len(pairs),
+    }
+
+
 def _open_db():
     import sqlite3
     from config import DB_PATH
     con = sqlite3.connect(str(DB_PATH))
     con.row_factory = sqlite3.Row
     return con
+
+
+def _ensure_inbound_template_columns(con):
+    """Backward-compatible schema patch for legacy DBs.
+
+    Some deployed DBs still have the v7.2 slim schema and miss
+    `lot_sqm`, `mxbg_pallet`, `sap_no`. Ensure required columns exist
+    before template CRUD/select queries run.
+    """
+    cols = {str(r[1]).lower() for r in con.execute("PRAGMA table_info(inbound_template)").fetchall()}
+    alter_sql = []
+    if "lot_sqm" not in cols:
+        alter_sql.append("ALTER TABLE inbound_template ADD COLUMN lot_sqm TEXT DEFAULT ''")
+    if "mxbg_pallet" not in cols:
+        alter_sql.append("ALTER TABLE inbound_template ADD COLUMN mxbg_pallet INTEGER DEFAULT 0")
+    if "sap_no" not in cols:
+        alter_sql.append("ALTER TABLE inbound_template ADD COLUMN sap_no TEXT DEFAULT ''")
+    if "bl_format" not in cols:
+        alter_sql.append("ALTER TABLE inbound_template ADD COLUMN bl_format TEXT DEFAULT ''")
+
+    if not alter_sql:
+        return
+
+    for sql in alter_sql:
+        con.execute(sql)
+    con.commit()
+    logger.info(f"[templates] inbound_template 컬럼 자동 보정 적용: {len(alter_sql)}건")
 
 # ─────────────────────────────────────────────────────────
 # GET /api/inbound/templates — inbound_template 목록 반환
@@ -1220,12 +1507,17 @@ def get_inbound_templates():
     프론트의 DB 템플릿 picker 에서 사용."""
     try:
         con = _open_db()
+        _ensure_inbound_template_columns(con)
         cur = con.execute(
             "SELECT template_id, template_name, carrier_id, bag_weight_kg, "
             "gemini_hint_packing, gemini_hint_invoice, gemini_hint_bl, "
             "product_hint, weight_format, note, is_active, "
             "lot_sqm, mxbg_pallet, sap_no "
-            "FROM inbound_template WHERE is_active = 1 ORDER BY template_name"
+            "FROM inbound_template "
+            "WHERE is_active = 1 "
+            "AND UPPER(COALESCE(carrier_id, '')) <> 'UNKNOWN' "
+            "AND UPPER(COALESCE(template_id, '')) NOT LIKE 'UNKNOWN_%' "
+            "ORDER BY template_name"
         )
         rows = [dict(r) for r in cur.fetchall()]
         con.close()
@@ -1265,6 +1557,7 @@ def _tpl_new_id() -> str:
 def create_template(req: TemplateUpsertRequest):
     try:
         con = _open_db()
+        _ensure_inbound_template_columns(con)
         tid = _tpl_new_id()
         con.execute(
             "INSERT INTO inbound_template "
@@ -1289,6 +1582,7 @@ def create_template(req: TemplateUpsertRequest):
 def update_template(tid: str, req: TemplateUpsertRequest):
     try:
         con = _open_db()
+        _ensure_inbound_template_columns(con)
         cur = con.execute(
             "UPDATE inbound_template SET "
             "template_name=?, carrier_id=?, bag_weight_kg=?, "
@@ -1315,6 +1609,7 @@ def update_template(tid: str, req: TemplateUpsertRequest):
 def delete_template(tid: str):
     try:
         con = _open_db()
+        _ensure_inbound_template_columns(con)
         # 실제 삭제 대신 is_active=0 (soft delete)
         cur = con.execute(
             "UPDATE inbound_template SET is_active=0 WHERE template_id=?", (tid,)
@@ -1651,7 +1946,8 @@ async def inbound_bl(file: UploadFile = File(...)):
         result = _db_update_lots(con, "container_no", container_nos, update_dict)
         con.close()
 
-        matched = len(result["lots"])
+        lots = result.get("lots", []) or []
+        matched = len(lots)
         return {
             "ok": True,
             "message": f"B/L 업로드 완료 — {matched}개 LOT 업데이트 (bl_no={bl.bl_no})",
@@ -1659,10 +1955,10 @@ async def inbound_bl(file: UploadFile = File(...)):
                 "filename": file.filename,
                 "bl_no": bl.bl_no,
                 "vessel": bl.vessel,
-                "voyage": bl.voyage,
+                "voyage": getattr(bl, "voyage", "") or "",
                 "containers_parsed": container_nos,
                 "updated_count": matched,
-                "updated_lots": result["lots"][:50],
+                "updated_lots": lots[:50],
                 "updated_fields": [k for k, v in update_dict.items() if v not in (None, "")],
                 "ai_provider_used": getattr(bl, "_ai_provider", "gemini"),
             }
@@ -1783,7 +2079,7 @@ async def inbound_do(file: UploadFile = File(...)):
                 "bl_no": do.bl_no,
                 "arrival_date": str(do.arrival_date or ""),
                 "updated_count": matched,
-               "updated_lots": result_total["lots"][:50],
+                "updated_lots": result_total["lots"][:50],
                 "updated_fields": [k for k, v in update_dict.items() if v not in (None, "")],
                 "ai_provider_used": getattr(do, "_ai_provider", "gemini"),
             }
@@ -1796,6 +2092,5 @@ async def inbound_do(file: UploadFile = File(...)):
         raise HTTPException(500, str(e))
     finally:
         if tmp_path and os.path.exists(tmp_path):
-  
             try: os.unlink(tmp_path)
             except Exception: pass
