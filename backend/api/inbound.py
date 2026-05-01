@@ -1971,8 +1971,10 @@ async def inbound_bl(file: UploadFile = File(...)):
         raise HTTPException(500, str(e))
     finally:
         if tmp_path and os.path.exists(tmp_path):
-            try: os.unlink(tmp_path)
-            except Exception: pass
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
 
 
 # ─────────────────────────────────────────────────────────
@@ -2092,5 +2094,7 @@ async def inbound_do(file: UploadFile = File(...)):
         raise HTTPException(500, str(e))
     finally:
         if tmp_path and os.path.exists(tmp_path):
-            try: os.unlink(tmp_path)
-            except Exception: pass
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass

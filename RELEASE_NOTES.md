@@ -113,6 +113,16 @@ _detect_carrier_from_words: ONE-LINE.COM / ONEY 패턴 자동감지 재활성화
 
 ---
 
+## 🔧 Hotfix — 2026-05-01 (GitHub `main` 동기화)
+
+| 항목 | 내용 |
+|------|------|
+| **목적** | [kidongnam1/sqm_3](https://github.com/kidongnam1/sqm_3) `main` 브랜치와 로컬 작업 트리 정합성 확보 |
+| **API** | `POST /api/inbound/bl` — 핸들러 하단이 잘려 있던 문제 수정 (`update_dict` 인자·성공 응답·`HTTPException`/`finally`·임시 PDF 삭제) |
+| **저장소** | `data/db/sqm_inventory.db` 바이너리 Git 추적 제거, 로컬 DB는 `.gitignore`로만 제외 |
+
+---
+
 ## 🗺️ 다음 릴리즈 (Phase 6)
 
 - PyInstaller 단일 EXE 빌드

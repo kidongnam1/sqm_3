@@ -18,4 +18,5 @@ theme_preference.json
 Thumbs.db
 ~$*
 node_modules/
-settings.ini 
+settings.ini
+data/db/sqm_inventory.db
