@@ -105,6 +105,19 @@ def _run_db_migrations():
         con.commit()
         logging.info("[Migration] carrier_rules ONE BL 패턴 검증/수정 완료")
 
+        # ── 제품 마스터 (Web CRUD) ───────────────────────────────────
+        con.execute("""CREATE TABLE IF NOT EXISTS product_master (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_name TEXT NOT NULL UNIQUE,
+            sap_no TEXT DEFAULT '',
+            spec TEXT DEFAULT '',
+            unit TEXT DEFAULT '',
+            remarks TEXT DEFAULT '',
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+        )""")
+        con.commit()
+
         con.close()
     except Exception as e:
         logging.warning(f"[Migration] DB 마이그레이션 실패: {e}")
@@ -132,6 +145,46 @@ def _init_db_startup():
         _ensure_default_carriers_once()
     except Exception as e:
         logging.warning(f"[startup] 기본 선사 프로파일 초기화 실패: {e}")
+    # C-2: 오늘 재고 스냅샷 자동 생성 (없을 때만)
+    try:
+        import json as _json
+        import sqlite3 as _sq
+        from datetime import date as _date
+        _today = _date.today().isoformat()
+        _con2 = _sqlite3.connect(str(DB_PATH))
+        _existing = _con2.execute(
+            "SELECT id FROM inventory_snapshot WHERE snapshot_date=?", (_today,)
+        ).fetchone()
+        if not _existing:
+            _stats = _con2.execute("""
+                SELECT COUNT(*) AS tl,
+                       COALESCE(SUM(current_weight),0) AS tw,
+                       COALESCE(SUM(CASE WHEN status NOT IN ('DEPLETED','OUTBOUND')
+                                    THEN current_weight ELSE 0 END),0) AS aw,
+                       COALESCE(SUM(picked_weight),0) AS pw
+                FROM inventory
+            """).fetchone()
+            _tb = _con2.execute(
+                "SELECT COUNT(*) FROM inventory_tonbag WHERE COALESCE(is_sample,0)=0"
+            ).fetchone()[0]
+            _pr = _con2.execute(
+                "SELECT product, COUNT(*), SUM(current_weight) FROM inventory GROUP BY product"
+            ).fetchall()
+            _ps = _json.dumps([{"product": r[0], "lots": r[1], "weight_kg": r[2]} for r in _pr], ensure_ascii=False)
+            _tl, _tw, _aw, _pw = (_stats[0], _stats[1], _stats[2], _stats[3]) if _stats else (0,0,0,0)
+            _con2.execute(
+                "INSERT INTO inventory_snapshot (snapshot_date,total_lots,total_tonbags,"
+                "total_weight_kg,available_weight_kg,picked_weight_kg,product_summary) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (_today, _tl, _tb, _tw, _aw, _pw, _ps)
+            )
+            _con2.commit()
+            logging.info(f"[startup] 재고 스냅샷 생성 완료: {_today} lots={_tl} weight={_tw:.0f}kg")
+        else:
+            logging.info(f"[startup] 재고 스냅샷 이미 존재: {_today}")
+        _con2.close()
+    except Exception as e:
+        logging.warning(f"[startup] 재고 스냅샷 자동 생성 실패 (무시): {e}")
 
 # ── T8: CORS 설정 ─────────────────────────────────────────────
 # PyWebView는 null origin을 보낼 수 있음 — 명시적으로 포함
@@ -288,7 +341,35 @@ try:
 except Exception as e:
     logging.warning(f"carriers router load failed: {e}")
 
+try:
+    from backend.api.scan_api import router as scan_api_router
+    app.include_router(scan_api_router)
+    logging.info("scan_api router loaded OK")
+except Exception as e:
+    logging.warning(f"scan_api router load failed: {e}")
+
+try:
+    from backend.api.integrity_api import router as integrity_api_router
+    app.include_router(integrity_api_router)
+    logging.info("integrity_api router loaded OK")
+except Exception as e:
+    logging.warning(f"integrity_api router load failed: {e}")
+
 # v865 1차: Gemini AI (settings/toggle/test)
+try:
+    from backend.api.product_master import router as product_master_router
+    app.include_router(product_master_router)
+    logging.info("product_master router loaded OK")
+except Exception as e:
+    logging.warning(f"product_master router load failed: {e}")
+
+try:
+    from backend.api.report_templates import router as report_templates_router
+    app.include_router(report_templates_router)
+    logging.info("report_templates router loaded OK")
+except Exception as e:
+    logging.warning(f"report_templates router load failed: {e}")
+
 try:
     from backend.api.ai_gemini import router as ai_gemini_router
     app.include_router(ai_gemini_router)
@@ -517,8 +598,11 @@ def export_excel(payload: dict):
         raise HTTPException(503, "Engine unavailable")
     try:
         import tempfile, os
+        from backend.common.excel_alignment import safe_apply_sqm_file
+
         out = os.path.join(tempfile.gettempdir(), f"sqm_export_option{option}.xlsx")
         engine.export_to_excel(out, option=option)
+        safe_apply_sqm_file(out)
         return {"success": True, "path": out}
     except Exception as e:
         raise HTTPException(500, str(e))

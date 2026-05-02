@@ -555,6 +555,34 @@ def _parse_one(parser, path, doc_type_method: str, **kwargs):
         return None
 
 
+def _onestop_weight_rollups(preview_rows: list, pl_obj) -> dict:
+    """PL 미리보기 행 순중량 합계와 헤더 총순중량 비교 (샘플·반올림 차이 가시화)."""
+    row_sum = 0.0
+    for r in preview_rows or []:
+        if not r:
+            continue
+        raw = r.get("net_kg")
+        if raw is None or raw == "":
+            continue
+        try:
+            row_sum += float(str(raw).replace(",", "").replace(" ", "").strip())
+        except (TypeError, ValueError):
+            continue
+    row_sum = round(row_sum, 1)
+    hdr_net = 0.0
+    if pl_obj is not None:
+        try:
+            hdr_net = float(getattr(pl_obj, "total_net_weight_kg", 0) or 0)
+        except (TypeError, ValueError):
+            hdr_net = 0.0
+    hdr_net = round(hdr_net, 1)
+    return {
+        "preview_rows_net_sum_kg": row_sum,
+        "pl_header_total_net_kg": hdr_net,
+        "header_minus_rows_kg": round(hdr_net - row_sum, 1) if hdr_net else round(-row_sum, 1),
+    }
+
+
 @router.post(
     "/onestop-upload",
     summary="📥 OneStop 입고 — 4종 PDF multipart + 크로스체크 (v864-2 OneStopInboundDialog)",
@@ -868,6 +896,7 @@ async def onestop_inbound_upload(
             ),
             "warn_messages": _warn_messages,
             "data": {
+                "dry_run": dry_run,
                 "preview_rows": preview_rows,
                 "preview_count": len(preview_rows),
                 "cross_check": {
@@ -963,6 +992,8 @@ async def onestop_inbound_upload(
                     "total_net_kg":     getattr(pl_obj, "total_net_weight_kg", 0),
                     "total_gross_kg":   getattr(pl_obj, "total_gross_weight_kg", 0),
                 } if pl_obj else {},
+                # 미리보기 행 순중량 합 vs PL 헤더 총순중량 (엑셀 100020 vs 화면 100000 혼동 방지)
+                "weight_rollups": _onestop_weight_rollups(preview_rows, pl_obj),
             },
         }
     finally:

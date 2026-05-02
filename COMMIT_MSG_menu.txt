@@ -1,0 +1,35 @@
+refactor(menu): 메뉴 재구조화 10항목 — Allocation 독립 + 출고 슬림화 + 중복 제거
+
+[MENU RESTRUCTURE] frontend/index.html
+
+① Allocation → 최상위 독립 메뉴 (입고↔출고 사이)
+   - 포함: Allocation 입력, 승인 대기, 예약 반영, 승인 이력, LOT Allocation 현황
+   - 기존 출고 > Allocation 서브메뉴 제거
+
+② 출고 메뉴 슬림화
+   - 유지: 즉시 출고, Picking List, 조회/관리
+   - 제거: Allocation (①로 이동), Sales Order 업로드 (⑥으로 이동)
+
+③ BL 선사 도구: 파일 메뉴 → 입고 메뉴 이동
+   - 맥락: BL은 입고 문서이므로 입고 메뉴가 적절
+
+④ Gemini AI: 파일 메뉴 → 설정/도구 메뉴 이동
+   - AI 도구 일원화
+
+⑤ 톤백 위치 매핑·대량 이동 승인: 입고 → 재고 > 창고 관리 신설
+   - 창고 내 이동은 재고 관리 영역
+
+⑥ Sales Order 업로드: 출고 → 보고서 > Sales Order 이동
+
+⑦ onSalesOrderDN 중복 제거 (보고서>송장/DN 1개만 유지)
+
+⑧ 입고>🔍정합성 제거 + 설정/도구>🩺정합성에 onFixLotIntegrity 추가
+
+⑨ 입고 직속 onInboundTemplateManage 단독 버튼 제거
+   - 입고>조회/관리 서브메뉴 안에만 유지
+
+⑩ 설정/도구>📦제품 관리 서브메뉴 제거
+   - onLotAllocationAudit은 ①Allocation 메뉴로 이동
+
+결과: data-action 88개, 중복 0, HTML 문법 OK
+메뉴 순서: 파일 / 입고 / 📋Allocation(NEW) / 출고 / 재고 / 보고서 / 설정/도구 / 도움말

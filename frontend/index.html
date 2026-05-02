@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SQM 재고관리 시스템 v8.6.5</title>
+  <title>SQM 재고관리 시스템 v8.6.6</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="stylesheet" href="css/design-system.css?v=20260427f">
-  <link rel="stylesheet" href="css/v864-layout.css?v=20260429contrast">
+  <link rel="stylesheet" href="css/v864-layout.css?v=20260502l">
 </head>
 <body data-theme="light">
 
@@ -21,7 +21,7 @@
   <div style="text-align:center;">
     <div style="font-size:44px;margin-bottom:16px;animation:sqm-spin 1.2s linear infinite;">⚙️</div>
     <div style="color:#4fc3f7;font-size:20px;font-weight:700;letter-spacing:2px;">SQM 재고관리 시스템</div>
-    <div style="color:#546e7a;font-size:13px;margin-top:8px;">v8.6.5 광양창고 — 초기화 중...</div>
+    <div style="color:#546e7a;font-size:13px;margin-top:8px;">v8.6.6 광양창고 — 초기화 중...</div>
     <div style="margin-top:22px;width:240px;height:4px;background:#1e3a5f;border-radius:2px;overflow:hidden;">
       <div style="height:100%;background:linear-gradient(90deg,#1565c0,#4fc3f7);border-radius:2px;animation:sqm-bar 1.8s ease-in-out infinite;"></div>
     </div>
@@ -35,7 +35,7 @@
 </style>
 
 <header class="app-titlebar">
-  <div class="app-title">📦 SQM 재고관리 시스템 v8.6.5</div>
+  <div class="app-title">📦 SQM 재고관리 시스템 v8.6.6</div>
 </header>
 
 <nav class="menubar" id="menubar">
@@ -52,18 +52,12 @@
         </div>
       </div>
       <div class="submenu-parent" tabindex="0">
-        <button class="submenu-parent-btn" type="button">🚢 BL 선사 도구</button>
+        <button class="submenu-parent-btn" type="button">📤 내보내기</button>
         <div class="submenu-dropdown">
-          <button data-action="onBlCarrierRegister" title="선사별 BL 양식을 등록합니다. 파싱 정확도 향상에 사용">🚢 선사 BL 등록 도구</button>
-          <button data-action="onBlCarrierAnalyze" title="BL 파일을 분석하여 선사별 패턴을 자동 학습합니다">🔬 선사 패턴 분석</button>
-        </div>
-      </div>
-      <div class="submenu-parent" tabindex="0">
-        <button class="submenu-parent-btn" type="button">✨ Gemini AI</button>
-        <div class="submenu-dropdown">
-          <button data-action="onAiChat" title="Gemini AI와 재고/물류 관련 질문을 나눕니다">💬 AI 채팅</button>
-          <button data-action="onGeminiApiSettings" title="Gemini API 키를 등록·변경합니다">🔐 API 키 설정</button>
-          <button data-action="onGeminiApiTest" title="현재 API 키로 Gemini 연결 상태를 테스트합니다">🧪 API 연결 테스트</button>
+          <button data-action="onExportCustoms" title="통관 요청용 Excel 양식을 생성합니다">📋 통관요청 양식</button>
+          <button data-action="onExportRubyli" title="루비 포맷(18열) 재고 리스트를 내보냅니다">📊 루비리 양식</button>
+          <button data-action="onExportTonbag" title="Sub LOT(톤백) 단위 Excel을 생성합니다">🎒 톤백 현황</button>
+          <button data-action="onExportIntegrated" title="LOT + 톤백 통합 재고 Excel을 생성합니다">⭐ 통합 현황</button>
         </div>
       </div>
       <hr class="menu-sep">
@@ -81,9 +75,16 @@
         <button class="submenu-parent-btn" type="button">📄 신규 입고</button>
         <div class="submenu-dropdown">
           <button data-action="onOnPdfInbound" title="선사 BL + Packing List + Invoice + D/O를 한 번에 PDF 업로드하여 입고 처리합니다">📄 PDF 스캔 입고</button>
+          <button data-action="onInboundManual" title="Excel 파일로 LOT·수량 등을 수동 반영합니다 (v864 엑셀 수동 입고)">📊 엑셀 파일 수동 입고</button>
         </div>
       </div>
-      <button data-action="onInboundTemplateManage" title="선사별 PDF 파싱 템플릿을 생성·수정·삭제합니다">📝 인바운드 템플릿 관리</button>
+      <div class="submenu-parent" tabindex="0">
+        <button class="submenu-parent-btn" type="button">🚢 BL 선사 도구</button>
+        <div class="submenu-dropdown">
+          <button data-action="onBlCarrierRegister" title="선사별 BL 양식을 등록합니다. 파싱 정확도 향상에 사용">🚢 선사 BL 등록 도구</button>
+          <button data-action="onBlCarrierAnalyze" title="BL 파일을 분석하여 선사별 패턴을 자동 학습합니다">🔬 선사 패턴 분석</button>
+        </div>
+      </div>
       <!-- D/O만 남김: Invoice FA, B/L 삭제 -->
       <div class="submenu-parent" tabindex="0">
         <button class="submenu-parent-btn" type="button">📋 D/O</button>
@@ -92,12 +93,12 @@
           <button data-action="onDoUpdate" title="D/O 정보를 수동으로 입력하거나 기존 D/O를 수정합니다">✏️ D/O 수동 수정</button>
         </div>
       </div>
-      <!-- 반품 사유 통계 삭제 -->
       <div class="submenu-parent" tabindex="0">
         <button class="submenu-parent-btn" type="button">🔄 반품</button>
         <div class="submenu-dropdown">
           <button data-action="onReturnDialog" title="불량/오배송 등의 사유로 반품된 제품을 재고에 입고 처리합니다">🔄 반품 (재입고)</button>
           <button data-action="onReturnInboundUpload" title="Excel 파일로 반품 입고 내역을 일괄 등록합니다">📂 반품 입고 (Excel)</button>
+          <button data-action="onReturnStatistics" title="반품 사유별 건수·중량 및 월별 추이를 조회합니다">📊 반품 사유 통계</button>
         </div>
       </div>
       <div class="submenu-parent" tabindex="0">
@@ -109,21 +110,22 @@
           <button data-action="onEmailConfig" title="입고 알림 이메일 수신자 및 발송 조건을 설정합니다">⚙️ 이메일 설정</button>
         </div>
       </div>
-      <div class="submenu-parent" tabindex="0">
-        <button class="submenu-parent-btn" type="button">🔍 정합성</button>
-        <div class="submenu-dropdown">
-          <button data-action="onIntegrityCheck" title="DB 데이터의 정합성을 시각적으로 확인합니다. 이상 데이터 감지">🔍 정합성 검증 (시각화)</button>
-          <button data-action="onFixLotIntegrity" title="LOT 상태값 불일치를 자동으로 감지하고 복구합니다">🛠️ LOT 상태 정합성 복구</button>
-        </div>
-      </div>
-      <hr class="menu-sep">
-      <!-- 톤백·대량이동: 서브메뉴 없이 입고 직속 -->
-      <button data-action="onInventoryMove" title="창고 내 톤백의 위치(구역/행/열)를 지도 형태로 매핑합니다">📍 톤백 위치 매핑</button>
-      <button data-action="onMoveApprovalQueue" title="대량 이동 요청 목록을 확인하고 일괄 승인 처리합니다">✅ 대량 이동 승인</button>
+
     </div>
   </div>
 
-  <!-- ══ ③ 출고 ══ -->
+  <!-- ══ ③ Allocation ══ -->
+  <div class="menu-btn" data-menu="Allocation" tabindex="0" role="menuitem">📋 <span>Allocation</span> <span class="caret">▼</span>
+    <div class="menu-dropdown">
+      <button data-action="onInventoryAllocation" title="고객사별 제품 배정(Allocation)을 입력합니다">📋 Allocation 입력</button>
+      <button data-action="onApprovalQueue" title="출고 승인 대기 중인 요청 목록을 확인합니다">✅ 승인 대기</button>
+      <button data-action="onApplyApproved" title="승인 완료된 예약 건을 실제 재고에 반영합니다">📌 예약 반영 (승인분)</button>
+      <button data-action="onApprovalHistory" title="과거 승인/반려 이력을 조회합니다">📜 승인 이력 조회</button>
+      <button data-action="onLotAllocationAudit" title="LOT별 Allocation 및 톤백 현황을 감사합니다">📊 LOT Allocation 현황</button>
+    </div>
+  </div>
+
+  <!-- ══ ④ 출고 ══ -->
   <div class="menu-btn" data-menu="출고" tabindex="0" role="menuitem">📤 <span>출고</span> <span class="caret">▼</span>
     <div class="menu-dropdown">
       <div class="submenu-parent" tabindex="0">
@@ -133,32 +135,14 @@
           <button data-action="onQuickOutboundPaste" title="피킹 리스트를 붙여넣기하여 출고 처리합니다">📋 피킹 리스트</button>
         </div>
       </div>
-      <!-- Allocation이 PICKING LIST 위로 -->
-      <div class="submenu-parent" tabindex="0">
-        <button class="submenu-parent-btn" type="button">📋 Allocation</button>
-        <div class="submenu-dropdown">
-          <button data-action="onInventoryAllocation" title="고객사별 제품 배정(Allocation)을 입력합니다">📋 Allocation 입력</button>
-          <button data-action="onApprovalQueue" title="출고 승인 대기 중인 요청 목록을 확인합니다">✅ 승인 대기</button>
-          <button data-action="onApplyApproved" title="승인 완료된 예약 건을 실제 재고에 반영합니다">📌 예약 반영 (승인분)</button>
-          <button data-action="onApprovalHistory" title="과거 승인/반려 이력을 조회합니다">📜 승인 이력 조회</button>
-          <button data-action="onGoAllocationTab" title="판매 배정 탭으로 바로 이동합니다">📋 판매 배정 탭으로 이동</button>
-        </div>
-      </div>
       <div class="submenu-parent" tabindex="0">
         <button class="submenu-parent-btn" type="button">📋 PICKING LIST</button>
         <div class="submenu-dropdown">
           <button data-action="onPickingListUpload" title="PDF 피킹 리스트를 업로드하여 출고를 처리합니다">📋 Picking List 업로드 (PDF)</button>
           <button data-action="onBarcodeScanUpload" title="바코드 스캔 데이터를 업로드하여 출고를 처리합니다">📊 바코드 스캔 업로드</button>
-          <button data-action="onGoScanTab" title="바코드 스캔 탭으로 바로 이동합니다">📷 스캔 탭으로 이동</button>
         </div>
       </div>
-      <div class="submenu-parent" tabindex="0">
-        <button class="submenu-parent-btn" type="button">📊 Sales Order</button>
-        <div class="submenu-dropdown">
-          <button data-action="onSalesOrderUpload" title="Sales Order Excel 파일을 업로드합니다">📊 Sales Order 업로드</button>
-          <button data-action="onSalesOrderDN" title="Sales Order 기반 DN(Delivery Note)을 생성합니다">📋 Sales Order DN</button>
-        </div>
-      </div>
+
       <div class="submenu-parent" tabindex="0">
         <button class="submenu-parent-btn" type="button">📊 조회/관리</button>
         <div class="submenu-dropdown">
@@ -186,6 +170,14 @@
         </div>
       </div>
       <hr class="menu-sep">
+      <div class="submenu-parent" tabindex="0">
+        <button class="submenu-parent-btn" type="button">🏭 창고 관리</button>
+        <div class="submenu-dropdown">
+          <button data-action="onInventoryMove" title="창고 내 톤백의 위치(구역/행/열)를 지도 형태로 매핑합니다">📍 톤백 위치 매핑</button>
+          <button data-action="onMoveApprovalQueue" title="대량 이동 요청 목록을 확인하고 일괄 승인 처리합니다">✅ 대량 이동 승인</button>
+        </div>
+      </div>
+      <hr class="menu-sep">
       <button data-action="onStockTrendChart" title="기간별 재고 증감 추이를 차트로 시각화합니다">📊 재고 추이 차트</button>
     </div>
   </div>
@@ -193,6 +185,12 @@
   <!-- ══ ⑤ 보고서 ══ -->
   <div class="menu-btn" data-menu="보고서" tabindex="0" role="menuitem">📝 <span>보고서</span> <span class="caret">▼</span>
     <div class="menu-dropdown">
+      <div class="submenu-parent" tabindex="0">
+        <button class="submenu-parent-btn" type="button">📊 Sales Order</button>
+        <div class="submenu-dropdown">
+          <button data-action="onSalesOrderUpload" title="Sales Order Excel 파일을 업로드합니다">📊 Sales Order 업로드</button>
+        </div>
+      </div>
       <div class="submenu-parent" tabindex="0">
         <button class="submenu-parent-btn" type="button">📄 송장/DN</button>
         <div class="submenu-dropdown">
@@ -228,21 +226,12 @@
     </div>
   </div>
 
-  <!-- ══ ⑥ 검색 ══ -->
-  <button class="menu-btn menu-btn-standalone" data-action="onGlobalSearch" title="전역 검색">🔍 <span>검색</span></button>
-
-  <!-- ══ ⑦ 설정/도구 ══ -->
+  <!-- ══ ⑥ 설정/도구 ══ -->
   <div class="menu-btn" data-menu="설정/도구" tabindex="0" role="menuitem">🔧 <span>설정/도구</span> <span class="caret">▼</span>
     <div class="menu-dropdown">
       <button data-action="onFontSizeSettings" title="전체 화면 글꼴 크기를 100%부터 160%까지 조정합니다">🔤 화면 폰트 크기</button>
       <hr class="menu-sep">
-      <div class="submenu-parent" tabindex="0">
-        <button class="submenu-parent-btn" type="button">📦 제품 관리</button>
-        <div class="submenu-dropdown">
-          <button data-action="onProductInventoryReport" title="제품별 재고 현황을 조회합니다">📊 제품별 재고 현황</button>
-          <button data-action="onLotAllocationAudit" title="LOT별 Allocation 및 톤백 현황을 감사합니다">📊 LOT Allocation 톤백 현황</button>
-        </div>
-      </div>
+
       <div class="submenu-parent" tabindex="0">
         <button class="submenu-parent-btn" type="button">🔔 알림/감사</button>
         <div class="submenu-dropdown">
@@ -251,9 +240,20 @@
         </div>
       </div>
       <div class="submenu-parent" tabindex="0">
+        <button class="submenu-parent-btn" type="button">✨ Gemini AI</button>
+        <div class="submenu-dropdown">
+          <button data-action="onAiChat" title="Gemini AI와 재고/물류 관련 질문을 나눕니다">💬 AI 채팅</button>
+          <button data-action="onGeminiApiSettings" title="Gemini API 키를 등록·변경합니다">🔐 API 키 설정</button>
+          <button data-action="onGeminiApiTest" title="현재 API 키로 Gemini 연결 상태를 테스트합니다">🧪 API 연결 테스트</button>
+        </div>
+      </div>
+      <button data-action="onAiTools" title="선사 프로파일·Gemini API 등 AI 관련 도구">🤖 AI 도구 모음</button>
+      <button data-action="onAdvancedTools" title="정합성·DB 최적화·테스트 DB 등 고급 유지보수 메뉴로 연결합니다">🔧 고급 도구</button>
+      <div class="submenu-parent" tabindex="0">
         <button class="submenu-parent-btn" type="button">🩺 정합성</button>
         <div class="submenu-dropdown">
           <button data-action="onIntegrityCheck" title="DB 데이터의 정합성을 시각적으로 확인합니다. 이상 데이터 감지">🩺 데이터 정합성 검사</button>
+          <button data-action="onFixLotIntegrity" title="LOT 상태값 불일치를 자동으로 감지하고 복구합니다">🛠️ LOT 상태 정합성 복구</button>
         </div>
       </div>
       <div class="submenu-parent" tabindex="0">
@@ -297,7 +297,7 @@
   <button class="tool-btn" data-action="tb-inventory" title="재고 조회 탭으로 이동">📋 재고 조회</button>
   <button class="tool-btn" data-action="tb-integrity" title="데이터 정합성 검사 실행">✅ 정합성</button>
   <button class="tool-btn" data-action="tb-backup" title="DB 백업 생성 (단축키: Ctrl+B)">💾 백업</button>
-  <button class="tool-btn" data-action="tb-settings" title="폰트 크기 및 표시 설정">⚙️ 설정</button>
+  <button class="tool-btn" data-action="tb-settings" title="폰트 크기, 엑셀 저장 후 바로 열기 등">⚙️ 설정</button>
 </div>
 
 <div class="app-body">
@@ -314,7 +314,7 @@
   </aside>
   <div class="main-wrapper">
     <div class="view-toggle">
-      <label><input type="radio" name="view-unit" value="tonbag"> 🎒 돈백</label>
+      <label><input type="radio" name="view-unit" value="tonbag"> 🎒 톤백</label>
       <label><input type="radio" name="view-unit" value="lot"> 📦 LOT</label>
       <label><input type="radio" name="view-unit" value="mt" checked> 📊 MT</label>
     </div>
@@ -335,8 +335,8 @@
   <div id="alerts-content" class="alerts-content">🔔 알림 로딩 중...</div>
 </div>
 
-  <script src="js/sqm-inline.js?v=20260430b"></script>
-    <script src="js/sqm-onestop-inbound.js?v=20260429"></script>
+  <script src="js/sqm-inline.js?v=20260502r"></script>
+    <script src="js/sqm-onestop-inbound.js?v=20260502k"></script>
 <script>
 (function(){
   function hideSplash(){

@@ -1,0 +1,25 @@
+feat(v8.6.6): ONE BL 파싱 3종 버그 수정 + parse_alarm 알람 시스템 + carrier_rules DB 정비
+
+[BL] ONE Sea Waybill 파싱 완전 수정
+- bl_mixin.py: CARRIER_RE에 ONEY 패턴 추가
+- bl_mixin.py: BL_FORMAT_MAP ONE -> ONEY 12자리 수정
+- bl_mixin.py: _detect_carrier_from_words 자동감지 재활성화
+
+[AI] Gemini DO hint mrn/msn 추출 지시 4선사 추가
+- ai_fallback.py: MAERSK/MSC/HAPAG/ONE DO hint MRN/MSN 필수 추출
+- ai_fallback.py: _partial_summary fields에 mrn/msn 포함
+
+[NEW] utils/parse_alarm.py - 파싱 품질 알람 시스템
+- CRITICAL/WARNING/INFO 3단계 알람
+- mrn/msn 미추출 CRITICAL, mxbg_pallet=0 CRITICAL
+
+[API] backend/api/inbound.py - parse_alarm 연결
+- CRITICAL 알람 -> warn_messages 자동 추가
+- 응답 JSON parse_alarms + parse_alarms_summary 키 추가
+
+[DB] carrier_rules 테이블 생성 + 5선사 BL 규칙 등록
+- _run_db_migrations carrier_rules 자동 마이그레이션 추가
+- ONE BL ONEU->ONEY 수정 완료
+
+[DOCS] RELEASE_NOTES.md v8.6.6 작성
+[DOCS] CLAUDE.md Ruby 행동 규칙 A/B/C/D 영구 기록

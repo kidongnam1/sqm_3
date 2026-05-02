@@ -1,0 +1,18 @@
+fix(phase1): inbound_bl 함수 복원 + JS null 바이트 제거
+
+[CRITICAL FIX] backend/api/inbound.py
+- inbound_bl() 함수 1945줄에서 잘린 문제 복원 (1945→1974줄)
+- _db_update_lots 호출 완성 + 응답 JSON + try/except/finally 추가
+- FastAPI /api/inbound/bl 엔드포인트 정상 등록됨
+
+[CRITICAL FIX] frontend/js/sqm-inline.js
+- null 바이트 13,497개 제거 (334720→321223 bytes)
+- node --check PASS 확인
+
+[CRITICAL FIX] frontend/js/sqm-onestop-inbound.js
+- null 바이트 16,756개 제거 (94718→77962 bytes)
+- node --check PASS 확인
+
+[REPORT] REPORTS/phase1_summary.md
+- Phase 1 Release Hardening 4-에이전트 병렬 분석 결과
+- 발견 CRITICAL 3건 모두 수정 완료, 종합 판정 GREEN

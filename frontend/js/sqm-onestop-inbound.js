@@ -46,6 +46,21 @@
     manualDo: null,         /* D/O 미첨부 시 수동 입력 정보 {free_time, warehouse, arrival_date} */
   };
   var ONESTOP_MAX_HISTORY = 50;
+
+  /* ── 제품 마스터 캐시 (product 셀 드롭다운용) ── */
+  window._pmCache = [];
+  window.loadPmCache = function() {
+    return fetch(API + '/api/product-master/list')
+      .then(function(r){ return r.json(); })
+      .then(function(res){
+        var items = (res.data && res.data.items) || [];
+        window._pmCache = items.filter(function(i){ return i.is_active !== 0; });
+      })
+      .catch(function(e){ console.warn('PM cache load failed:', e); });
+  };
+  /* 최초 1회 로드 */
+  window.loadPmCache();
+
   /* [Sprint 1-2-C] 편집 가능 컬럼 (18열 중 — v864-2 EDITABLE_COLS 참고) */
   var ONESTOP_EDITABLE_FIELDS = new Set([
     'lot_no', 'sap_no', 'bl_no', 'product', 'container', 'code',
@@ -838,9 +853,24 @@
             '</ul></details>';
         }
 
+        var wRoll = d.weight_rollups || {};
+        var plDet = d.pl_detail || {};
+        var wLine = '';
+        if (wRoll.preview_rows_net_sum_kg != null) {
+          wLine = '<div style="font-size:12px;margin-top:8px;padding:8px 10px;background:var(--panel);border:1px solid var(--panel-border);border-radius:6px;color:var(--text-primary)">' +
+            '<b>순중량(kg) 합계</b> · PL 행 합: <b>' + Number(wRoll.preview_rows_net_sum_kg).toLocaleString('ko-KR') + ' kg</b>';
+          if (plDet.total_net_kg != null && plDet.total_net_kg !== '') {
+            wLine += ' · PL 헤더 총순중량: <b>' + Number(plDet.total_net_kg).toLocaleString('ko-KR') + ' kg</b>';
+          }
+          if (wRoll.header_minus_rows_kg != null) {
+            wLine += ' · 헤더−행차이: <b style="color:#f59e0b">' + Number(wRoll.header_minus_rows_kg).toLocaleString('ko-KR') + ' kg</b>';
+          }
+          wLine += '<br><span style="font-size:11px;color:var(--text-muted)">엑셀 LOT 목록 «순중량» 합은 보통 PL 행 합과 같습니다. «현재중량» 합은 샘플(톤백 1kg) 제외로 더 작게 보일 수 있습니다.</span></div>';
+        }
         if (pb) pb.innerHTML =
           '<div style="color:var(--success);font-weight:700">✅ ' + escapeHtml(body.message || '파싱 완료') + ' <span style="font-size:11px;color:var(--text-muted);font-weight:400">(미리보기 단계 — DB 저장 전)</span></div>' +
           '<div style="color:var(--text-muted);font-size:12px;margin-top:6px">📑 서류: ' + docsBadges + '</div>' +
+          wLine +
           '<div style="color:' + xcColor + ';font-size:13px;font-weight:600;margin-top:6px">' + xcIcon + ' ' + escapeHtml(xc.summary || '') + '</div>' +
           xcItemsHtml +
           (xc.has_critical ? '<div style="color:var(--danger);font-size:11px;margin-top:6px;font-weight:600">🚫 심각 불일치 감지 — 파일 확인 후 다시 파싱 권장</div>' : '') +
@@ -952,7 +982,12 @@
           var saveBtn = document.getElementById('onestop-save-btn');
           if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '📤 DB 업로드 (' + rows.length + '건)'; }
         }
-        showToast('success', '파싱 완료: ' + rows.length + ' LOT — 편집 후 DB 업로드');
+        showToast('success', '파싱 완료: ' + rows.length + ' LOT (미리보기)');
+        /* 파싱만 한 경우(dry_run): 재고/대시보드는 DB 업로드 전까지 변하지 않음 */
+        if (d.dry_run !== false) {
+          showToast('warn',
+            '⚠️ 아직 데이터베이스에 저장되지 않았습니다. 재고·대시보드에 반영하려면 미리보기 창 하단 「📤 DB 업로드」를 눌러 주세요.');
+        }
       } else {
         var errMsg = (body && (body.detail || body.error || body.message)) || ('HTTP ' + xhr.status);
         if (typeof errMsg === 'object') errMsg = JSON.stringify(errMsg);
@@ -1047,6 +1082,75 @@
     if (isNaN(rowIdx) || !field) return;
     var curVal = (_onestopState.previewRows[rowIdx] || {})[field];
     curVal = (curVal == null ? '' : String(curVal));
+
+    /* ── product 필드: 제품 마스터 드롭다운 ── */
+    if (field === 'product') {
+      var pm = window._pmCache || [];
+      var sel = document.createElement('select');
+      sel.className = 'onestop-edit-input';
+      sel.style.cssText = 'width:100%;padding:2px 4px;background:var(--bg);color:var(--fg);border:1px solid var(--accent);border-radius:3px;font-size:11px;font-family:inherit';
+      /* 첫 옵션: 현재 값 또는 빈값 */
+      var opts = '<option value="">(제품 선택)</option>';
+      pm.forEach(function(p) {
+        var code   = p.code || '';
+        var fn     = p.full_name || p.product_name || '';
+        var kr     = p.korean_name || '';
+        var label  = code ? (code + ' — ' + fn + (kr ? ' / ' + kr : '')) : fn;
+        var val    = code || fn;
+        var sel_   = (val === curVal || fn === curVal || p.product_name === curVal) ? ' selected' : '';
+        opts += '<option value="' + val.replace(/"/g,'&quot;') + '"' + sel_ + '>' + label + '</option>';
+      });
+      /* 직접 입력 옵션 */
+      opts += '<option value="__custom__">✏️ 직접 입력...</option>';
+      sel.innerHTML = opts;
+      td.innerHTML = '';
+      td.appendChild(sel);
+      sel.focus();
+
+      function commitSel() {
+        var newVal = sel.value;
+        if (newVal === '__custom__') {
+          /* 직접 입력 모드로 전환 */
+          td.innerHTML = '';
+          var ci = document.createElement('input');
+          ci.type = 'text'; ci.value = curVal;
+          ci.className = 'onestop-edit-input';
+          ci.style.cssText = 'width:100%;padding:2px 4px;background:var(--bg);color:var(--fg);border:1px solid var(--accent);border-radius:3px;font-size:11px;font-family:inherit';
+          td.appendChild(ci); ci.focus(); ci.select();
+          ci.addEventListener('blur', function(){ applyCommit(ci.value); });
+          ci.addEventListener('keydown', function(e){
+            if (e.key==='Enter'){ e.preventDefault(); ci.blur(); }
+            else if (e.key==='Escape'){ e.preventDefault(); ci.removeEventListener('blur',function(){}); _onestopRenderPreview(_onestopState.previewRows); }
+          });
+          return;
+        }
+        applyCommit(newVal);
+      }
+      function applyCommit(newVal) {
+        if (String(newVal) === String(curVal) || !newVal) {
+          _onestopRenderPreview(_onestopState.previewRows); return;
+        }
+        _onestopState.history = _onestopState.history.slice(0, _onestopState.historyIdx + 1);
+        _onestopState.history.push({ rowIdx: rowIdx, field: field, oldVal: curVal, newVal: newVal });
+        if (_onestopState.history.length > ONESTOP_MAX_HISTORY) _onestopState.history.shift();
+        _onestopState.historyIdx = _onestopState.history.length - 1;
+        if (!_onestopState.previewRows[rowIdx]) _onestopState.previewRows[rowIdx] = {};
+        _onestopState.previewRows[rowIdx][field] = newVal;
+        var origVal = (_onestopState.originalRows[rowIdx] || {})[field];
+        var cellKey = rowIdx + '.' + field;
+        if (String(newVal) !== String(origVal == null ? '' : origVal)) { _onestopState.editedCells[cellKey] = true; }
+        else { delete _onestopState.editedCells[cellKey]; }
+        _onestopRenderPreview(_onestopState.previewRows);
+        _onestopUpdateHistoryButtons();
+      }
+      sel.addEventListener('change', commitSel);
+      sel.addEventListener('blur',   commitSel);
+      sel.addEventListener('keydown', function(e){
+        if (e.key === 'Enter')  { e.preventDefault(); commitSel(); }
+        else if (e.key === 'Escape') { e.preventDefault(); sel.removeEventListener('blur', commitSel); _onestopRenderPreview(_onestopState.previewRows); }
+      });
+      return;  /* product 처리 끝 — 아래 일반 input 로직 실행 안 함 */
+    }
 
     var input = document.createElement('input');
     input.type = 'text';
