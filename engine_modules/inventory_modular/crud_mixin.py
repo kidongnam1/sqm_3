@@ -144,11 +144,29 @@ class CRUDMixin:
             Result dict with success, lot_no, tonbags_created
         """
         try:
+            # v8.6.7: FastAPI/JSON 경로에서 mxbg·무게가 str이면 str>int 비교 TypeError 방지
+            try:
+                mxbg_pallet = int(float(str(mxbg_pallet).replace(',', '').strip() or 0))
+            except (ValueError, TypeError):
+                mxbg_pallet = 20
+            if mxbg_pallet < 1:
+                mxbg_pallet = 1
+            try:
+                net_weight = float(str(net_weight).replace(',', '').strip() or 0)
+            except (ValueError, TypeError):
+                net_weight = 10000.0
+            if net_weight <= 0:
+                net_weight = 10000.0
+
             # v3.8.7: kwargs에서 추가 필드 추출
             lot_sqm = kwargs.get('lot_sqm', '')
             folio   = kwargs.get('folio', '')
             vessel  = kwargs.get('vessel', '')
             gross_weight = kwargs.get('gross_weight', net_weight)
+            try:
+                gross_weight = float(str(gross_weight).replace(',', '').strip() or net_weight)
+            except (ValueError, TypeError):
+                gross_weight = net_weight
             salar_invoice_no = kwargs.get('salar_invoice_no', '') or kwargs.get('invoice_no', '')
             ship_date = kwargs.get('ship_date', '')
             free_time = kwargs.get('free_time', 0)

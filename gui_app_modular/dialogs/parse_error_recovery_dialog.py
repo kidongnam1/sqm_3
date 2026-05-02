@@ -113,17 +113,24 @@ def classify_parse_error(result_obj) -> list:
         lots = getattr(result_obj, 'lots', []) or getattr(result_obj, 'lot_no', None)
         if not lots:                 errors.append('ERR-PL-01')
         if not _has('sap_no'):       errors.append('ERR-PL-02')
-        # v8.7.0 [FIX]: PackingData는 total_net_weight_kg / total_net_weight(property)만 가짐
-        #   기존 getattr(result_obj,'net_weight',0)은 항상 0 → ERR-PL-03 오탐 유발
-        #   top-level 합계가 없으면 lots[]의 개별 net_weight_kg 합계로 최종 판정
+        # v8.7.0 [FIX]: PackingListData는 문서 단위 net_weight가 없을 수 있음 →
+        #   net_weight → total_net_weight_kg → total_net_weight → lots 합 → rows 합 순으로 판정
         _nw = 0.0
         try:
-            _nw = float(getattr(result_obj, 'total_net_weight_kg', 0) or 0)
+            _nw = float(getattr(result_obj, 'net_weight', 0) or 0)
+            if _nw <= 0:
+                _nw = float(getattr(result_obj, 'total_net_weight_kg', 0) or 0)
             if _nw <= 0:
                 _nw = float(getattr(result_obj, 'total_net_weight', 0) or 0)
             if _nw <= 0 and lots:
                 _nw = sum(
                     float(getattr(lt, 'net_weight_kg', 0) or 0) for lt in lots
+                )
+            if _nw <= 0:
+                rows = getattr(result_obj, 'rows', []) or []
+                _nw = sum(
+                    float(getattr(r, 'net_weight', 0) or getattr(r, 'net_weight_kg', 0) or 0)
+                    for r in rows
                 )
         except (TypeError, ValueError):
             _nw = 0.0

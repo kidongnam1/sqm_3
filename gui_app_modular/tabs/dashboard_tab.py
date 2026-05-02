@@ -382,10 +382,13 @@ class DashboardTabMixin:
             if hasattr(self, '_integrity_signal_label'):
                 self._integrity_signal_label.config(text=label, fg=color)
             if hasattr(self, '_integrity_signal_sub'):
-                sub = '총입고 = 현재재고 + 출고누계' if _ok else                       f'차이 {_diff:+.1f} kg — 드릴다운으로 확인'
+                sub = (
+                    '총입고(initial)= 현재재고(톤백·샘플포함) + 출고누계 — 웹 대시보드와 동일'
+                    if _ok else f'차이 {_diff:+.1f} kg — 드릴다운으로 확인'
+                )
                 self._integrity_signal_sub.config(text=sub)
 
-            # 수치 라벨
+            # 수치 라벨 (total_kg = SUM(initial_weight); cur/out = 톤백합, 샘플 포함)
             total_mt = d.get('total_kg', 0) / 1000
             cur_mt   = d.get('cur_kg',   0) / 1000
             out_mt   = d.get('out_kg',   0) / 1000
@@ -393,10 +396,10 @@ class DashboardTabMixin:
 
             if hasattr(self, '_int_label_total'):
                 self._int_label_total.config(
-                    text=f"{total_mt:,.1f} MT  (톤백 {d.get('total_cnt',0):,}개)")
+                    text=f"{total_mt:,.1f} MT  (LOT·initial 합, {d.get('lot_cnt', d.get('total_cnt', 0)):,}건)")
             if hasattr(self, '_int_label_cur'):
                 self._int_label_cur.config(
-                    text=f"{cur_mt:,.1f} MT  (톤백 {d.get('cur_cnt',0):,}개)")
+                    text=f"{cur_mt:,.1f} MT  (톤백 {d.get('cur_cnt',0):,}개·샘플포함)")
             if hasattr(self, '_int_label_out'):
                 self._int_label_out.config(
                     text=f"{out_mt:,.1f} MT  (톤백 {d.get('out_cnt',0):,}개)")

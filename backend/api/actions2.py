@@ -17,6 +17,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Query as QP, UploadFile, File
 from fastapi.responses import FileResponse, StreamingResponse
 from backend.common.errors import ok_response, err_response
+from backend.common.excel_alignment import safe_apply_sqm_workbook
 
 router = APIRouter(prefix="/api/action2", tags=["actions2"])
 logger = logging.getLogger(__name__)
@@ -304,80 +305,93 @@ def outbound_confirm(payload: dict):
 
 
 # ── 톤백리스트 Excel 내보내기 ────────────────────────────────────
+def _tonbag_sql(lot_no_filter: Optional[str]) -> tuple:
+    """톤백 리스트 공통 SQL 반환."""
+    base = """
+        SELECT t.sap_no, t.bl_no, i.container_no, i.product,
+               t.tonbag_uid, t.sub_lt, t.tonbag_no, t.weight,
+               t.status, t.location, t.inbound_date,
+               t.picked_to, t.sale_ref, t.remarks,
+               i.warehouse
+        FROM inventory_tonbag t
+        LEFT JOIN inventory i ON i.id = t.inventory_id
+    """
+    if lot_no_filter:
+        return base + " WHERE t.lot_no = ? ORDER BY t.sub_lt, t.tonbag_no", (lot_no_filter,)
+    return base + " ORDER BY t.lot_no, t.sub_lt, t.tonbag_no", ()
+
+
+def _build_tonbag_workbook(rows):
+    """
+    톤백리스트 공통 워크북 빌더.
+    컬럼 순서: SAP NO, BL NO, Container, 제품명, 톤백 UID, Sub LT, 톤백 번호,
+               중량(kg), 상태, 위치, 입고일, 출고대상, Sale Ref, 비고, 창고
+    """
+    import openpyxl
+    from openpyxl.styles import PatternFill, Font, Alignment
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "톤백리스트"
+
+    headers = [
+        "SAP NO", "BL NO", "Container", "제품명",
+        "톤백 UID", "Sub LT", "톤백 번호", "중량(kg)",
+        "상태", "위치", "입고일", "출고대상", "Sale Ref", "비고", "창고"
+    ]
+    hdr_fill = PatternFill("solid", fgColor="1F4E79")
+    hdr_font = Font(bold=True, color="FFFFFF", name="맑은 고딕")
+    center = Alignment(horizontal="center", vertical="center")
+
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.fill = hdr_fill
+        cell.font = hdr_font
+        cell.alignment = center
+
+    # 상태 index = 8 (0-based)
+    status_colors = {
+        "AVAILABLE": "E8F5E9",
+        "PICKED":    "FFF9C4",
+        "RESERVED":  "E3F2FD",
+        "OUTBOUND":  "FAFAFA",
+        "CANCELLED": "FFEBEE",
+    }
+    for r in rows:
+        ws.append(list(r))
+        status = r[8] or ""
+        color  = status_colors.get(status, "FFFFFF")
+        fill   = PatternFill("solid", fgColor=color)
+        for cell in ws[ws.max_row]:
+            cell.fill = fill
+            # 숫자(int/float)는 기본 정렬, 나머지는 가운데
+            if not isinstance(cell.value, (int, float)):
+                cell.alignment = center
+
+    # 열 너비: SAP,BL,Container,제품명,UID,SubLT,#,중량,상태,위치,입고일,출고,SaleRef,비고,창고
+    widths = [12, 14, 16, 22, 20, 8, 10, 12, 12, 12, 12, 14, 14, 20, 10]
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
+
+    safe_apply_sqm_workbook(wb)
+    return wb
+
+
 @router.get("/export-tonbag-excel", summary="🎒 톤백리스트 Excel (F036)")
 def export_tonbag_excel(lot_no: Optional[str] = QP(None)):
-    """톤백 목록 → Excel FileResponse (openpyxl)"""
+    """톤백 목록 → Excel FileResponse (브라우저 다운로드)."""
     try:
-        import openpyxl
-        from openpyxl.styles import PatternFill, Font, Alignment
-
+        sql, params = _tonbag_sql(lot_no)
         con = _db()
-        if lot_no:
-            rows = con.execute("""
-                SELECT t.tonbag_uid, t.lot_no, t.sap_no, t.bl_no,
-                       t.sub_lt, t.tonbag_no, t.weight,
-                       t.status, t.location, t.inbound_date,
-                       t.picked_to, t.sale_ref, t.remarks,
-                       i.product, i.warehouse
-                FROM inventory_tonbag t
-                LEFT JOIN inventory i ON i.id = t.inventory_id
-                WHERE t.lot_no = ?
-                ORDER BY t.sub_lt, t.tonbag_no
-            """, (lot_no,)).fetchall()
-        else:
-            rows = con.execute("""
-                SELECT t.tonbag_uid, t.lot_no, t.sap_no, t.bl_no,
-                       t.sub_lt, t.tonbag_no, t.weight,
-                       t.status, t.location, t.inbound_date,
-                       t.picked_to, t.sale_ref, t.remarks,
-                       i.product, i.warehouse
-                FROM inventory_tonbag t
-                LEFT JOIN inventory i ON i.id = t.inventory_id
-                ORDER BY t.lot_no, t.sub_lt, t.tonbag_no
-            """).fetchall()
+        rows = con.execute(sql, params).fetchall()
         con.close()
 
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "톤백리스트"
-
-        # 헤더
-        headers = ["톤백 UID","LOT NO","SAP NO","BL NO","Sub LT","톤백 번호",
-                   "중량(kg)","상태","위치","입고일","출고대상","Sale Ref","비고","제품","창고"]
-        hdr_fill = PatternFill("solid", fgColor="1F4E79")
-        hdr_font = Font(bold=True, color="FFFFFF")
-        ws.append(headers)
-        for cell in ws[1]:
-            cell.fill = hdr_fill
-            cell.font = hdr_font
-            cell.alignment = Alignment(horizontal="center")
-
-        # 상태별 색상
-        status_colors = {
-            "AVAILABLE": "E8F5E9",
-            "PICKED":    "FFF9C4",
-            "RESERVED":  "E3F2FD",
-            "OUTBOUND":  "FAFAFA",
-            "CANCELLED": "FFEBEE",
-        }
-        for r in rows:
-            ws.append(list(r))
-            status = r[7] or ""
-            color  = status_colors.get(status, "FFFFFF")
-            fill   = PatternFill("solid", fgColor=color)
-            for cell in ws[ws.max_row]:
-                cell.fill = fill
-
-        # 열 너비
-        widths = [20,16,14,18,8,10,12,12,12,12,14,14,20,20,10]
-        for i, w in enumerate(widths, 1):
-            ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
-
-        # 파일 저장
+        wb = _build_tonbag_workbook(rows)
         import tempfile
         tmp_dir = tempfile.gettempdir()
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        fname = f"tonbag_list_{ts}.xlsx"
+        prefix = f"톤백리스트_{lot_no}_" if lot_no else "톤백리스트_전체_"
+        fname = f"{prefix}{ts}.xlsx"
         out = os.path.join(tmp_dir, fname)
         wb.save(out)
 
@@ -388,6 +402,62 @@ def export_tonbag_excel(lot_no: Optional[str] = QP(None)):
         )
     except Exception as e:
         logger.error("export-tonbag-excel error: %s", e)
+        raise HTTPException(500, str(e))
+
+
+def _project_root_a2() -> str:
+    here = os.path.dirname(os.path.abspath(__file__))
+    return os.path.dirname(os.path.dirname(here))
+
+
+def _exports_dir_a2() -> str:
+    path = os.path.join(_project_root_a2(), "exports")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def _cleanup_old_a2(folder: str, prefix: str, keep: int = 30) -> None:
+    try:
+        files = sorted(
+            [f for f in os.listdir(folder) if f.startswith(prefix) and f.endswith(".xlsx")],
+            reverse=True,
+        )
+        for old in files[keep:]:
+            try:
+                os.remove(os.path.join(folder, old))
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+@router.get("/open-tonbag-excel", summary="📂 톤백리스트 Excel 저장 후 바로 열기")
+def open_tonbag_excel(lot_no: Optional[str] = QP(None)):
+    """톤백리스트 Excel 생성 → exports/ 저장 → os.startfile() 열기."""
+    try:
+        sql, params = _tonbag_sql(lot_no)
+        con = _db()
+        rows = con.execute(sql, params).fetchall()
+        con.close()
+
+        wb = _build_tonbag_workbook(rows)
+        exports = _exports_dir_a2()
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        prefix = f"톤백리스트_{lot_no}_" if lot_no else "톤백리스트_전체_"
+        fname = f"{prefix}{ts}.xlsx"
+        out_path = os.path.join(exports, fname)
+        wb.save(out_path)
+        _cleanup_old_a2(exports, prefix)
+
+        try:
+            os.startfile(out_path)
+        except Exception as open_err:
+            logger.warning("os.startfile 실패: %s", open_err)
+
+        logger.info("톤백리스트 Excel 저장+열기: %s (%d행)", fname, len(rows))
+        return ok_response({"filename": fname, "path": out_path, "rows": len(rows), "opened": True})
+    except Exception as e:
+        logger.error("open-tonbag-excel error: %s", e)
         raise HTTPException(500, str(e))
 
 
@@ -574,6 +644,7 @@ def swap_report_export(
             tmp_dir = tempfile.gettempdir()
             fname_dl = f"swap_report_{start_date}_{end_date}_{ts}.xlsx"
             out = os.path.join(tmp_dir, fname_dl)
+            safe_apply_sqm_workbook(wb)
             wb.save(out)
             return FileResponse(
                 out,

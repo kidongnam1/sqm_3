@@ -93,6 +93,8 @@ class ExportMixin:
         from openpyxl.utils import get_column_letter
 
         col_count = len(df.columns)
+        if col_count == 0:
+            return  # 빈 DataFrame — 서식 적용 불필요
         data_start_row = 3  # Row 1=타이틀, Row 2=빈줄, Row 3=헤더
 
         # ── Row 1: 타이틀 ──

@@ -436,7 +436,14 @@ class PDFConverter:
                     for line_idx, line in enumerate(page.text.split('\n')[:100]):
                         ws.cell(row=row + line_idx + 1, column=1, value=line)
 
-            # 저장
+            # 저장 전 공통 정렬 (숫자 오른쪽, 그 외 가운데)
+            try:
+                from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+
+                apply_sqm_workbook_alignment(wb)
+            except Exception as e:
+                logger.warning("sqm_excel_alignment 적용 실패(무시): %s", e)
+
             wb.save(str(output_path))
 
             processing_time = (datetime.now() - start_time).total_seconds()

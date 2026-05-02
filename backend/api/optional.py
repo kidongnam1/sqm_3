@@ -72,7 +72,14 @@ async def excel_export_all(payload: dict | None = None):
         engine = SQMInventoryEngineV3(str(DB_PATH))
         out = os.path.join(tempfile.gettempdir(), "sqm_export_all.xlsx")
         if hasattr(engine, "export_to_excel"):
-            return wrap_engine_call(engine.export_to_excel, out, option="all")
+            from backend.common.excel_alignment import safe_apply_sqm_file
+
+            def _export_with_align():
+                r = engine.export_to_excel(out, option="all")
+                safe_apply_sqm_file(out)
+                return r
+
+            return wrap_engine_call(_export_with_align)
     except Exception:
         pass
     raise NotReadyError("엔진 연결 후 사용 가능")

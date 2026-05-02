@@ -858,6 +858,11 @@ class ImportHandlersMixin:
                     cell = ws.cell(row=row, column=c, value='')
                     cell.fill = sample_fill
                     cell.border = thin_border
+            try:
+                from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+                apply_sqm_workbook_alignment(wb)
+            except Exception:
+                pass
             wb.save(file_path)
             self._log(f"✅ 출고 템플릿 저장: {file_path}")
             return True
@@ -1035,6 +1040,11 @@ class ImportHandlersMixin:
                 add_gy_logistics_footer(ws)
             except (ImportError, ModuleNotFoundError) as _e:
                 logger.debug(f'Suppressed: {_e}')
+            try:
+                from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+                apply_sqm_workbook_alignment(wb)
+            except Exception:
+                pass
             wb.save(file_path)
             self._log(f"✅ 입고 템플릿 저장: {file_path}")
             return True

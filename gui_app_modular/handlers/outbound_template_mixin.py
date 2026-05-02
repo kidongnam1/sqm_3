@@ -260,6 +260,11 @@ class OutboundTemplateMixin:
 
             fname = f"Allocation_GY_{customer.replace(' ','_')}_{fi}of{n_files}.xlsx"
             p = out_dir / fname
+            try:
+                from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+                apply_sqm_workbook_alignment(wb)
+            except Exception:
+                pass
             wb.save(str(p))
             generated.append(p)
             logger.info(f"[ALLOC_GEN] {fname} ({len(chunk)}개 LOT, {len(chunk)*5}MT)")

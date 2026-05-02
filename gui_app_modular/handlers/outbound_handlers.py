@@ -2688,6 +2688,11 @@ class OutboundHandlersMixin:
         ws.append(headers)
         for r in rows:
             ws.append([str(r.get(h, "") or "") for h in headers])
+        try:
+            from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+            apply_sqm_workbook_alignment(wb)
+        except Exception:
+            pass
         wb.save(out_path)
 
     def _show_swap_report_dialog(self) -> None:

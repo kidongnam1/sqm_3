@@ -714,6 +714,11 @@ class TonbagLocationUploader:
             sub = info.get('sub_lt')
             ws.append([info['lot_no'], sub, info['tonbag_uid'], info['location']])
         out = Path(tempfile.gettempdir()) / f"SQM_톤백로케이션반영_{ts}.xlsx"
+        try:
+            from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+            apply_sqm_workbook_alignment(wb)
+        except Exception:
+            pass
         wb.save(str(out))
         return True, str(out), str(out)
 
@@ -779,6 +784,11 @@ class TonbagLocationUploader:
                     ws.cell(row=rn, column=loc_col, value=id_to_loc[int(tid)]['location'])
 
                 out = Path(src).parent / f"{Path(src).stem}_로케이션반영_{ts}.xlsx"
+                try:
+                    from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+                    apply_sqm_workbook_alignment(wb)
+                except Exception:
+                    pass
                 wb.save(str(out))
                 return True, str(out), str(out)
             except Exception as e:

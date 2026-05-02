@@ -239,6 +239,86 @@ def get_inventory_trend():
         return err_response(str(e))
 
 
+# ── 스냅샷 생성 API ──────────────────────────────────────────────
+@router.post("/create-snapshot", summary="📸 오늘 재고 스냅샷 생성/갱신")
+def create_today_snapshot(force: bool = False):
+    """
+    오늘 날짜 기준 inventory_snapshot 생성 또는 갱신.
+    - force=False: 오늘 스냅샷이 이미 있으면 skip
+    - force=True : 있어도 덮어씀
+    v864.2: validators.py save_today_snapshot() 이식
+    """
+    import json
+    from datetime import date as _date
+    today = _date.today().isoformat()
+    try:
+        con = _db()
+        existing = con.execute(
+            "SELECT id FROM inventory_snapshot WHERE snapshot_date=?", (today,)
+        ).fetchone()
+        if existing and not force:
+            con.close()
+            return ok_response(
+                data={"created": False, "date": today, "reason": "already_exists"},
+                message=f"{today} 스냅샷 이미 존재 (force=True로 덮어쓰기 가능)"
+            )
+        # inventory 집계
+        stats = con.execute("""
+            SELECT
+                COUNT(*) AS total_lots,
+                COALESCE(SUM(current_weight), 0)   AS total_weight,
+                COALESCE(SUM(CASE WHEN status NOT IN ('DEPLETED','OUTBOUND') THEN current_weight ELSE 0 END), 0) AS avail_weight,
+                COALESCE(SUM(picked_weight), 0)     AS picked_weight
+            FROM inventory
+        """).fetchone()
+        tonbag_cnt = con.execute(
+            "SELECT COUNT(*) FROM inventory_tonbag WHERE COALESCE(is_sample,0)=0"
+        ).fetchone()[0]
+        product_rows = con.execute("""
+            SELECT product, COUNT(*) AS lots, SUM(current_weight) AS weight
+            FROM inventory GROUP BY product
+        """).fetchall()
+        product_summary = json.dumps(
+            [{"product": r[0], "lots": r[1], "weight_kg": r[2]} for r in product_rows],
+            ensure_ascii=False
+        )
+        total_lots   = stats[0] if stats else 0
+        total_weight = stats[1] if stats else 0
+        avail_weight = stats[2] if stats else 0
+        picked_weight= stats[3] if stats else 0
+        if existing:
+            con.execute("""
+                UPDATE inventory_snapshot SET
+                    total_lots=?, total_tonbags=?,
+                    total_weight_kg=?, available_weight_kg=?,
+                    picked_weight_kg=?, product_summary=?,
+                    created_at=datetime('now')
+                WHERE snapshot_date=?
+            """, (total_lots, tonbag_cnt, total_weight,
+                  avail_weight, picked_weight, product_summary, today))
+        else:
+            con.execute("""
+                INSERT INTO inventory_snapshot
+                    (snapshot_date, total_lots, total_tonbags, total_weight_kg,
+                     available_weight_kg, picked_weight_kg, product_summary)
+                VALUES (?,?,?,?,?,?,?)
+            """, (today, total_lots, tonbag_cnt, total_weight,
+                  avail_weight, picked_weight, product_summary))
+        con.commit()
+        con.close()
+        logger.info(f"[snapshot] {today} 생성 완료 — lots={total_lots}, {total_weight:.1f}kg")
+        return ok_response(
+            data={"created": True, "date": today,
+                  "total_lots": total_lots, "total_tonbags": tonbag_cnt,
+                  "total_weight_kg": round(total_weight, 1),
+                  "available_weight_kg": round(avail_weight, 1)},
+            message=f"{today} 스냅샷 생성 완료"
+        )
+    except Exception as e:
+        logger.error("create-snapshot error: %s", e, exc_info=True)
+        return err_response(str(e))
+
+
 # ── F046: 재고 현황 보고서 ──────────────────────────────────────
 @router.get("/inventory-report", summary="📦 재고 현황 보고서 (F046)")
 def get_inventory_report():

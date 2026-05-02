@@ -47,6 +47,7 @@ def apply_global_tree_style(root, is_dark: bool) -> None:
             foreground=head_fg,
             relief="flat",
             font=TREE_HEAD_FONT,
+            anchor="center",
         )
         style.map("Treeview",
             background=[("selected", sel_bg)],

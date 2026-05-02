@@ -1564,6 +1564,11 @@ class AllocationDialog:
                             int(r.get('tb_count', 0) or 0),
                             r.get('created_at', ''),
                         ])
+                    try:
+                        from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+                        apply_sqm_workbook_alignment(wb)
+                    except Exception:
+                        pass
                     wb.save(fpath)
                     CustomMessageBox.showinfo(status_win, "저장 완료", f"Excel 저장 완료\n{fpath}")
                 except Exception as e:

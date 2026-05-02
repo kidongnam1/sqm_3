@@ -98,7 +98,7 @@ class SQMInventoryApp:
             from version import __version__, APP_NAME
             self.root.title(f"📦 {APP_NAME}  v{__version__}")
         except ImportError:
-            self.root.title("📦 SQM 재고관리 시스템  v8.6.4")
+            self.root.title("📦 SQM 재고관리 시스템  v8.6.6")
         
         # Store references
         self.tk = tk
@@ -225,6 +225,14 @@ class SQMInventoryApp:
             logger.debug(f"자동 스타일 적용기 로딩 실패 (무시): {e}")
         except (ValueError, TypeError, KeyError, AttributeError, OSError) as e:
             logger.warning(f"자동 스타일 적용 예약 실패: {e}")
+
+        # 기동 직후 전체 Treeview 헤더·셀 가운데 정렬 (순번 열·데이터 로드 이후)
+        try:
+            _upd_theme = getattr(self, '_update_theme_colors', None)
+            if callable(_upd_theme):
+                self.root.after(1250, _upd_theme)
+        except (AttributeError, RuntimeError, ValueError) as e:
+            logger.debug(f"기동 시 테마 리프레시 예약 무시: {e}")
         
         logger.info("SQM Inventory App initialized")
         # v8.5.9: 시작 속도 최적화 — health check를 UI 표시 후 지연 실행

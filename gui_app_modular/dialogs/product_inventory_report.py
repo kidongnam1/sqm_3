@@ -187,6 +187,11 @@ def show_product_inventory_report(app) -> None:
                     d.get('picked_kg', 0),
                 ])
 
+            try:
+                from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+                apply_sqm_workbook_alignment(wb)
+            except Exception:
+                pass
             wb.save(path)
             messagebox.showinfo("완료", f"저장 완료:\n{path}", parent=dlg)
         except Exception as e:

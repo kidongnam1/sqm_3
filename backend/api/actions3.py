@@ -13,6 +13,7 @@ from typing import Optional
 from fastapi import APIRouter, Body, HTTPException, Query as QP
 from fastapi.responses import FileResponse
 from backend.common.errors import ok_response, err_response
+from backend.common.excel_alignment import safe_apply_sqm_workbook
 
 router = APIRouter(prefix="/api/action3", tags=["actions3"])
 logger = logging.getLogger(__name__)
@@ -306,6 +307,7 @@ def export_invoice_excel(lot_no: Optional[str] = QP(None)):
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         fname = f"invoice_list_{ts}.xlsx"
         out = os.path.join(tmp_dir, fname)
+        safe_apply_sqm_workbook(wb)
         wb.save(out)
 
         return FileResponse(

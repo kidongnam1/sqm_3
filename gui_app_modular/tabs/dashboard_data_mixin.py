@@ -1231,76 +1231,108 @@ class DashboardDataMixin:
     # ═══════════════════════════════════════════════════════════════
 
     def _get_integrity_summary(self) -> dict:
-        """v8.1.5: 입고 총량 = 현재재고 + 출고누계 정합성 집계. 톤백/샘플 구분 포함."""
+        """입고(SUM initial_weight) = 현재재고 톤백합 + 출고누계 톤백합 — 웹 /api/dashboard/stats 와 동일.
+
+        샘플 톤백(is_sample=1) 무게는 현재재고·출고 집계에 포함한다.
+        LOT 순중량·현재중량 합계는 엑셀 LOT 목록과 동일한 참고용 필드로 제공한다.
+        """
         try:
             db = self.engine.db
-            # 톤백(is_sample=0) 집계
-            r_total = db.fetchone(
-                "SELECT COUNT(*) AS cnt, COALESCE(SUM(weight),0) AS kg "
-                "FROM inventory_tonbag WHERE COALESCE(is_sample,0)=0"
-            )
-            total_cnt = int(r_total['cnt'] or 0)
-            total_kg  = float(r_total['kg'] or 0)
 
-            # 샘플(is_sample=1) 집계 — 정합성 수식에서는 제외, 표시 전용
-            r_samp_total = db.fetchone(
-                "SELECT COUNT(*) AS cnt FROM inventory_tonbag WHERE COALESCE(is_sample,0)=1"
-            )
-            total_samp_cnt = int((r_samp_total or {}).get('cnt', 0) or 0)
+            def _fv(r, key=None, idx=0):
+                if r is None:
+                    return None
+                if isinstance(r, dict):
+                    if key is not None:
+                        return r.get(key)
+                    vals = list(r.values())
+                    return vals[idx] if idx < len(vals) else None
+                try:
+                    return r[idx]
+                except (IndexError, TypeError):
+                    return None
 
-            # 현재 재고 (AVAILABLE+RESERVED+PICKED+RETURN) — 톤백
+            # 총입고 기준 — inventory.initial_weight (웹 정합성 total_inbound_kg)
+            r_init = db.fetchone(
+                "SELECT COALESCE(SUM(initial_weight), 0) AS kg FROM inventory"
+            )
+            initial_kg = float(_fv(r_init, "kg") or 0)
+
+            # 현재 재고 중량 — 샘플 톤백 포함 (웹 current_stock_kg)
             r_cur = db.fetchone(
-                "SELECT COUNT(*) AS cnt, COALESCE(SUM(weight),0) AS kg "
+                "SELECT COUNT(*) AS cnt, COALESCE(SUM(weight), 0) AS kg "
                 "FROM inventory_tonbag "
-                "WHERE status IN ('AVAILABLE','RESERVED','PICKED','RETURN') "
-                "AND COALESCE(is_sample,0)=0"
+                "WHERE status IN ('AVAILABLE','RESERVED','PICKED','RETURN')"
             )
-            cur_cnt = int(r_cur['cnt'] or 0)
-            cur_kg  = float(r_cur['kg'] or 0)
+            cur_cnt = int(_fv(r_cur, "cnt") or 0)
+            cur_kg = float(_fv(r_cur, "kg") or 0)
 
-            # 현재 재고 샘플
+            # 출고 누계 — 샘플 포함 (웹 outbound_total_kg; 상태 목록 동일)
+            r_out = db.fetchone(
+                "SELECT COUNT(*) AS cnt, COALESCE(SUM(weight), 0) AS kg "
+                "FROM inventory_tonbag "
+                "WHERE status IN ('OUTBOUND','SOLD','SHIPPED','CONFIRMED')"
+            )
+            out_cnt = int(_fv(r_out, "cnt") or 0)
+            out_kg = float(_fv(r_out, "kg") or 0)
+
+            r_lot = db.fetchone(
+                "SELECT COUNT(DISTINCT lot_no) AS cnt FROM inventory WHERE status != 'DEPLETED'"
+            )
+            lot_cnt = int(_fv(r_lot, "cnt") or 0)
+
+            diff_kg = round(initial_kg - cur_kg - out_kg, 1)
+            ok = abs(diff_kg) <= 1.0
+
+            # 표시용: 샘플 톤백 건수 (참고)
             r_cur_samp = db.fetchone(
                 "SELECT COUNT(*) AS cnt FROM inventory_tonbag "
                 "WHERE status IN ('AVAILABLE','RESERVED','PICKED','RETURN') "
                 "AND COALESCE(is_sample,0)=1"
             )
-            cur_samp_cnt = int((r_cur_samp or {}).get('cnt', 0) or 0)
-
-            # 출고 누계 (OUTBOUND+SOLD) — 톤백
-            r_out = db.fetchone(
-                "SELECT COUNT(*) AS cnt, COALESCE(SUM(weight),0) AS kg "
-                "FROM inventory_tonbag "
-                "WHERE status IN ('OUTBOUND','SOLD') "
-                "AND COALESCE(is_sample,0)=0"
-            )
-            out_cnt = int(r_out['cnt'] or 0)
-            out_kg  = float(r_out['kg'] or 0)
-
-            # 출고 누계 샘플
+            cur_samp_cnt = int(_fv(r_cur_samp, "cnt") or 0)
             r_out_samp = db.fetchone(
                 "SELECT COUNT(*) AS cnt FROM inventory_tonbag "
-                "WHERE status IN ('OUTBOUND','SOLD') AND COALESCE(is_sample,0)=1"
+                "WHERE status IN ('OUTBOUND','SOLD','SHIPPED','CONFIRMED') "
+                "AND COALESCE(is_sample,0)=1"
             )
-            out_samp_cnt = int((r_out_samp or {}).get('cnt', 0) or 0)
-
-            # LOT 수
-            r_lot = db.fetchone(
-                "SELECT COUNT(DISTINCT lot_no) AS cnt FROM inventory WHERE status != 'DEPLETED'"
+            out_samp_cnt = int(_fv(r_out_samp, "cnt") or 0)
+            r_samp_total = db.fetchone(
+                "SELECT COUNT(*) AS cnt FROM inventory_tonbag WHERE COALESCE(is_sample,0)=1"
             )
-            lot_cnt = int(r_lot['cnt'] or 0) if r_lot else 0
+            total_samp_cnt = int(_fv(r_samp_total, "cnt") or 0)
 
-            diff_kg = total_kg - cur_kg - out_kg
-            ok = abs(diff_kg) < 1.0
+            # LOT 행 순중량·현재중량 (웹 lot_weight_summary)
+            r_nw = db.fetchone(
+                "SELECT COALESCE(SUM(net_weight), 0) AS sn, "
+                "COALESCE(SUM(current_weight), 0) AS sc FROM inventory"
+            )
+            sum_net = float(_fv(r_nw, "sn") or 0)
+            sum_cur_inv = float(_fv(r_nw, "sc") or 0)
+            r_samp_tb = db.fetchone(
+                "SELECT COALESCE(SUM(weight), 0) AS kg FROM inventory_tonbag "
+                "WHERE COALESCE(is_sample, 0) = 1 "
+                "AND status IN ('AVAILABLE','RESERVED','PICKED','RETURN')"
+            )
+            samp_tb_kg = float(_fv(r_samp_tb, "kg") or 0)
 
             return {
-                'total_cnt': total_cnt,     'total_kg': total_kg,
+                'total_kg': initial_kg,
+                'total_cnt': lot_cnt,
                 'total_samp_cnt': total_samp_cnt,
-                'cur_cnt': cur_cnt,         'cur_kg': cur_kg,
+                'cur_kg': cur_kg,
+                'cur_cnt': cur_cnt,
                 'cur_samp_cnt': cur_samp_cnt,
-                'out_cnt': out_cnt,         'out_kg': out_kg,
+                'out_kg': out_kg,
+                'out_cnt': out_cnt,
                 'out_samp_cnt': out_samp_cnt,
                 'lot_cnt': lot_cnt,
-                'diff_kg': diff_kg,         'ok': ok,
+                'diff_kg': diff_kg,
+                'ok': ok,
+                'sum_net_weight_kg': round(sum_net, 1),
+                'sum_current_weight_kg': round(sum_cur_inv, 1),
+                'gap_net_minus_current_kg': round(sum_net - sum_cur_inv, 1),
+                'sample_tonbags_in_stock_kg': round(samp_tb_kg, 1),
             }
         except Exception as e:
             logger.debug(f"정합성 집계 오류: {e}")
@@ -1309,6 +1341,8 @@ class DashboardDataMixin:
                 'cur_cnt': 0,   'cur_kg': 0,   'cur_samp_cnt': 0,
                 'out_cnt': 0,   'out_kg': 0,   'out_samp_cnt': 0,
                 'lot_cnt': 0,   'diff_kg': 0,  'ok': True,
+                'sum_net_weight_kg': 0, 'sum_current_weight_kg': 0,
+                'gap_net_minus_current_kg': 0, 'sample_tonbags_in_stock_kg': 0,
             }
 
     def _get_integrity_mismatch_lots(self) -> list:

@@ -15,9 +15,10 @@ import logging
 import tempfile
 import importlib.util
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, Query as QP
 from fastapi.responses import FileResponse
 from backend.common.errors import ok_response, err_response
+from backend.common.excel_alignment import safe_apply_sqm_file, safe_apply_sqm_workbook
 
 router = APIRouter(prefix="/api/action", tags=["actions"])
 logger = logging.getLogger(__name__)
@@ -396,108 +397,226 @@ def restore_backup(body: dict = {}):
 
 
 # ── F035: LOT 리스트 Excel 내보내기 ──────────────────────────
+def _build_lot_workbook(rows):
+    """
+    LOT 재고현황 공통 워크북 빌더.
+    컬럼 순서: SAP NO, BL NO, Container, 제품명, LOT NO, LOT SQM,
+               순중량(kg), 현재중량(kg), 톤백수, 상태, 입고일, 도착일,
+               창고, 선박, D/O NO, 비고
+    """
+    import openpyxl
+    from openpyxl.styles import PatternFill, Font, Border, Side, Alignment
+    from openpyxl.utils import get_column_letter
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "LOT 재고현황"
+
+    headers = [
+        "SAP NO", "BL NO", "Container", "제품명",
+        "LOT NO", "LOT SQM",
+        "순중량(kg)", "현재중량(kg)", "톤백수",
+        "상태", "입고일", "도착일",
+        "창고", "선박", "D/O NO", "비고"
+    ]
+
+    header_fill = PatternFill("solid", fgColor="1F4E79")
+    header_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=10)
+    thin = Side(style="thin", color="AAAAAA")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    center = Alignment(horizontal="center", vertical="center")
+
+    ws.row_dimensions[1].height = 22
+    for col_idx, hdr in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_idx, value=hdr)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.border = border
+        cell.alignment = center
+
+    status_fills = {
+        "AVAILABLE": PatternFill("solid", fgColor="E8F5E9"),
+        "RESERVED":  PatternFill("solid", fgColor="E3F2FD"),
+        "PICKED":    PatternFill("solid", fgColor="FFF3E0"),
+        "OUTBOUND":  PatternFill("solid", fgColor="F3E5F5"),
+        "SOLD":      PatternFill("solid", fgColor="ECEFF1"),
+        "RETURNED":  PatternFill("solid", fgColor="FFEBEE"),
+    }
+    body_font = Font(name="맑은 고딕", size=9)
+
+    for r_idx, row in enumerate(rows, 2):
+        data = list(row)
+        status = data[9] or ""
+        row_fill = status_fills.get(status)
+        for c_idx, val in enumerate(data, 1):
+            cell = ws.cell(row=r_idx, column=c_idx, value=val)
+            cell.font = body_font
+            cell.border = border
+            # 숫자(int/float)는 기본 정렬, 나머지는 가운데
+            if not isinstance(val, (int, float)):
+                cell.alignment = center
+            if row_fill:
+                cell.fill = row_fill
+
+    # 열 너비: SAP,BL,Container,제품명,LOT,LOTSQM,net,cur,#tb,sts,inb,arr,wh,vessel,do,rem
+    col_widths = [12, 14, 16, 22, 16, 14, 13, 13, 8, 12, 12, 12, 12, 14, 14, 20]
+    for i, w in enumerate(col_widths, 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+
+    # 합계 행 (순중량=col7, 현재중량=col8)
+    last_row = len(rows) + 2
+    ws.cell(row=last_row, column=1, value="합계").font = Font(bold=True, name="맑은 고딕", size=9)
+    ws.cell(row=last_row, column=7, value=round(sum(r[6] or 0 for r in rows), 1)).font = Font(bold=True)
+    ws.cell(row=last_row, column=8, value=round(sum(r[7] or 0 for r in rows), 1)).font = Font(bold=True)
+
+    safe_apply_sqm_workbook(wb)
+    return wb
+
+
 @router.get("/export-lot-excel", summary="📊 LOT 리스트 Excel 내보내기 (F035)")
 def export_lot_excel():
-    """
-    inventory 전체 → .xlsx 임시 파일 생성 → FileResponse.
-    openpyxl 사용, 헤더 색상 적용.
-    """
+    """inventory 전체 → .xlsx 임시 파일 → FileResponse (브라우저 다운로드)."""
     try:
-        import openpyxl
-        from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
-        from openpyxl.utils import get_column_letter
-
         con = _db()
         rows = con.execute("""
-            SELECT
-                lot_no, lot_sqm, sap_no, bl_no, product,
-                net_weight, current_weight, tonbag_count,
-                status, inbound_date, arrival_date,
-                warehouse, vessel, do_no, remarks
+            SELECT sap_no, bl_no, container_no, product,
+                   lot_no, lot_sqm,
+                   net_weight, current_weight, tonbag_count,
+                   status, inbound_date, arrival_date,
+                   warehouse, vessel, do_no, remarks
             FROM inventory
             ORDER BY inbound_date DESC, lot_no
         """).fetchall()
         con.close()
 
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "LOT 재고현황"
-
-        headers = [
-            "LOT NO", "LOT SQM", "SAP NO", "BL NO", "제품명",
-            "순중량(kg)", "현재중량(kg)", "톤백수",
-            "상태", "입고일", "도착일",
-            "창고", "선박", "D/O NO", "비고"
-        ]
-
-        # 헤더 스타일
-        header_fill = PatternFill("solid", fgColor="1F4E79")
-        header_font = Font(bold=True, color="FFFFFF", name="맑은 고딕", size=10)
-        center_align = Alignment(horizontal="center", vertical="center")
-        thin = Side(style="thin", color="AAAAAA")
-        border = Border(left=thin, right=thin, top=thin, bottom=thin)
-
-        ws.row_dimensions[1].height = 22
-        for col_idx, hdr in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=col_idx, value=hdr)
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = center_align
-            cell.border = border
-
-        # 상태 색상 매핑
-        status_fills = {
-            "AVAILABLE": PatternFill("solid", fgColor="E8F5E9"),
-            "RESERVED":  PatternFill("solid", fgColor="E3F2FD"),
-            "PICKED":    PatternFill("solid", fgColor="FFF3E0"),
-            "OUTBOUND":  PatternFill("solid", fgColor="F3E5F5"),
-            "SOLD":      PatternFill("solid", fgColor="ECEFF1"),
-            "RETURNED":  PatternFill("solid", fgColor="FFEBEE"),
-        }
-        body_font = Font(name="맑은 고딕", size=9)
-
-        for r_idx, row in enumerate(rows, 2):
-            data = list(row)
-            status = data[8] or ""
-            row_fill = status_fills.get(status)
-            for c_idx, val in enumerate(data, 1):
-                cell = ws.cell(row=r_idx, column=c_idx, value=val)
-                cell.font = body_font
-                cell.border = border
-                if row_fill:
-                    cell.fill = row_fill
-                if c_idx in (6, 7):  # 중량 숫자 오른쪽 정렬
-                    cell.alignment = Alignment(horizontal="right")
-                else:
-                    cell.alignment = center_align
-
-        # 열 너비 자동 조정
-        col_widths = [16, 14, 12, 14, 22, 13, 13, 8, 12, 12, 12, 12, 14, 14, 20]
-        for i, w in enumerate(col_widths, 1):
-            ws.column_dimensions[get_column_letter(i)].width = w
-
-        # 합계 행
-        last_row = len(rows) + 2
-        ws.cell(row=last_row, column=1, value="합계").font = Font(bold=True, name="맑은 고딕", size=9)
-        total_net = sum(r[5] or 0 for r in rows)
-        total_cur = sum(r[6] or 0 for r in rows)
-        ws.cell(row=last_row, column=6, value=round(total_net, 1)).font = Font(bold=True, name="맑은 고딕", size=9)
-        ws.cell(row=last_row, column=7, value=round(total_cur, 1)).font = Font(bold=True, name="맑은 고딕", size=9)
-
-        # 임시 파일 저장
+        wb = _build_lot_workbook(rows)
         tmp_dir = tempfile.gettempdir()
         ts = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
-        out_path = os.path.join(tmp_dir, f"SQM_LOT_재고현황_{ts}.xlsx")
+        out_path = os.path.join(tmp_dir, f"LOT_재고현황_{ts}.xlsx")
         wb.save(out_path)
 
         return FileResponse(
             path=out_path,
-            filename=f"SQM_LOT_재고현황_{ts}.xlsx",
+            filename=f"LOT_재고현황_{ts}.xlsx",
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
     except Exception as e:
         logger.error("export-lot-excel error: %s", e)
         return err_response(str(e))
+
+
+def _exports_dir() -> str:
+    """프로그램 폴더 안 exports 디렉토리 경로 반환 및 생성."""
+    path = os.path.join(_project_root(), "exports")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def _cleanup_old_exports(folder: str, prefix: str, keep: int = 30) -> None:
+    """같은 prefix 파일 중 오래된 것 삭제 (최대 keep개 유지)."""
+    try:
+        files = sorted(
+            [f for f in os.listdir(folder) if f.startswith(prefix) and f.endswith(".xlsx")],
+            reverse=True,
+        )
+        for old in files[keep:]:
+            try:
+                os.remove(os.path.join(folder, old))
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+@router.get("/open-lot-excel", summary="📂 LOT 리스트 Excel 저장 후 바로 열기")
+def open_lot_excel():
+    """LOT 재고현황 Excel 생성 → exports/ 저장 → os.startfile() 열기."""
+    try:
+        con = _db()
+        rows = con.execute("""
+            SELECT sap_no, bl_no, container_no, product,
+                   lot_no, lot_sqm,
+                   net_weight, current_weight, tonbag_count,
+                   status, inbound_date, arrival_date,
+                   warehouse, vessel, do_no, remarks
+            FROM inventory
+            ORDER BY inbound_date DESC, lot_no
+        """).fetchall()
+        con.close()
+
+        wb = _build_lot_workbook(rows)
+        exports = _exports_dir()
+        ts = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
+        fname = f"LOT_재고현황_{ts}.xlsx"
+        out_path = os.path.join(exports, fname)
+        wb.save(out_path)
+        _cleanup_old_exports(exports, "LOT_재고현황_")
+
+        try:
+            os.startfile(out_path)
+        except Exception as open_err:
+            logger.warning("os.startfile 실패: %s", open_err)
+
+        logger.info("LOT 재고현황 Excel 저장+열기: %s (%d LOT)", fname, len(rows))
+        return ok_response({"filename": fname, "path": out_path, "rows": len(rows), "opened": True})
+    except Exception as e:
+        logger.error("open-lot-excel error: %s", e)
+        return err_response(str(e))
+
+
+# ── 엔진 Excel 내보내기 (v864 파일메뉴 «내보내기» 옵션 동일) ─────────────
+_ENGINE_EXPORT_OPTIONS = frozenset({1, 2, 3, 4, 5, 6, 8, 9, 10, 11})
+
+
+@router.get("/export-engine-excel", summary="📤 엔진 Excel (통관·루비·톤백·통합 등)")
+def export_engine_excel(
+    option: int = QP(1, ge=1, le=11),
+    include_sample: bool = QP(True),
+):
+    """
+    SQMInventoryEngineV3.export_to_excel — v864 `_on_export_click(option)` 과 동일 계열.
+    option 4(톤백 Sub LOT): include_sample 으로 샘플 톤백 포함 여부.
+    """
+    if option not in _ENGINE_EXPORT_OPTIONS:
+        raise HTTPException(status_code=400, detail=f"지원하지 않는 option={option}")
+
+    stem_map = {
+        1: "SQM-Customs",
+        2: "SQM-DetailedInventory",
+        3: "SQM-Ruby18",
+        4: "SQM-SubLOT",
+        5: "SQM-LOT-TonbagReport",
+        6: "SQM-FullInventory",
+        8: "SQM-ReturnHistory",
+        9: "SQM-IntegrityReport",
+        10: "SQM-DetailOutbound",
+        11: "SQM-SalesOrderDN",
+    }
+    stem = stem_map.get(option, f"SQM-Export{option}")
+    ts = datetime.now(KST).strftime("%Y%m%d_%H%M%S")
+    fname = f"{stem}_{ts}.xlsx"
+    out_path = os.path.join(tempfile.gettempdir(), fname)
+
+    try:
+        eng = _engine()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+
+    try:
+        if option == 4:
+            actual_path = eng.export_to_excel(out_path, option=4, include_sample=include_sample)
+        else:
+            actual_path = eng.export_to_excel(out_path, option=option)
+        safe_apply_sqm_file(actual_path)
+        dl = os.path.basename(actual_path)
+        return FileResponse(
+            path=actual_path,
+            filename=dl,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    except Exception as e:
+        logger.error("export-engine-excel error: %s", e)
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # ── F050: LOT 상세 ────────────────────────────────────────────

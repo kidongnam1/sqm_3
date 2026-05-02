@@ -660,6 +660,11 @@ class InboundUploadMixin:
             for ci, (_, h, w, _) in enumerate(PREVIEW_COLUMNS, 1):
                 ws.column_dimensions[openpyxl.utils.get_column_letter(ci)].width = max(w / 7, len(h) + 2)
 
+            try:
+                from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+                apply_sqm_workbook_alignment(wb)
+            except Exception:
+                pass
             wb.save(save_path)
             self._log_safe(f"📥 Excel 저장: {save_path}")
 

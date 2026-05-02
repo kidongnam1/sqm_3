@@ -1,14 +1,25 @@
 # -*- coding: utf-8 -*-
 """SQM 재고관리 시스템 버전 정보"""
 
-__version__ = "8.6.5"
-VERSION = "8.6.5"
-VERSION_TUPLE = (8, 6, 5)
-RELEASE_DATE = "2026-04-27"
+__version__ = "8.6.6"
+VERSION = "8.6.6"
+VERSION_TUPLE = (8, 6, 6)
+RELEASE_DATE = "2026-05-02"
 APP_NAME = "SQM 재고관리 시스템"
 APP_NAME_EN = "SQM Inventory Management System"
-BUILD_DATE = "2026-04-27"
+BUILD_DATE = "2026-05-02"
 BUILD_NOTE = (
+    "v8.6.6 (2026-05-02)\n"
+    "PyWebView 마이그레이션 완성 — Web UI 기능 패리티\n"
+    "  [WEB] Dashboard 상태 카드 톤백/샘플 분리 표시\n"
+    "  [WEB] Inventory 4종 드롭다운 필터 (SAP/BL/LOT/Container)\n"
+    "  [WEB] Product Master 확장 (code/full_name/korean_name/tonbag_support)\n"
+    "  [WEB] Swap 리포트 웹 모달 구현\n"
+    "  [WEB] Sales Order DN 웹 모달 구현\n"
+    "  [WEB] 재고 추이 차트 스냅샷 + 모달 구현\n"
+    "  [WEB] Log 탭 활동이력/감사로그 2탭 구조 개선\n"
+    "  [FIX] LOT 정합성 복구 모달 구현\n"
+    "\n"
     "v8.6.4.2 (2026-04-20)\n"
     "Phase 4 — Regression & Hardening\n"
     "  [P1] inventory weight floor INSERT TRIGGER 추가 (음수 방지 강화)\n"

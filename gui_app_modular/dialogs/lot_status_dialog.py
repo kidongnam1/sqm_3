@@ -391,6 +391,11 @@ class LotStatusDialog:
         ws.cell(row=last, column=6, value=f'=SUM(F2:F{last-1})').font = Font(bold=True)
 
         ws.freeze_panes = 'A2'
+        try:
+            from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+            apply_sqm_workbook_alignment(wb)
+        except Exception:
+            pass
         wb.save(path)
 
         try:

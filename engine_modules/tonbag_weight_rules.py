@@ -23,9 +23,15 @@ class TonbagWeightRuleResult:
 
 
 def calculate_tonbag_weight(lot_total_weight_kg: float, mxbg_pallet: int, sample_weight_kg: float = DEFAULT_SAMPLE_WEIGHT_KG) -> float:
-    if mxbg_pallet <= 0:
+    try:
+        _mx = int(float(str(mxbg_pallet).replace(',', '').strip() or 0))
+    except (ValueError, TypeError):
+        _mx = 0
+    if _mx <= 0:
         return 0.0
-    return (float(lot_total_weight_kg) - float(sample_weight_kg)) / int(mxbg_pallet)
+    _lot = float(str(lot_total_weight_kg).replace(',', '').strip() or 0)
+    _smp = float(sample_weight_kg)
+    return (_lot - _smp) / _mx
 
 
 def get_rule_status(weight_kg: float) -> str:

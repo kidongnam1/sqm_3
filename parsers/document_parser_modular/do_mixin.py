@@ -1042,11 +1042,20 @@ class DOMixin:
                     logger.debug(f"[SUPPRESSED] exception in do_mixin.py: {_e}")  # noqa
 
     def parse_do(self, pdf_path: Optional[str] = None, image_bytes: Optional[bytes] = None,
-                 image_path: Optional[str] = None, use_gemini: bool = True) -> Optional[DOData]:
+                 image_path: Optional[str] = None, use_gemini: bool = True,
+                 carrier_id: Optional[str] = None, **kwargs) -> Optional[DOData]:
         """
         D/O 파싱: PDF 파일 또는 캡처 이미지(바이트/경로)를 Gemini API로 파싱.
         pdf_path, image_bytes, image_path 중 하나만 지정. 이미지 시 PDF 전용 폴백(정규식/OCR)은 생략.
+        carrier_id: inbound 원스톱에서 DB 템플릿 선사가 넘어올 때 사용 (선택).
         """
+        if kwargs:
+            logger.debug(f"[DO] parse_do 미사용 인자 무시: {list(kwargs.keys())}")
+        if carrier_id:
+            try:
+                setattr(self, '_last_carrier_id', str(carrier_id).strip())
+            except Exception as _e:
+                logger.debug(f"[DO] carrier_id 설정 스킵: {_e}")
         # ── v9.1: 0단계 — Gemini 없이 직접 파싱 ────────────────────────
         _carrier = str(getattr(self, '_last_carrier_id', '') or '').upper()
 

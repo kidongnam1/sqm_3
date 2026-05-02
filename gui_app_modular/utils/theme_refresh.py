@@ -185,6 +185,11 @@ def _refresh_single_treeview(tree: ttk.Treeview, colors: dict, style: ttk.Style)
         TableStyler.update_grid_style_for_theme(tree, is_dark)
     except (ImportError, Exception) as e:
         logger.debug(f"[_refresh_single_treeview] Suppressed: {e}")
+    try:
+        from gui_app_modular.utils.ui_constants import apply_treeview_center_alignment
+        apply_treeview_center_alignment(tree)
+    except (ImportError, Exception) as e:
+        logger.debug(f"[_refresh_single_treeview] center_alignment skip: {e}")
 
 
 def _refresh_native_widget(widget, colors: dict) -> None:

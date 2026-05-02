@@ -542,6 +542,11 @@ class AdvancedDialogsMixin:
                     cell = ws.cell(row=r, column=c, value='')
                     cell.fill = smp_fill
                     cell.border = thin
+            try:
+                from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+                apply_sqm_workbook_alignment(wb)
+            except Exception:
+                pass
             wb.save(file_path)
             CustomMessageBox.showinfo(dialog, "완료", f"반품 양식 저장 완료\n\n{file_path}\n\n재고 리스트와 동일 형식 + 반품수량·사유. 필수만 채우면 됩니다.")
             self._log(f"📥 반품 양식 다운로드: {file_path}")
@@ -1243,6 +1248,11 @@ class AdvancedDialogsMixin:
                         vals[5] if len(vals) > 5 else '',
                         vals[6] if len(vals) > 6 else '',
                     ])
+                try:
+                    from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+                    apply_sqm_workbook_alignment(wb)
+                except Exception:
+                    pass
                 wb.save(save_path)
                 CustomMessageBox.showinfo(dialog, "완료", f"저장 완료: {os.path.basename(save_path)}")
                 try:
@@ -1498,6 +1508,11 @@ class AdvancedDialogsMixin:
                 ws.column_dimensions['E'].width = 14
                 ws.column_dimensions['F'].width = 15
 
+                try:
+                    from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+                    apply_sqm_workbook_alignment(wb)
+                except Exception:
+                    pass
                 wb.save(save_path)
 
                 dialog.destroy()
@@ -2031,6 +2046,11 @@ class AdvancedDialogsMixin:
                 ws.column_dimensions['D'].width = 25  # 고객
                 ws.column_dimensions['K'].width = 35  # 소스파일
 
+                try:
+                    from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+                    apply_sqm_workbook_alignment(wb)
+                except Exception:
+                    pass
                 wb.save(save_path)
                 if _mb:
                     _mb.showinfo(dialog, '저장 완료',

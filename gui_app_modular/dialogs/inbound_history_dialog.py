@@ -327,6 +327,11 @@ class InboundHistoryDialog:
                     str(self._val(r, 8, 'stock_date') or '')[:10]
                 ])
 
+            try:
+                from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+                apply_sqm_workbook_alignment(wb)
+            except Exception:
+                pass
             wb.save(save_path)
             CustomMessageBox.showinfo(self.dialog, "완료", f"저장 완료: {os.path.basename(save_path)}")
             try:

@@ -877,7 +877,7 @@ html[data-theme="dark"] {
   font-size: 14px;
   font-weight: 900;
 }
-.side-btn:hover { background: var(--btn-hover); }
+.side-btn:hover { background: var(--sidebar-active-bg); color: var(--sidebar-active-fg); }
 .side-btn.active {
   background: var(--sidebar-active-bg);
   color: var(--sidebar-active-fg);
@@ -936,22 +936,22 @@ html[data-theme="dark"] {
 .data-table th {
   background: var(--table-header);
   padding: 8px 10px;
-  text-align: right;
+  text-align: center;
   font-weight: 700;
   border-bottom: 2px solid var(--panel-border);
   color: var(--fg);
+  white-space: nowrap;
 }
-.data-table th:first-child,
-.data-table th:nth-child(2),
-.data-table th:nth-child(3) { text-align: left; }
 .data-table td {
   padding: 7px 10px;
-  text-align: right;
+  text-align: center !important;
   border-bottom: 1px solid var(--panel-border);
 }
-.data-table td:first-child,
-.data-table td:nth-child(2),
-.data-table td:nth-child(3) { text-align: left; }
+.data-table td.mono-cell { font-family: 'Consolas','Courier New',monospace; }
+.data-table td[style*="text-align:right"],
+.data-table td[style*="text-align: right"] { text-align: right !important; }
+.data-table td[style*="text-align:left"],
+.data-table td[style*="text-align: left"] { text-align: left !important; }
 .data-table tr:nth-child(even) td { background: var(--table-row-alt); }
 .data-table tr.total-row td {
   font-weight: 700;
@@ -1442,6 +1442,8 @@ body,
 .menu-dropdown button:hover,
 .submenu-dropdown button:hover,
 .menu-dropdown .submenu-parent-btn:hover,
+.menu-dropdown .submenu-parent.open > .submenu-parent-btn,
+.menu-dropdown .submenu-parent.hover-active > .submenu-parent-btn,
 .menu-dropdown .submenu-parent:focus-within > .submenu-parent-btn {
   color: var(--menu-hover-fg) !important;
   background: var(--menu-hover-bg) !important;
@@ -1673,10 +1675,14 @@ nav.menubar .menu-dropdown .submenu-parent-btn,
 nav.menubar .menu-dropdown button:hover,
 nav.menubar .menu-dropdown button:focus,
 nav.menubar .menu-dropdown .submenu-parent:hover > .submenu-parent-btn,
+nav.menubar .menu-dropdown .submenu-parent.open > .submenu-parent-btn,
+nav.menubar .menu-dropdown .submenu-parent.hover-active > .submenu-parent-btn,
 nav.menubar .menu-dropdown .submenu-parent:focus-within > .submenu-parent-btn,
 .menubar .menu-dropdown button:hover,
 .menubar .menu-dropdown button:focus,
 .menubar .menu-dropdown .submenu-parent:hover > .submenu-parent-btn,
+.menubar .menu-dropdown .submenu-parent.open > .submenu-parent-btn,
+.menubar .menu-dropdown .submenu-parent.hover-active > .submenu-parent-btn,
 .menubar .menu-dropdown .submenu-parent:focus-within > .submenu-parent-btn {
   background: #2563eb !important;
   color: #ffffff !important;

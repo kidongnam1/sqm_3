@@ -443,6 +443,11 @@ class ReturnStatisticsDialog:
         _ws(wb.create_sheet(), '고객별', ['#', '고객', '반품 건수'],
             [(i, r['customer'], r['count']) for i, r in enumerate(stats.get('top_customers', []), 1)])
 
+        try:
+            from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+            apply_sqm_workbook_alignment(wb)
+        except Exception:
+            pass
         wb.save(path)
         if CustomMessageBox:
             CustomMessageBox.showinfo(self.popup, "완료", f"반품 통계가 저장되었습니다.\n\n{path}")

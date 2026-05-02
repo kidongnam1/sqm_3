@@ -799,6 +799,36 @@ def get_global_theme() -> str:
     return _GLOBAL_THEME
 
 
+def apply_treeview_center_alignment(tree, anchor: str = 'center') -> None:
+    """ttk Treeview 모든 데이터 열·#0 열의 heading/column anchor를 통일 (기본 가운데).
+
+    스타일(`*.Treeview.Heading`)만으로는 헤더·셀 정렬이 어긋나는 경우가 있어
+    위젯별 `heading`/`column`에 직접 anchor를 재설정한다.
+    """
+    import tkinter as tk
+    from tkinter import ttk as _ttk
+
+    if not isinstance(tree, _ttk.Treeview):
+        return
+    try:
+        cols = tree.cget('columns')
+        if isinstance(cols, str):
+            cols = tuple(str(cols).split()) if str(cols).strip() else ()
+        for cid in cols:
+            try:
+                tree.heading(cid, anchor=anchor)
+                tree.column(cid, anchor=anchor)
+            except tk.TclError as e:
+                logger.debug(f"[apply_treeview_center_alignment] col={cid}: {e}")
+        try:
+            tree.heading('#0', anchor=anchor)
+            tree.column('#0', anchor=anchor)
+        except tk.TclError as e:
+            logger.debug(f"[apply_treeview_center_alignment] #0: {e}")
+    except (tk.TclError, RuntimeError, ValueError, TypeError) as e:
+        logger.debug(f"[apply_treeview_center_alignment] Suppressed: {e}")
+
+
 # ═══════════════════════════════════════════════════════════════
 # 6-2. 글로벌 가독성 스타일 (v3.6.2 신규)
 # ═══════════════════════════════════════════════════════════════

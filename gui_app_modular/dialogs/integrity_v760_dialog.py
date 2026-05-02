@@ -374,6 +374,11 @@ class IntegrityV760Dialog:
             ws.column_dimensions['E'].width = 60
             ws.column_dimensions['F'].width = 60
 
+            try:
+                from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+                apply_sqm_workbook_alignment(wb)
+            except Exception:
+                pass
             wb.save(path)
             from ..utils.custom_messagebox import CustomMessageBox
             CustomMessageBox.showinfo(self.win, "저장 완료",

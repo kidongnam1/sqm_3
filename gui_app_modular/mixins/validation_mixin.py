@@ -136,6 +136,11 @@ class ValidationMixin:
                     ws.cell(row=row_idx, column=5, value=err.message)
                     ws.cell(row=row_idx, column=6, value=err.suggestion or "")
                 
+                try:
+                    from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+                    apply_sqm_workbook_alignment(wb)
+                except Exception:
+                    pass
                 wb.save(save_path)
                 CustomMessageBox.showinfo(self.root, "Complete", f"Errors exported to:\n{save_path}")
                 

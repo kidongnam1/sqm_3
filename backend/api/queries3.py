@@ -6,10 +6,14 @@ queries3.py: sales-order-dn, dn-cross-check, do-status,
 모든 응답: ok_response(data=...) 표준 포맷
 """
 import os
+import re
 import sqlite3
 import logging
+import tempfile
 from datetime import date
-from fastapi import APIRouter, Query as QP
+from pathlib import Path
+from fastapi import APIRouter, HTTPException, Query as QP
+from fastapi.responses import FileResponse
 from backend.common.errors import ok_response, err_response
 
 router = APIRouter(prefix="/api/q3", tags=["queries3"])
@@ -30,6 +34,97 @@ def _db() -> sqlite3.Connection:
 
 def _rows(rows) -> list:
     return [dict(r) for r in rows]
+
+
+def _project_root() -> Path:
+    here = Path(__file__).resolve()
+    return here.parents[2]
+
+
+def _sales_order_dn_template_path() -> Path:
+    root = _project_root()
+    candidates = [
+        root / "data" / "templates" / "sales_order_dn_template.xlsx",
+        root.parent / "sqm_2_merge_upload" / "data" / "templates" / "sales_order_dn_template.xlsx",
+        Path(r"D:\program\SQM_inventory\sqm_2_merge_upload\data\templates\sales_order_dn_template.xlsx"),
+    ]
+    for p in candidates:
+        if p.exists():
+            return p
+    raise HTTPException(
+        status_code=404,
+        detail="sales_order_dn_template.xlsx 템플릿을 찾을 수 없습니다.",
+    )
+
+
+def _safe_filename_part(value: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_.-]+", "_", str(value or "").strip())[:80] or "SalesOrder"
+
+
+def _fmt_date(value) -> str:
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    return text[:10]
+
+
+def _fmt_mt(value) -> float:
+    try:
+        return round(float(value or 0) / 1000.0, 4)
+    except Exception:
+        return 0.0
+
+
+def _sales_order_dn_rows(con: sqlite3.Connection, sales_order_no: str) -> list:
+    return _rows(con.execute(
+        """
+        WITH sold_group AS (
+            SELECT
+                lot_no,
+                COALESCE(NULLIF(picking_no, ''), '') AS picking_no,
+                COALESCE(NULLIF(sap_no, ''), '') AS sap_no,
+                COALESCE(NULLIF(bl_no, ''), '') AS bl_no,
+                COALESCE(NULLIF(customer, ''), '') AS customer,
+                COALESCE(NULLIF(sku, ''), '') AS sku,
+                COALESCE(NULLIF(delivery_date, ''), '') AS delivery_date,
+                COALESCE(is_sample, 0) AS is_sample,
+                SUM(COALESCE(sold_qty_kg, 0)) AS net_kg,
+                SUM(COALESCE(gross_weight_kg, 0)) AS sold_gross_kg,
+                COUNT(*) AS ct_plt
+            FROM sold_table
+            WHERE sales_order_no = ?
+              AND COALESCE(status, '') IN ('SOLD', 'OUTBOUND', 'CONFIRMED')
+            GROUP BY lot_no, picking_no, sap_no, bl_no, customer, sku, delivery_date, COALESCE(is_sample, 0)
+        )
+        SELECT
+            sg.*,
+            i.product,
+            i.product_code,
+            i.initial_weight AS inv_net_kg,
+            i.gross_weight AS inv_gross_kg,
+            d.final_destination,
+            d.port_of_discharge,
+            d.warehouse_name,
+            d.gross_weight_kg AS do_gross_kg
+        FROM sold_group sg
+        LEFT JOIN inventory i ON i.lot_no = sg.lot_no
+        LEFT JOIN document_do d ON d.lot_no = sg.lot_no
+        ORDER BY sg.delivery_date, sg.lot_no, sg.is_sample, sg.picking_no
+        """,
+        (sales_order_no,),
+    ).fetchall())
+
+
+def _estimate_gross_kg(row: dict) -> float:
+    net = float(row.get("net_kg") or 0)
+    sold_gross = float(row.get("sold_gross_kg") or 0)
+    if sold_gross > 0:
+        return sold_gross
+    inv_net = float(row.get("inv_net_kg") or 0)
+    inv_gross = float(row.get("inv_gross_kg") or 0)
+    if net > 0 and inv_net > 0 and inv_gross > 0:
+        return net * (inv_gross / inv_net)
+    return net
 
 
 # ── Sales Order / DN 보고서 ───────────────────────────────────────
@@ -82,6 +177,111 @@ def get_sales_order_dn():
     except Exception as e:
         logger.error("sales-order-dn error: %s", e)
         return err_response(str(e))
+
+
+@router.get("/sales-order-nos", summary="📋 Sales Order No 목록")
+def get_sales_order_nos(limit: int = QP(100, ge=1, le=500)):
+    """sold_table 기준 Sales Order No 선택 목록."""
+    try:
+        con = _db()
+        rows = con.execute(
+            """
+            SELECT
+                sales_order_no,
+                COUNT(*) AS row_count,
+                ROUND(SUM(COALESCE(sold_qty_kg, 0)) / 1000.0, 4) AS total_mt,
+                MAX(COALESCE(sold_date, created_at, '')) AS last_date
+            FROM sold_table
+            WHERE sales_order_no IS NOT NULL
+              AND TRIM(sales_order_no) != ''
+              AND COALESCE(status, '') IN ('SOLD', 'OUTBOUND', 'CONFIRMED')
+            GROUP BY sales_order_no
+            ORDER BY last_date DESC, sales_order_no DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        con.close()
+        return ok_response(data={"items": _rows(rows), "total": len(rows)})
+    except Exception as e:
+        logger.error("sales-order-nos error: %s", e)
+        return err_response(str(e))
+
+
+@router.get("/sales-order-dn-template", summary="📋 Sales Order DN 템플릿 Excel 생성")
+def export_sales_order_dn_template(sales_order_no: str = QP(..., min_length=1)):
+    """
+    Sales Order No 선택 → sold_table 조회 → sales_order_dn_template.xlsx 복사/채움 → 다운로드.
+    템플릿은 5행 헤더, 6행부터 데이터 영역으로 사용한다.
+    """
+    so_no = str(sales_order_no or "").strip()
+    if not so_no:
+        raise HTTPException(status_code=400, detail="Sales Order No가 필요합니다.")
+
+    try:
+        from openpyxl import load_workbook
+    except ImportError:
+        raise HTTPException(status_code=500, detail="openpyxl 미설치")
+
+    con = _db()
+    try:
+        rows = _sales_order_dn_rows(con, so_no)
+    finally:
+        con.close()
+
+    if not rows:
+        raise HTTPException(status_code=404, detail=f"Sales Order No '{so_no}' 출고 데이터가 없습니다.")
+
+    template = _sales_order_dn_template_path()
+    wb = load_workbook(template)
+    ws = wb["DN"] if "DN" in wb.sheetnames else wb.active
+
+    ws["B3"] = "Sales order No :"
+    ws["C3"] = so_no
+
+    start_row = 6
+    for r in range(start_row, max(ws.max_row, start_row) + 1):
+        for c in range(2, 14):
+            ws.cell(r, c).value = None
+
+    for offset, row in enumerate(rows):
+        excel_row = start_row + offset
+        net_kg = float(row.get("net_kg") or 0)
+        gross_kg = _estimate_gross_kg(row)
+        destination = (
+            row.get("customer")
+            or row.get("final_destination")
+            or row.get("port_of_discharge")
+            or row.get("warehouse_name")
+            or ""
+        )
+        sku = row.get("sku") or row.get("product_code") or ""
+        description = row.get("product") or sku
+
+        ws.cell(excel_row, 2).value = destination
+        ws.cell(excel_row, 3).value = _fmt_date(row.get("delivery_date"))
+        ws.cell(excel_row, 4).value = row.get("lot_no") or ""
+        ws.cell(excel_row, 5).value = row.get("sap_no") or ""
+        ws.cell(excel_row, 6).value = row.get("bl_no") or ""
+        ws.cell(excel_row, 7).value = so_no
+        ws.cell(excel_row, 8).value = row.get("picking_no") or ""
+        ws.cell(excel_row, 9).value = sku
+        ws.cell(excel_row, 10).value = description
+        ws.cell(excel_row, 11).value = _fmt_mt(net_kg)
+        ws.cell(excel_row, 12).value = _fmt_mt(gross_kg)
+        ws.cell(excel_row, 13).value = int(row.get("ct_plt") or 0)
+
+    out_dir = Path(tempfile.gettempdir()) / "sqm_exports"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_name = f"Sales_order_DN_{_safe_filename_part(so_no)}.xlsx"
+    out_path = out_dir / out_name
+    wb.save(out_path)
+
+    return FileResponse(
+        path=str(out_path),
+        filename=out_name,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
 
 # ── DN Cross Check ────────────────────────────────────────────────

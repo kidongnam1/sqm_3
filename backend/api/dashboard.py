@@ -148,8 +148,7 @@ def get_dashboard_stats():
         total_wt    = c.execute("SELECT COALESCE(SUM(current_weight),0) FROM inventory").fetchone()[0]
         avail_wt    = c.execute("SELECT COALESCE(SUM(current_weight),0) FROM inventory WHERE status='AVAILABLE'").fetchone()[0]
 
-        # ── 5단계 상태 요약 (inventory_tonbag 기준) ──
-        # OUTBOUND + SOLD 을 하나로 합침 (SOLD = deprecated alias)
+        # ── 상태 요약 (inventory_tonbag 기준) — 일반 + 샘플 분리 ──
         status_rows = c.execute("""
             SELECT
                 CASE
@@ -160,25 +159,38 @@ def get_dashboard_stats():
                     WHEN status = 'RETURN'    THEN 'return'
                     ELSE 'other'
                 END AS grp,
-                COUNT(DISTINCT lot_no) AS lots,
-                COUNT(*)               AS tonbags,
-                COALESCE(SUM(weight), 0) AS weight_kg
+                COALESCE(is_sample, 0)       AS is_sample,
+                COUNT(DISTINCT lot_no)        AS lots,
+                COUNT(*)                      AS tonbags,
+                COALESCE(SUM(weight), 0)      AS weight_kg
             FROM inventory_tonbag
-            WHERE COALESCE(is_sample, 0) = 0
-            GROUP BY grp
+            GROUP BY grp, is_sample
         """).fetchall()
 
         status_summary = {}
         for grp_name in ('available', 'reserved', 'picked', 'outbound', 'return'):
-            status_summary[grp_name] = {"lots": 0, "tonbags": 0, "weight_kg": 0.0}
+            status_summary[grp_name] = {
+                "lots": 0, "tonbags": 0, "weight_kg": 0.0,
+                "normal_bags": 0, "normal_kg": 0.0,
+                "sample_bags": 0, "sample_kg": 0.0,
+            }
         for row in status_rows:
-            grp, lots, tonbags, weight_kg = row
-            if grp in status_summary:
-                status_summary[grp] = {
-                    "lots": lots,
-                    "tonbags": tonbags,
-                    "weight_kg": round(float(weight_kg), 1),
-                }
+            grp, is_sample, lots, tonbags, weight_kg = row
+            if grp not in status_summary:
+                continue
+            s = status_summary[grp]
+            s["lots"]     += lots
+            s["tonbags"]  += tonbags
+            s["weight_kg"] = round(s["weight_kg"] + float(weight_kg), 1)
+            if is_sample:
+                s["sample_bags"] += tonbags
+                s["sample_kg"]    = round(s["sample_kg"] + float(weight_kg), 1)
+            else:
+                s["normal_bags"] += tonbags
+                s["normal_kg"]    = round(s["normal_kg"] + float(weight_kg), 1)
+        for grp_name in status_summary:
+            s = status_summary[grp_name]
+            s["weight_kg"] = round(s["weight_kg"], 1)
 
         # ── 제품x상태 매트릭스 (제품별 톤백 수량) ──
         matrix_rows = c.execute("""
@@ -192,7 +204,6 @@ def get_dashboard_stats():
                 COUNT(*) AS total
             FROM inventory_tonbag tb
             LEFT JOIN inventory i ON tb.lot_no = i.lot_no
-            WHERE COALESCE(tb.is_sample, 0) = 0
             GROUP BY COALESCE(i.product, '(미지정)')
             ORDER BY COALESCE(i.product, '(미지정)')
         """).fetchall()
@@ -237,6 +248,31 @@ def get_dashboard_stats():
             "ok":                abs(diff_kg) <= 1.0,
         }
 
+        # LOT 행 기준 합계 (엑셀 «LOT 재고현황» 순중량/현재중량 합과 동일 — 샘플은 보통 순중량−현재중량 차이로 반영)
+        _nw_sum, _cw_sum = c.execute(
+            """
+            SELECT COALESCE(SUM(net_weight), 0), COALESCE(SUM(current_weight), 0)
+            FROM inventory
+            """
+        ).fetchone()
+        _nw_sum = float(_nw_sum or 0)
+        _cw_sum = float(_cw_sum or 0)
+        _sample_tb = c.execute(
+            """
+            SELECT COALESCE(SUM(weight), 0) FROM inventory_tonbag
+            WHERE COALESCE(is_sample, 0) = 1
+              AND status IN ('AVAILABLE', 'RESERVED', 'PICKED', 'RETURN')
+            """
+        ).fetchone()[0]
+        lot_weight_summary = {
+            "sum_net_weight_kg": round(_nw_sum, 1),
+            "sum_current_weight_kg": round(_cw_sum, 1),
+            "gap_net_minus_current_kg": round(_nw_sum - _cw_sum, 1),
+            "sum_net_mt": round(_nw_sum / 1000.0, 3),
+            "sum_current_mt": round(_cw_sum / 1000.0, 3),
+            "sample_tonbags_in_stock_kg": round(float(_sample_tb or 0), 1),
+        }
+
         db.close()
 
         return {
@@ -253,6 +289,8 @@ def get_dashboard_stats():
             "product_matrix":  product_matrix,
             # 신규: 정합성 검증
             "integrity":       integrity,
+            # LOT 목록/엑셀과 동일한 중량 합계 (순중량 vs 현재중량·샘플 톤백)
+            "lot_weight_summary": lot_weight_summary,
         }
     except Exception as e:
         logger.error("[dashboard/stats] 집계 실패: %s", e, exc_info=True)

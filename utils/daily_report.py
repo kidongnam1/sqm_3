@@ -234,6 +234,13 @@ def _write_excel(data: dict, filepath: str) -> bool:
                    ['lot_no', 'weight_kg', 'reason', 'created_at'])
         auto_width(ws_ret)
 
+    try:
+        from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+
+        apply_sqm_workbook_alignment(wb)
+    except Exception as e:
+        logger.warning("[DailyReport] SQM 엑셀 정렬 적용 실패(무시): %s", e)
+
     wb.save(filepath)
     logger.info(f"[DailyReport] 엑셀 저장: {filepath}")
     return True

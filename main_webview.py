@@ -236,6 +236,84 @@ def main():
     # 3. PyWebView 창 생성
     try:
         import webview
+        from webview import FileDialog
+
+        class SqmPywebviewApi:
+            """JS ↔ Python: 엑셀 다운로드를 네이티브 '다른 이름으로 저장'으로 처리 (Blob 다운로드 미동작 대비)."""
+
+            def save_download_url(
+                self,
+                url: str,
+                suggested_filename: str = "SQM-export.xlsx",
+                open_after_save: bool = False,
+            ) -> dict:
+                try:
+                    import urllib.request
+
+                    u = str(url or "").strip()
+                    if not u.startswith(("http://127.0.0.1:", "http://localhost:")):
+                        return {"ok": False, "error": "로컬 API URL만 허용됩니다."}
+
+                    req = urllib.request.Request(
+                        u,
+                        headers={"User-Agent": "SQM-PyWebView-Export/1.0"},
+                    )
+                    with urllib.request.urlopen(req, timeout=300) as resp:
+                        body = resp.read()
+                    if not body:
+                        return {"ok": False, "error": "서버 응답이 비어 있습니다."}
+
+                    wins = webview.windows
+                    if not wins:
+                        return {"ok": False, "error": "webview 창이 없습니다."}
+                    win = wins[0]
+
+                    fname = (suggested_filename or "SQM-export.xlsx").strip()
+                    if not fname.lower().endswith(".xlsx"):
+                        fname += ".xlsx"
+
+                    paths = win.create_file_dialog(
+                        FileDialog.SAVE,
+                        save_filename=fname,
+                    )
+                    if paths is None:
+                        return {"ok": False, "cancelled": True}
+                    path = paths[0] if isinstance(paths, (list, tuple)) else paths
+                    if not path or not isinstance(path, str):
+                        return {"ok": False, "error": "저장 경로를 확인할 수 없습니다."}
+
+                    with open(path, "wb") as f:
+                        f.write(body)
+                    log.info("PyWebView 엑셀 저장: %d bytes -> %s", len(body), path)
+
+                    opened = False
+                    open_error = None
+                    if open_after_save:
+                        try:
+                            if sys.platform == "win32":
+                                os.startfile(path)  # noqa: S606
+                                opened = True
+                            elif sys.platform == "darwin":
+                                import subprocess
+
+                                subprocess.run(["open", path], check=False)
+                                opened = True
+                            else:
+                                import subprocess
+
+                                subprocess.run(["xdg-open", path], check=False)
+                                opened = True
+                        except Exception as oe:
+                            open_error = str(oe)
+                            log.warning("저장 후 파일 열기 실패: %s", oe)
+
+                    out = {"ok": True, "path": path, "opened": opened}
+                    if open_error:
+                        out["open_error"] = open_error
+                    return out
+                except Exception as e:
+                    log.exception("save_download_url 실패")
+                    return {"ok": False, "error": str(e)}
 
         index_path = os.path.join(FRONTEND_DIR, 'index.html')
         if not os.path.exists(index_path):
@@ -255,6 +333,7 @@ def main():
             min_size=(1024, 700),
             resizable=True,
             background_color='#070e1a',
+            js_api=SqmPywebviewApi(),
         )
 
         def on_loaded():

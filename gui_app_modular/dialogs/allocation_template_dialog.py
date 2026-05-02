@@ -17,11 +17,13 @@ from gui_app_modular.utils.ui_constants import create_themed_toplevel  # v8.0.9
     AllocationTemplateDialog(parent)
 """
 
+import json
 import logging
 import os
+import shutil
 import tkinter as tk
 from pathlib import Path
-from tkinter import messagebox, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 from typing import List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
@@ -31,6 +33,7 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────
 try:
     from gui_app_modular.utils.ui_constants import (
+        create_themed_toplevel,
         DialogSize,
         apply_modal_window_options,
         center_dialog,
@@ -40,6 +43,7 @@ try:
     _HAS_UI_UTILS = True
 except ImportError:
     _HAS_UI_UTILS = False
+    def create_themed_toplevel(parent): return tk.Toplevel(parent)
     def tc(key, dark=None): return '#888888'  # fallback
 
 
@@ -115,15 +119,98 @@ def _find_template_file(name: str) -> Optional[Path]:
     resources/templates/ 폴더에서 양식 파일 탐색.
     없으면 None 반환 → 내장 데이터 fallback.
     """
+    if not name:
+        return None
+    direct = Path(str(name))
+    if direct.is_absolute() and direct.exists():
+        return direct
     candidates = [
+        _allocation_template_dir() / name,
         Path(__file__).parent.parent / 'resources' / 'templates' / name,
         Path(__file__).parent.parent.parent / 'resources' / 'templates' / name,
         Path(os.getcwd()) / 'resources' / 'templates' / name,
+        Path(os.getcwd()) / 'resources' / 'templates' / 'allocation' / name,
     ]
     for p in candidates:
         if p.exists():
             return p
     return None
+
+
+def _allocation_template_dir() -> Path:
+    """외부 Allocation 양식/매핑 저장 폴더."""
+    root = Path(__file__).resolve().parents[2]
+    path = root / 'resources' / 'templates' / 'allocation'
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _safe_id(value: str) -> str:
+    import re
+    base = re.sub(r'[^A-Za-z0-9_.-]+', '_', str(value or '').strip()).strip('._')
+    return (base or 'allocation_template')[:80]
+
+
+def _find_header_row_in_xlsx(filepath: Path) -> Tuple[str, int, List[str]]:
+    """엑셀에서 Product/Lot No 기준 헤더 행을 찾는다. 반환 header_row는 1-base."""
+    import openpyxl
+    wb = openpyxl.load_workbook(filepath, data_only=True, read_only=True)
+    best = (wb.sheetnames[0], 1, [])
+    for ws in wb.worksheets:
+        for r in range(1, min(ws.max_row, 12) + 1):
+            vals = [ws.cell(r, c).value for c in range(1, ws.max_column + 1)]
+            norm = [str(v).strip() for v in vals if v is not None and str(v).strip()]
+            upper = ' '.join(norm).upper()
+            if 'PRODUCT' in upper and 'LOT' in upper:
+                return ws.title, r, norm
+            if 'LOT' in upper and ('QTY' in upper or 'SAP' in upper):
+                best = (ws.title, r, norm)
+    return best
+
+
+def _mapping_from_excel(filepath: Path, label: str = '') -> dict:
+    """가져온 엑셀 파일에서 기본 매핑 JSON을 생성한다."""
+    sheet, header_row, columns = _find_header_row_in_xlsx(filepath)
+    file_id = _safe_id(label or filepath.stem)
+    return {
+        'id': file_id,
+        'tab_label': f'📄 {label or filepath.stem}',
+        'template_file': f'{file_id}.xlsx',
+        'sheet': sheet,
+        'header_row': header_row,
+        'data_start_row': header_row + 1,
+        'description': (
+            f'외부 Allocation 양식 │ 시트: {sheet} │ 헤더: {header_row}행 │ '
+            f'컬럼: {" / ".join(columns)}'
+        ),
+        'columns': columns,
+        'sample_rule': {
+            'field': 'Product',
+            'contains': 'sample',
+            'qty_mt_max': 0.01,
+        },
+    }
+
+
+def _load_external_formats() -> List[dict]:
+    """resources/templates/allocation/*.json 매핑을 읽어 FORMATS 앞에 붙인다."""
+    base = _allocation_template_dir()
+    formats = []
+    for json_path in sorted(base.glob('*.json')):
+        try:
+            data = json.loads(json_path.read_text(encoding='utf-8-sig'))
+            if not isinstance(data, dict):
+                continue
+            tpl_name = data.get('template_file')
+            if tpl_name and not Path(str(tpl_name)).is_absolute():
+                data['template_file'] = str(base / str(tpl_name))
+            data.setdefault('tab_label', f"📄 {data.get('id') or json_path.stem}")
+            data.setdefault('description', f"외부 Allocation 양식: {json_path.name}")
+            data.setdefault('mapping_file', str(json_path))
+            formats.append(data)
+        except Exception as e:
+            logger.warning("[AllocationTemplateDialog] 외부 매핑 로드 실패 %s: %s", json_path, e)
+    return formats
 
 
 def _load_excel_preview(filepath: Path, max_rows: int = 30) -> Tuple[List[str], List[tuple]]:
@@ -275,7 +362,8 @@ class AllocationTemplateDialog:
     def __init__(self, parent):
         self.parent = parent
         self._current_tab = 0   # 현재 선택 탭 인덱스
-        self._loaded_data = [None, None]   # 탭별 캐시 (columns, rows)
+        self.FORMATS = _load_external_formats() + list(self.FORMATS)
+        self._loaded_data = [None] * len(self.FORMATS)   # 탭별 캐시 (columns, rows)
 
         self.dialog = create_themed_toplevel(parent)
         self.dialog.title('📋 Allocation 양식 미리보기')
@@ -321,6 +409,19 @@ class AllocationTemplateDialog:
             )
             btn.pack(side='left', padx=4)
             self._tab_btns.append(btn)
+
+        import_btn = tk.Button(
+            tab_frame,
+            text='＋ 양식 가져오기',
+            font=('Malgun Gothic', 10, 'bold'),
+            bg=C_BTN_DL, fg=C_FG,
+            activebackground=tc('info'),
+            relief='flat', bd=0,
+            padx=14, pady=6,
+            cursor='hand2',
+            command=self._on_import_template,
+        )
+        import_btn.pack(side='right', padx=8)
 
         # ── 설명 레이블 ──
         self._desc_var = tk.StringVar()
@@ -440,6 +541,8 @@ class AllocationTemplateDialog:
 
     def _load_tab(self, idx: int):
         """탭 idx의 데이터를 Treeview에 로드"""
+        if idx < 0 or idx >= len(self.FORMATS):
+            return
         self._update_tab_styles(idx)
         fmt = self.FORMATS[idx]
         self._desc_var.set(fmt['description'])
@@ -467,6 +570,112 @@ class AllocationTemplateDialog:
             logger.warning("[AllocationTemplateDialog] 파일 로드 실패, 내장 데이터 사용")
 
         return list(fmt['columns']), list(fmt['rows'])
+
+    def _rebuild_tabs(self):
+        """외부 양식 import 후 탭 버튼을 다시 만든다."""
+        self._loaded_data = [None] * len(self.FORMATS)
+        self._tab_btns.clear()
+        # 첫 번째 child가 tab_frame이다.
+        tab_frame = self.dialog.winfo_children()[0]
+        for child in tab_frame.winfo_children():
+            child.destroy()
+
+        for i, fmt in enumerate(self.FORMATS):
+            btn = tk.Button(
+                tab_frame,
+                text=fmt['tab_label'],
+                font=('Malgun Gothic', 10, 'bold'),
+                bg=C_BG2, fg=C_FG2,
+                activebackground=C_SELECT,
+                activeforeground=C_FG,
+                relief='flat', bd=0,
+                padx=18, pady=6,
+                cursor='hand2',
+                command=lambda idx=i: self._on_tab_click(idx),
+            )
+            btn.pack(side='left', padx=4)
+            self._tab_btns.append(btn)
+
+        tk.Button(
+            tab_frame,
+            text='＋ 양식 가져오기',
+            font=('Malgun Gothic', 10, 'bold'),
+            bg=C_BTN_DL, fg=C_FG,
+            activebackground=tc('info'),
+            relief='flat', bd=0,
+            padx=14, pady=6,
+            cursor='hand2',
+            command=self._on_import_template,
+        ).pack(side='right', padx=8)
+
+    def _on_import_template(self):
+        """고객 Allocation xlsx를 외부 템플릿으로 가져오고 JSON 매핑을 저장한다."""
+        src = filedialog.askopenfilename(
+            parent=self.dialog,
+            title='Allocation 양식 파일 선택',
+            filetypes=[('Excel 파일', '*.xlsx *.xls'), ('모든 파일', '*.*')],
+        )
+        if not src:
+            return
+        src_path = Path(src)
+        if src_path.name.startswith('~$'):
+            messagebox.showwarning(
+                '임시 파일 제외',
+                '~$ 로 시작하는 Excel 임시 잠금 파일은 양식으로 가져올 수 없습니다.\n'
+                '원본 .xlsx 파일을 선택하세요.',
+                parent=self.dialog,
+            )
+            return
+
+        default_label = src_path.stem.replace('_', ' ')
+        label = simpledialog.askstring(
+            '양식 이름',
+            '탭에 표시할 양식 이름을 입력하세요.',
+            initialvalue=default_label,
+            parent=self.dialog,
+        )
+        if not label:
+            return
+
+        try:
+            mapping = _mapping_from_excel(src_path, label)
+            base = _allocation_template_dir()
+            template_name = mapping['template_file']
+            json_name = f"{mapping['id']}.json"
+            dst_xlsx = base / template_name
+            dst_json = base / json_name
+            if dst_xlsx.exists() or dst_json.exists():
+                if not messagebox.askyesno(
+                    '덮어쓰기 확인',
+                    f'이미 같은 이름의 양식이 있습니다.\n\n{template_name}\n{json_name}\n\n덮어쓸까요?',
+                    parent=self.dialog,
+                ):
+                    return
+
+            shutil.copy2(str(src_path), str(dst_xlsx))
+            dst_json.write_text(
+                json.dumps(mapping, ensure_ascii=False, indent=2),
+                encoding='utf-8',
+            )
+
+            external = _load_external_formats()
+            builtin = [f for f in self.__class__.FORMATS]
+            self.FORMATS = external + builtin
+            self._current_tab = next(
+                (i for i, f in enumerate(self.FORMATS)
+                 if str(f.get('mapping_file', '')).endswith(json_name)),
+                0,
+            )
+            self._rebuild_tabs()
+            self._load_tab(self._current_tab)
+            messagebox.showinfo(
+                '가져오기 완료',
+                f'Allocation 양식을 저장했습니다.\n\n{dst_xlsx}\n{dst_json}\n\n다음 실행 시에도 목록에 표시됩니다.',
+                parent=self.dialog,
+            )
+        except Exception as e:
+            logger.error("[AllocationTemplateDialog] 양식 가져오기 실패: %s", e, exc_info=True)
+            messagebox.showerror('가져오기 실패', f'양식 가져오기 실패:\n{e}', parent=self.dialog)
 
     # ──────────────────────────────────────────
     # Treeview 채우기
@@ -628,6 +837,11 @@ class AllocationTemplateDialog:
                     openpyxl.utils.get_column_letter(col_idx)
                 ].width = max(12, len(col_name) + 2)
 
+            try:
+                from utils.sqm_excel_alignment import apply_sqm_workbook_alignment
+                apply_sqm_workbook_alignment(wb)
+            except Exception:
+                pass
             wb.save(save_path)
             messagebox.showinfo('저장 완료',
                                 f'양식 파일을 생성했습니다:\n{save_path}',

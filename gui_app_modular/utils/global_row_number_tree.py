@@ -111,9 +111,20 @@ def install_global_row_number_tree(root) -> None:
 
     def _scan():
         try:
+            try:
+                from gui_app_modular.utils.ui_constants import (
+                    apply_treeview_center_alignment,
+                )
+            except ImportError:
+                apply_treeview_center_alignment = None  # type: ignore
             for w in _iter_widgets(root):
                 if str(getattr(w, "winfo_class", lambda: "")()) == "Treeview":
                     _apply_to_tree(w)
+                    if apply_treeview_center_alignment:
+                        try:
+                            apply_treeview_center_alignment(w)
+                        except Exception as e:
+                            logger.debug(f"[rowno] center_align skip: {e}")
         except Exception as e:
             logger.debug(f"[rowno] scan skip: {e}")
         finally:

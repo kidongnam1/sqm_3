@@ -336,3 +336,375 @@ def patch_allocation(lot_no: str = PathParam(...), data: dict = Body(...)):
         raise
     except Exception as e:
         raise HTTPException(500, str(e))
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# POST /api/allocation/cancel-by-sale-ref  — SALE REF 일괄 취소
+# v864-2 AllocationTabMixin._on_allocation_cancel_by_sale_ref 포팅
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@router.post("/cancel-by-sale-ref", summary="🔖 SALE REF 일괄 취소")
+def cancel_by_sale_ref(data: dict = Body(...)):
+    """
+    sale_ref 기준으로 해당 배정 전체를 CANCELLED 처리하고
+    inventory 상태를 AVAILABLE 로 원복.
+    """
+    sale_ref = (data.get("sale_ref") or "").strip()
+    if not sale_ref:
+        raise HTTPException(400, "sale_ref 값이 필요합니다")
+    try:
+        con = _alloc_db()
+        rows = con.execute(
+            "SELECT DISTINCT lot_no FROM allocation_plan WHERE sale_ref=? AND status NOT IN ('CANCELLED','SOLD')",
+            (sale_ref,)
+        ).fetchall()
+        if not rows:
+            con.close()
+            return {"ok": False, "message": f"SALE REF '{sale_ref}' 에 해당하는 배정이 없거나 이미 취소됨"}
+
+        lot_list = [r[0] for r in rows]
+        cur = con.execute(
+            "UPDATE allocation_plan SET status='CANCELLED', cancelled_at=datetime('now') "
+            "WHERE sale_ref=? AND status NOT IN ('CANCELLED','SOLD')",
+            (sale_ref,)
+        )
+        cancelled_plans = cur.rowcount
+        for lot_no in lot_list:
+            con.execute(
+                "UPDATE inventory SET status='AVAILABLE', sold_to=NULL, sale_ref=NULL "
+                "WHERE lot_no=? AND status NOT IN ('SOLD','OUTBOUND')",
+                (lot_no,)
+            )
+        con.commit(); con.close()
+        logger.info(f"[cancel-by-sale-ref] sale_ref={sale_ref}, lots={lot_list}, plans={cancelled_plans}")
+        return {
+            "ok": True,
+            "message": f"SALE REF '{sale_ref}': {len(lot_list)} LOT / {cancelled_plans}건 취소됨",
+            "data": {"sale_ref": sale_ref, "lots": lot_list, "cancelled_plans": cancelled_plans},
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"[cancel-by-sale-ref] error: {e}")
+        raise HTTPException(500, str(e))
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# POST /api/allocation/reset-all  — 전체 초기화
+# v864-2 AllocationTabMixin._on_allocation_reset_all 포팅
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@router.post("/reset-all", summary="🧹 전체 초기화 — 모든 배정 취소 + AVAILABLE 원복")
+def reset_all_allocations():
+    """
+    RESERVED / PICKED / OUTBOUND 상태의 allocation_plan 행을 전부 CANCELLED 처리하고
+    inventory 상태를 AVAILABLE 로 원복. SOLD 는 보호.
+    """
+    try:
+        con = _alloc_db()
+        rows = con.execute(
+            "SELECT DISTINCT lot_no FROM allocation_plan WHERE status NOT IN ('CANCELLED','SOLD')"
+        ).fetchall()
+        lot_list = [r[0] for r in rows]
+        cur = con.execute(
+            "UPDATE allocation_plan SET status='CANCELLED', cancelled_at=datetime('now') "
+            "WHERE status NOT IN ('CANCELLED','SOLD')"
+        )
+        cancelled_plans = cur.rowcount
+        for lot_no in lot_list:
+            con.execute(
+                "UPDATE inventory SET status='AVAILABLE', sold_to=NULL, sale_ref=NULL "
+                "WHERE lot_no=? AND status NOT IN ('SOLD','OUTBOUND')",
+                (lot_no,)
+            )
+        con.commit(); con.close()
+        logger.info(f"[reset-all] lots={len(lot_list)}, plans={cancelled_plans}")
+        return {
+            "ok": True,
+            "message": f"전체 초기화 완료: {len(lot_list)} LOT / {cancelled_plans}건 배정 취소",
+            "data": {"lots_affected": len(lot_list), "cancelled_plans": cancelled_plans},
+        }
+    except Exception as e:
+        logger.exception(f"[reset-all] error: {e}")
+        raise HTTPException(500, str(e))
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# POST /api/allocation/revert-step  — 단계 되돌리기
+# v864-2 AllocationTabMixin._on_revert_step 포팅
+# RESERVED → AVAILABLE / PICKED → RESERVED / OUTBOUND → PICKED
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+_REVERT_MAP = {
+    "RESERVED": ("RESERVED",  "AVAILABLE"),
+    "PICKED":   ("PICKED",    "RESERVED"),
+    "OUTBOUND": ("OUTBOUND",  "PICKED"),
+}
+
+@router.post("/revert-step", summary="↩️ 단계 되돌리기 (RESERVED→AVAILABLE 등)")
+def revert_allocation_step(data: dict = Body(...)):
+    """
+    from_status 에 따라 선택된 lot_no 목록(또는 전체)을 한 단계 되돌린다.
+    - RESERVED  → AVAILABLE (allocation_plan CANCELLED + inventory AVAILABLE)
+    - PICKED    → RESERVED  (allocation_plan RESERVED + inventory RESERVED)
+    - OUTBOUND  → PICKED    (allocation_plan PICKED   + inventory PICKED)
+    """
+    from_status = (data.get("from_status") or "").upper().strip()
+    lot_nos = data.get("lot_nos") or []   # 빈 리스트 = 전체
+
+    if from_status not in _REVERT_MAP:
+        raise HTTPException(400, f"from_status 는 {list(_REVERT_MAP.keys())} 중 하나여야 합니다")
+
+    src_status, dst_status = _REVERT_MAP[from_status]
+    try:
+        con = _alloc_db()
+        if lot_nos:
+            placeholders = ",".join("?" * len(lot_nos))
+            rows = con.execute(
+                f"SELECT DISTINCT lot_no FROM allocation_plan "
+                f"WHERE status=? AND lot_no IN ({placeholders})",
+                [src_status] + lot_nos
+            ).fetchall()
+        else:
+            rows = con.execute(
+                "SELECT DISTINCT lot_no FROM allocation_plan WHERE status=?",
+                (src_status,)
+            ).fetchall()
+
+        affected_lots = [r[0] for r in rows]
+        if not affected_lots:
+            con.close()
+            return {"ok": False, "message": f"{src_status} 상태인 배정 없음"}
+
+        if dst_status == "AVAILABLE":
+            cur = con.execute(
+                f"UPDATE allocation_plan SET status='CANCELLED', cancelled_at=datetime('now') "
+                f"WHERE status='{src_status}' AND lot_no IN ({','.join('?' * len(affected_lots))})",
+                affected_lots
+            )
+            for lot_no in affected_lots:
+                con.execute(
+                    "UPDATE inventory SET status='AVAILABLE', sold_to=NULL, sale_ref=NULL "
+                    "WHERE lot_no=? AND status=?", (lot_no, src_status)
+                )
+        else:
+            cur = con.execute(
+                f"UPDATE allocation_plan SET status=?, updated_at=datetime('now') "
+                f"WHERE status=? AND lot_no IN ({','.join('?' * len(affected_lots))})",
+                [dst_status, src_status] + affected_lots
+            )
+            for lot_no in affected_lots:
+                con.execute(
+                    "UPDATE inventory SET status=? WHERE lot_no=? AND status=?",
+                    (dst_status, lot_no, src_status)
+                )
+        changed = cur.rowcount
+        con.commit(); con.close()
+        logger.info(f"[revert-step] {src_status}→{dst_status}: {len(affected_lots)} lots, {changed} rows")
+        return {
+            "ok": True,
+            "message": f"{src_status} → {dst_status}: {len(affected_lots)} LOT 되돌리기 완료",
+            "data": {"from": src_status, "to": dst_status, "lots": affected_lots, "rows_changed": changed},
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"[revert-step] error: {e}")
+        raise HTTPException(500, str(e))
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GET /api/allocation/export-excel  — Excel 내보내기
+# v864-2 AllocationTabMixin._on_allocation_export_excel 포팅
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@router.get("/export-excel", summary="📊 Allocation Excel 내보내기")
+def export_allocation_excel():
+    """
+    현재 RESERVED/PICKED 상태 배정 전체를 Excel 파일로 반환.
+    """
+    import io
+    from fastapi.responses import StreamingResponse
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, Alignment, PatternFill
+    except ImportError:
+        raise HTTPException(500, "openpyxl 미설치")
+
+    try:
+        con = _alloc_db()
+        rows = con.execute("""
+            SELECT ap.lot_no, ap.sub_lt, ap.customer, ap.sale_ref,
+                   ap.qty_mt, ap.outbound_date, ap.status, ap.created_at,
+                   i.sap_no, i.product, i.warehouse
+            FROM allocation_plan ap
+            LEFT JOIN inventory i ON ap.lot_no = i.lot_no
+            WHERE ap.status NOT IN ('CANCELLED')
+            ORDER BY ap.status, ap.lot_no, ap.sub_lt
+        """).fetchall()
+        con.close()
+    except Exception as e:
+        raise HTTPException(500, f"DB 오류: {e}")
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Allocation"
+
+    headers = ["LOT NO", "Sub LOT", "고객사", "SALE REF", "수량(MT)", "출고예정일", "상태", "등록일시", "SAP NO", "제품", "창고"]
+    header_fill = PatternFill("solid", fgColor="1565C0")
+    header_font = Font(bold=True, color="FFFFFF", name="맑은 고딕")
+    center = Alignment(horizontal="center", vertical="center")
+
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = center
+
+    for row in rows:
+        ws.append(list(row))
+
+    for col in ws.columns:
+        max_len = max((len(str(cell.value or "")) for cell in col), default=8)
+        ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 32)
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    from datetime import datetime as _dt
+    fname = f"ALLOCATION_{_dt.now().strftime('%Y%m%d_%H%M')}.xlsx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GET /api/allocation/open-picked-excel — Picked 리스트 Excel 저장+열기
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+def _alloc_exports_dir() -> str:
+    here = os.path.dirname(os.path.abspath(__file__))
+    root = os.path.dirname(os.path.dirname(here))
+    path = os.path.join(root, "exports")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+@router.get("/open-picked-excel", summary="📂 Picked 리스트 Excel 저장 후 바로 열기")
+def open_picked_excel():
+    """
+    PICKED 상태 LOT 목록 Excel 생성 → exports/ 폴더 저장 → os.startfile() 열기.
+    """
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, Alignment, PatternFill
+        from datetime import datetime as _dt
+    except ImportError:
+        raise HTTPException(500, "openpyxl 미설치")
+
+    try:
+        con = _alloc_db()
+        rows = con.execute("""
+            SELECT i.lot_no, i.lot_sqm, i.sap_no, i.product,
+                   i.tonbag_count, i.current_weight,
+                   i.status, i.inbound_date,
+                   ap.customer, ap.sale_ref, ap.outbound_date
+            FROM inventory i
+            LEFT JOIN allocation_plan ap ON ap.lot_no = i.lot_no AND ap.status = 'PICKED'
+            WHERE i.status = 'PICKED'
+            ORDER BY i.lot_no
+        """).fetchall()
+        con.close()
+    except Exception as e:
+        raise HTTPException(500, f"DB 오류: {e}")
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "판매화물 결정 LOT"
+
+    headers = ["LOT NO", "LOT SQM", "SAP NO", "제품", "톤백수", "중량(kg)",
+               "상태", "입고일", "고객사", "SALE REF", "출고예정일"]
+    hdr_fill = PatternFill("solid", fgColor="1F4E79")
+    hdr_font = Font(bold=True, color="FFFFFF", name="맑은 고딕")
+    center = Alignment(horizontal="center", vertical="center")
+
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.fill = hdr_fill
+        cell.font = hdr_font
+        cell.alignment = center
+
+    picked_fill = PatternFill("solid", fgColor="FFF9C4")
+    for row in rows:
+        ws.append(list(row))
+        for cell in ws[ws.max_row]:
+            cell.fill = picked_fill
+            cell.alignment = center
+
+    widths = [16, 14, 12, 22, 8, 12, 10, 12, 20, 16, 14]
+    for i, w in enumerate(widths, 1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = w
+
+    exports = _alloc_exports_dir()
+    ts = _dt.now().strftime("%Y%m%d_%H%M%S")
+    fname = f"판매화물결정LOT_{ts}.xlsx"
+    out_path = os.path.join(exports, fname)
+    wb.save(out_path)
+
+    try:
+        os.startfile(out_path)
+    except Exception as open_err:
+        logger.warning("os.startfile 실패: %s", open_err)
+
+    logger.info("Picked LOT Excel 저장+열기: %s (%d LOT)", fname, len(rows))
+    from backend.common.errors import ok_response
+    return ok_response({"filename": fname, "path": out_path, "rows": len(rows), "opened": True})
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GET /api/allocation/lot-overview  — LOT 현황
+# v864-2 AllocationTabMixin._on_open_allocation_lot_overview 포팅
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@router.get("/lot-overview", summary="📦 LOT 현황 (배정 요약)")
+def get_allocation_lot_overview():
+    """
+    LOT별 배정 상태 요약: 일반 배정량(MT) / 샘플(1kg) LOT 여부 / 배정 잔여량.
+    """
+    try:
+        con = _alloc_db()
+        rows = con.execute("""
+            SELECT
+                i.lot_no,
+                i.sap_no,
+                i.product,
+                COALESCE(i.net_weight, 0) / 1000.0        AS net_mt,
+                COALESCE(i.current_weight, 0) / 1000.0    AS balance_mt,
+                COALESCE(SUM(CASE WHEN ap.status NOT IN ('CANCELLED','SOLD')
+                               THEN ap.qty_mt ELSE 0 END), 0) AS alloc_mt,
+                COUNT(CASE WHEN COALESCE(t.is_sample,0)=1 THEN 1 END) AS sample_bags,
+                i.status AS lot_status
+            FROM inventory i
+            LEFT JOIN allocation_plan ap ON ap.lot_no = i.lot_no
+            LEFT JOIN inventory_tonbag t ON t.lot_no = i.lot_no
+            WHERE i.status NOT IN ('SOLD','CANCELLED','OUTBOUND','DEPLETED')
+            GROUP BY i.lot_no
+            ORDER BY i.lot_no
+        """).fetchall()
+        con.close()
+        result = []
+        for r in rows:
+            net_mt = round(float(r[3] or 0), 4)
+            balance_mt = round(float(r[4] or 0), 4)
+            alloc_mt = round(float(r[5] or 0), 4)
+            result.append({
+                "lot_no":      r[0],
+                "sap_no":      r[1],
+                "product":     r[2],
+                "net_mt":      net_mt,
+                "balance_mt":  balance_mt,
+                "alloc_mt":    alloc_mt,
+                "remain_mt":   round(balance_mt - alloc_mt, 4),
+                "sample_bags": r[6] or 0,
+                "lot_status":  r[7],
+            })
+        return {"ok": True, "data": result, "count": len(result)}
+    except Exception as e:
+        logger.exception(f"[lot-overview] error: {e}")
+        raise HTTPException(500, str(e))
