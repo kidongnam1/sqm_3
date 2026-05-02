@@ -1908,14 +1908,35 @@
     if (!c) return;
     c.innerHTML = [
       '<section class="page" data-page="picked">',
-      '<div style="display:flex;align-items:center;gap:12px;padding:8px 0 12px">',
-      '  <h2 style="margin:0">🚛 Picked - 피킹 완료 (화물 결정)</h2>',
-      '  <button class="btn btn-secondary" onclick="renderPage(\'picked\')" style="margin-left:auto">🔁 새로고침</button>',
+      /* ── 타이틀 + 툴바 (v864-2 일치) ── */
+      '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:8px 0 10px;border-bottom:1px solid var(--border);margin-bottom:8px">',
+      '  <span style="font-weight:700;font-size:15px">🚛 판매화물 결정 LOT 리스트</span>',
+      '  <button class="btn btn-secondary btn-sm" onclick="renderPage(\'picked\')">🔁 새로고침</button>',
+      '  <button class="btn btn-warning btn-sm" onclick="window.pickedCancelSale()">↩ 판매화물 검정 취소 (→ 판매 배정)</button>',
+      '  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px">',
+      '    <input type="checkbox" id="picked-chk-all" onchange="window.pickedToggleAll(this.checked)"> 전체 선택',
+      '  </label>',
+      '  <span style="margin-left:auto;display:flex;gap:6px">',
+      '    <button class="btn btn-secondary btn-sm" onclick="window.pickedExportExcel()">📊 Excel 내보내기</button>',
+      '  </span>',
+      '</div>',
+      /* ── 요약 바 ── */
+      '<div id="picked-summary-bar" style="display:none;padding:4px 8px;background:var(--surface);border:1px solid var(--border);border-radius:4px;font-size:12px;margin-bottom:6px">',
+      '  Σ 건수: <b id="picked-sum-count">0</b> &nbsp;|&nbsp; Σ 중량: <b id="picked-sum-kg">0</b> kg',
       '</div>',
       '<div id="picked-loading" style="padding:40px;text-align:center;color:var(--text-muted)">⏳ 데이터 로딩 중...</div>',
       '<div style="overflow-x:auto">',
       '  <table class="data-table" id="picked-table" style="display:none">',
-      '  <thead><tr><th></th><th>LOT No</th><th>피킹No</th><th>고객사</th><th>톤백수</th><th>중량(kg)</th><th>피킹일</th></tr></thead>',
+      '  <thead><tr>',
+      '    <th style="width:32px"></th>',
+      '    <th style="text-align:center">No.</th>',
+      '    <th style="text-align:center">LOT NO</th>',
+      '    <th style="text-align:center">피킹No</th>',
+      '    <th style="text-align:center">고객사</th>',
+      '    <th style="text-align:center">톤백수</th>',
+      '    <th style="text-align:center">중량(kg)</th>',
+      '    <th style="text-align:center">피킹일</th>',
+      '  </tr></thead>',
       '  <tbody id="picked-tbody"></tbody>',
       '  </table>',
       '</div>',
@@ -1983,9 +2004,16 @@
       .catch(function(e){ showToast('error', '실패: '+(e.message||String(e))); });
   };
   window.pickedExportExcel = function() {
-    var a = document.createElement('a');
-    a.href = '/api/allocation/export-excel?status=PICKED';
-    a.download = 'picked_list.xlsx'; a.click();
+    showToast('info', '⏳ 판매화물 결정 LOT 리스트 Excel 생성 중...');
+    apiCall('GET', '/api/allocation/open-picked-excel')
+      .then(function(res) {
+        if (res && res.data && res.data.opened) {
+          showToast('success', '✅ Excel 열림 (' + res.data.rows + ' LOT)\n📁 ' + res.data.filename);
+        } else {
+          showToast('error', '❌ 파일 열기 실패');
+        }
+      })
+      .catch(function(e) { showToast('error', '❌ 오류: ' + (e.message || String(e))); });
   };
   var _pickedShowAllDetail = false;
   window.pickedToggleAllDetail = function() {
@@ -5129,18 +5157,59 @@
   function showPickingListPdfModal() {
     _showPdfUploadModal({
       title: '📋 Picking List PDF 업로드',
-      subtitle: 'Picking List PDF 를 업로드하면 자동 파싱하여 picking_table 에 반영합니다.',
-      endpoint: '/api/outbound/picking-list-pdf',
+      subtitle: 'Picking List PDF (텍스트/스캔 이미지 모두 지원). 파싱 후 출고 계획에 반영합니다.',
+      endpoint: '/api/outbound/picking',
       onSuccess: function(d) {
+        var meta = d.meta || {};
+        var summary = d.summary || {};
         var warnHtml = '';
         if (d.warnings && d.warnings.length) {
           warnHtml = '<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--warning)">⚠️ 경고 ' + d.warnings.length + '건</summary><pre style="white-space:pre-wrap;font-size:.8rem;margin-top:8px">' + escapeHtml(d.warnings.join('\n')) + '</pre></details>';
         }
-        return '<div style="color:var(--text-muted);font-size:.85rem">파일: ' + escapeHtml(d.filename||'-') +
-               ' · 방법: ' + escapeHtml(d.parse_method||'-') +
-               ' · LOT ' + (d.total_lots||0) + '개 · 일반 ' + (d.total_normal_mt||0) + ' MT · 샘플 ' + (d.total_sample_kg||0) + ' KG' +
-               ' · <strong style="color:var(--accent)">반영 ' + (d.applied||0) + '건</strong>' +
-               '</div>' + warnHtml;
+        var errHtml = '';
+        if (d.errors && d.errors.length) {
+          errHtml = '<div style="margin-top:8px;padding:8px;background:var(--bg-hover);border-left:3px solid var(--danger);font-size:.8rem;color:var(--danger)">❌ ' + escapeHtml(d.errors.join(' / ')) + '</div>';
+        }
+        var typeTag = d.pdf_type === 'image' ? '🔬 AI(스캔)' : '📄 텍스트';
+        var metaHtml = '';
+        if (meta.outbound_id || meta.sales_order) {
+          metaHtml = '<div style="margin-top:8px;padding:8px;background:var(--bg-hover);border-radius:4px;font-size:.82rem;line-height:1.7">'
+            + (meta.outbound_id  ? '<b>출고ID:</b> ' + escapeHtml(meta.outbound_id) + '&nbsp;&nbsp;' : '')
+            + (meta.sales_order  ? '<b>SO:</b> ' + escapeHtml(meta.sales_order) + '&nbsp;&nbsp;' : '')
+            + (meta.customer_ref ? '<b>Ref:</b> ' + escapeHtml(meta.customer_ref) + '&nbsp;&nbsp;' : '')
+            + (meta.plan_loading_date ? '<br><b>선적일:</b> ' + escapeHtml(meta.plan_loading_date) + '&nbsp;&nbsp;' : '')
+            + (meta.port_loading  ? '<b>선적항:</b> ' + escapeHtml(meta.port_loading) + '&nbsp;&nbsp;' : '')
+            + (meta.port_discharge ? '<b>양하항:</b> ' + escapeHtml(meta.port_discharge) : '')
+            + '</div>';
+        }
+        var tonbagRows = '';
+        if (d.tonbag && d.tonbag.length) {
+          tonbagRows = '<div style="margin-top:8px"><b>톤백 LOT 목록</b> (' + d.tonbag.length + '개):'
+            + '<div style="max-height:160px;overflow-y:auto;margin-top:4px">'
+            + '<table style="width:100%;font-size:.8rem;border-collapse:collapse">'
+            + '<tr style="background:var(--bg-hover)"><th style="padding:3px 6px;text-align:left">LOT No</th><th style="padding:3px 6px;text-align:right">중량</th><th style="padding:3px 6px;text-align:left">창고</th></tr>';
+          d.tonbag.forEach(function(row) {
+            tonbagRows += '<tr><td style="padding:3px 6px;font-family:monospace">' + escapeHtml(row.lot_no||'-') + '</td>'
+              + '<td style="padding:3px 6px;text-align:right">' + (row.weight_kg||0) + ' ' + escapeHtml(row.unit||'MT') + '</td>'
+              + '<td style="padding:3px 6px">' + escapeHtml(row.storage||'-') + '</td></tr>';
+          });
+          tonbagRows += '</table></div></div>';
+        }
+        var sampleRows = '';
+        if (d.sample && d.sample.length) {
+          sampleRows = '<div style="margin-top:6px"><b>샘플 LOT</b> (' + d.sample.length + '개): '
+            + d.sample.map(function(r){ return escapeHtml(r.lot_no||'-') + ' ' + (r.weight_kg||0) + 'KG'; }).join(', ')
+            + '</div>';
+        }
+        return '<div style="font-size:.85rem">'
+          + '<div style="color:var(--text-muted)">파일: ' + escapeHtml(d.filename||'-')
+          + ' &nbsp;|&nbsp; 유형: ' + typeTag
+          + ' &nbsp;|&nbsp; LOT <b>' + (summary.total_lots||0) + '</b>개'
+          + ' &nbsp;|&nbsp; <b style="color:var(--accent)">' + (summary.total_mt||0) + ' MT</b>'
+          + (summary.total_sample_kg ? ' &nbsp;|&nbsp; 샘플 ' + summary.total_sample_kg + ' KG' : '')
+          + '</div>'
+          + metaHtml + tonbagRows + sampleRows + warnHtml + errHtml
+          + '</div>';
       }
     });
   }
@@ -6462,542 +6531,116 @@
   /* ===================================================
      8w. 제품 마스터 — product_master 테이블 CRUD + inventory 동기화
      =================================================== */
-  /* ═══════════════════════════════════════════════════════════════
-     LOT 정합성 복구 모달 — v864-2 _on_fix_lot_status_integrity 매핑
-     POST /api/action/fix-integrity → eng.fix_lot_status_integrity()
-  ═══════════════════════════════════════════════════════════════ */
-  /* ═══════════════════════════════════════════════════════════════
-     재고 추이 차트 모달 — chart.md ①② 구현
-     GET  /api/q/inventory-trend    → 스냅샷 목록 + chart data
-     POST /api/q/create-snapshot    → 오늘 스냅샷 생성
-  ═══════════════════════════════════════════════════════════════ */
-  function showInventoryTrendModal() {
-    var overlay = document.createElement('div');
-    overlay.id  = 'inv-trend-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9300;display:flex;align-items:center;justify-content:center';
-    overlay.innerHTML = [
-      '<div style="background:var(--card-bg);border:1px solid var(--panel-border);border-radius:10px;',
-        'padding:22px 26px;width:860px;max-width:95vw;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.45)">',
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">',
-        '<div>',
-          '<h3 style="margin:0;font-size:16px">📊 재고 추이 차트</h3>',
-          '<div style="font-size:11px;color:var(--text-muted);margin-top:2px">매일 시작 시 자동 저장 — inventory_snapshot 기반</div>',
-        '</div>',
-        '<div style="display:flex;gap:8px;align-items:center">',
-          '<button onclick="invTrendCreateSnapshot()" style="padding:5px 12px;background:var(--success,#4caf50);color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px">📸 오늘 스냅샷 생성</button>',
-          '<button onclick="document.getElementById(\'inv-trend-overlay\').remove()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);line-height:1">✕</button>',
-        '</div>',
-      '</div>',
-      '<div id="inv-trend-body" style="flex:1;overflow-y:auto">',
-        '<div style="text-align:center;padding:40px;color:var(--text-muted)">⏳ 로딩 중...</div>',
-      '</div>',
-      '</div>'
-    ].join('');
-    document.body.appendChild(overlay);
-    overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
-    invTrendLoad();
-  }
-
-  window.invTrendLoad = function() {
-    var body = document.getElementById('inv-trend-body');
-    if (!body) return;
-    body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">⏳ 데이터 로딩 중...</div>';
-    fetch(API + '/api/q/inventory-trend')
-      .then(function(r){ return r.json(); })
-      .then(function(res){
-        var items = (res && res.data && res.data.items) || [];
-        var chart = (res && res.data && res.data.chart) || {};
-        if (!items.length) {
-          body.innerHTML = [
-            '<div style="text-align:center;padding:50px 20px">',
-              '<div style="font-size:48px;margin-bottom:16px">📸</div>',
-              '<h4 style="margin:0 0 10px;font-size:16px">스냅샷 데이터가 없습니다</h4>',
-              '<p style="color:var(--text-muted);font-size:13px;margin:0 0 20px">',
-                '앱이 시작될 때 자동으로 오늘 스냅샷이 저장됩니다.<br>',
-                '지금 바로 생성하려면 아래 버튼을 누르세요.',
-              '</p>',
-              '<button onclick="invTrendCreateSnapshot()" style="padding:8px 20px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">',
-                '📸 오늘 스냅샷 생성',
-              '</button>',
-            '</div>'
-          ].join('');
-          return;
-        }
-        /* 최대값 계산 (막대 너비 비율용) */
-        var maxMt = 0;
-        items.forEach(function(r){ if ((r.total_weight_mt||0) > maxMt) maxMt = r.total_weight_mt||0; });
-        /* 표 + 간단 막대 차트 */
-        var rows = items.map(function(r, i){
-          var tot = r.total_weight_mt || 0;
-          var avl = r.available_weight_mt || 0;
-          var pck = r.picked_weight_mt || 0;
-          var barW = maxMt > 0 ? Math.round((tot / maxMt) * 200) : 0;
-          var avlW = maxMt > 0 ? Math.round((avl / maxMt) * 200) : 0;
-          var pckW = maxMt > 0 ? Math.round((pck / maxMt) * 200) : 0;
-          var isToday = r.snapshot_date === new Date().toISOString().slice(0,10);
-          return '<tr style="' + (isToday ? 'background:rgba(33,150,243,.08)' : '') + '">' +
-            '<td style="text-align:center;white-space:nowrap;font-weight:'+(isToday?'600':'400')+'">' +
-              escapeHtml(r.snapshot_date||'') + (isToday ? ' <span style="font-size:10px;color:var(--accent)">(오늘)</span>' : '') +
-            '</td>' +
-            '<td style="text-align:right">' + (r.total_lots||0) + '</td>' +
-            '<td style="text-align:right">' + (r.total_tonbags||0) + '</td>' +
-            /* 총재고 */
-            '<td style="text-align:right;white-space:nowrap">' + tot.toFixed(2) + ' MT</td>' +
-            /* 막대 시각화 */
-            '<td style="padding:4px 8px">' +
-              '<div style="display:flex;flex-direction:column;gap:2px;min-width:220px">' +
-                '<div title="총재고" style="height:6px;background:#2196f3;width:'+barW+'px;border-radius:3px"></div>' +
-                '<div title="판매가능" style="height:6px;background:#4caf50;width:'+avlW+'px;border-radius:3px"></div>' +
-                '<div title="피킹/출고대기" style="height:6px;background:#ff9800;width:'+pckW+'px;border-radius:3px"></div>' +
-              '</div>' +
-            '</td>' +
-            '<td style="text-align:right;white-space:nowrap;color:#4caf50">' + avl.toFixed(2) + ' MT</td>' +
-            '<td style="text-align:right;white-space:nowrap;color:#ff9800">' + pck.toFixed(2) + ' MT</td>' +
-            '</tr>';
-        }).join('');
-
-        body.innerHTML = [
-          /* 범례 */
-          '<div style="display:flex;gap:16px;margin-bottom:10px;font-size:12px;flex-wrap:wrap">',
-            '<span><span style="display:inline-block;width:14px;height:8px;background:#2196f3;border-radius:2px;margin-right:4px"></span>총재고</span>',
-            '<span><span style="display:inline-block;width:14px;height:8px;background:#4caf50;border-radius:2px;margin-right:4px"></span>판매가능</span>',
-            '<span><span style="display:inline-block;width:14px;height:8px;background:#ff9800;border-radius:2px;margin-right:4px"></span>피킹/출고대기</span>',
-            '<span style="margin-left:auto;color:var(--text-muted)">총 '+items.length+'일 데이터</span>',
-          '</div>',
-          '<div style="overflow-x:auto">',
-          '<table class="data-table" style="width:100%">',
-            '<thead><tr>',
-              '<th style="text-align:center">날짜</th>',
-              '<th style="text-align:center">LOT 수</th>',
-              '<th style="text-align:center">톤백 수</th>',
-              '<th style="text-align:center">총재고</th>',
-              '<th style="text-align:center;min-width:230px">추이 막대</th>',
-              '<th style="text-align:center">판매가능</th>',
-              '<th style="text-align:center">피킹/출고대기</th>',
-            '</tr></thead>',
-            '<tbody>' + rows + '</tbody>',
-          '</table></div>'
-        ].join('');
-      })
-      .catch(function(e){
-        if (body) body.innerHTML = '<div style="text-align:center;color:red;padding:40px">❌ 로드 실패: '+escapeHtml(String(e))+'</div>';
-      });
-  };
-
-  window.invTrendCreateSnapshot = function() {
-    showToast('info', '⏳ 오늘 스냅샷 생성 중...');
-    fetch(API + '/api/q/create-snapshot?force=false', {method:'POST'})
-      .then(function(r){ return r.json(); })
-      .then(function(res){
-        if (res && res.ok === false) {
-          showToast('warn', res.error || '스냅샷 생성 실패');
-          return;
-        }
-        var d = (res && res.data) || {};
-        if (d.created === false) {
-          showToast('info', '이미 오늘 스냅샷이 있습니다. (force=true로 덮어쓰기 가능)');
-        } else {
-          showToast('success', '스냅샷 생성 완료 — ' + (d.date||'') + ' / ' + (d.total_lots||0) + ' LOT / ' + ((d.total_weight_kg||0)/1000).toFixed(2) + ' MT');
-        }
-        invTrendLoad();  /* 목록 새로고침 */
-      })
-      .catch(function(e){
-        showToast('error', '스냅샷 생성 오류: ' + escapeHtml(String(e)));
-      });
-  };
-
-  /* ═══════════════════════════════════════════════════════════════
-     Swap 리포트 모달 — v864-2 _show_swap_report_dialog() 매핑
-     GET /api/action2/swap-report?start_date=&end_date=&customer=&lot_no=&operator=
-     GET /api/action2/swap-report/export?fmt=xlsx
-  ═══════════════════════════════════════════════════════════════ */
-  function showSwapReportModal() {
-    /* 오늘 날짜 기본값 */
-    var today = new Date();
-    function fmt(d) {
-      return d.getFullYear() + '-' +
-        String(d.getMonth()+1).padStart(2,'0') + '-' +
-        String(d.getDate()).padStart(2,'0');
-    }
-    var d30 = new Date(today); d30.setDate(d30.getDate() - 30);
-    var defStart = fmt(d30);
-    var defEnd   = fmt(today);
-
-    var overlay = document.createElement('div');
-    overlay.id  = 'swap-report-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9100;display:flex;align-items:center;justify-content:center';
-
-    var inp = 'width:120px;padding:4px 6px;background:var(--bg);color:var(--fg);border:1px solid var(--panel-border);border-radius:4px;font-size:12px;font-family:inherit';
-    var inpW = 'width:150px;padding:4px 6px;background:var(--bg);color:var(--fg);border:1px solid var(--panel-border);border-radius:4px;font-size:12px;font-family:inherit';
-    var btnS = 'padding:5px 14px;border:none;border-radius:4px;cursor:pointer;font-size:12px';
-
-    overlay.innerHTML = [
-      '<div style="background:var(--card-bg);border:1px solid var(--panel-border);border-radius:10px;',
-        'padding:22px 26px;width:900px;max-width:95vw;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.45)">',
-      /* 헤더 */
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">',
-        '<h3 style="margin:0;font-size:16px">🔁 Swap 리포트</h3>',
-        '<button onclick="document.getElementById(\'swap-report-overlay\').remove()" ',
-          'style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);line-height:1">✕</button>',
-      '</div>',
-      /* 조회 조건 */
-      '<div style="background:var(--sidebar-bg);border:1px solid var(--panel-border);border-radius:6px;padding:12px 16px;margin-bottom:12px">',
-        '<div style="font-size:12px;color:var(--text-muted);font-weight:600;margin-bottom:10px">조회 조건</div>',
-        '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">',
-          '<label style="font-size:12px">시작일<br><input id="sr-start" type="date" value="'+defStart+'" style="'+inp+'"></label>',
-          '<label style="font-size:12px">종료일<br><input id="sr-end"   type="date" value="'+defEnd+'"   style="'+inp+'"></label>',
-          '<label style="font-size:12px">고객사<br><input id="sr-cust"  type="text" placeholder="전체"   style="'+inpW+'"></label>',
-          '<label style="font-size:12px">LOT NO<br><input id="sr-lot"   type="text" placeholder="전체"   style="'+inpW+'"></label>',
-          '<label style="font-size:12px">작업자<br><input id="sr-op"    type="text" placeholder="전체"   style="'+inpW+'"></label>',
-          '<div style="margin-top:14px">',
-            '<button onclick="swapReportSearch()" style="'+btnS+';background:var(--accent);color:#fff">🔍 조회</button>',
-          '</div>',
-        '</div>',
-      '</div>',
-      /* 카운트 + 내보내기 */
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">',
-        '<span id="sr-count" style="font-size:12px;color:var(--text-muted)">— 건</span>',
-        '<button onclick="swapReportExport()" style="'+btnS+';background:var(--success,#4caf50);color:#fff">📥 Excel 내보내기</button>',
-      '</div>',
-      /* 테이블 */
-      '<div style="overflow:auto;flex:1;border:1px solid var(--panel-border);border-radius:6px">',
-        '<table class="data-table" id="sr-table" style="width:100%;min-width:720px">',
-          '<thead><tr>',
-            '<th style="text-align:center;white-space:nowrap">#</th>',
-            '<th style="text-align:center;white-space:nowrap">SWAP_AT</th>',
-            '<th style="text-align:center;white-space:nowrap">LOT NO</th>',
-            '<th style="text-align:center;white-space:nowrap">CUSTOMER</th>',
-            '<th style="text-align:center;white-space:nowrap">OPERATOR</th>',
-            '<th style="text-align:center;white-space:nowrap">EXPECTED UID</th>',
-            '<th style="text-align:center;white-space:nowrap">SCANNED UID</th>',
-            '<th style="text-align:center;white-space:nowrap">REASON</th>',
-          '</tr></thead>',
-          '<tbody id="sr-tbody"><tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted)">조회 조건을 입력하고 [🔍 조회]를 누르세요.</td></tr></tbody>',
-        '</table>',
-      '</div>',
-      '</div>'
-    ].join('');
-
-    document.body.appendChild(overlay);
-    overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
-  }
-
-  window.swapReportSearch = function() {
-    var start  = (document.getElementById('sr-start') || {}).value || '';
-    var end    = (document.getElementById('sr-end')   || {}).value || '';
-    var cust   = (document.getElementById('sr-cust')  || {}).value || '';
-    var lot    = (document.getElementById('sr-lot')   || {}).value || '';
-    var op     = (document.getElementById('sr-op')    || {}).value || '';
-
-    if (!start || !end) { showToast('warn','시작일과 종료일을 입력하세요'); return; }
-
-    var tbody = document.getElementById('sr-tbody');
-    var cnt   = document.getElementById('sr-count');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">⏳ 조회 중...</td></tr>';
-    if (cnt)   cnt.textContent = '조회 중...';
-
-    var url = API + '/api/action2/swap-report?start_date=' + encodeURIComponent(start) +
-              '&end_date=' + encodeURIComponent(end) +
-              '&customer=' + encodeURIComponent(cust) +
-              '&lot_no='   + encodeURIComponent(lot)  +
-              '&operator=' + encodeURIComponent(op);
-
-    fetch(url)
-      .then(function(r){ return r.json(); })
-      .then(function(res){
-        var rows = (res.data && res.data.rows) || [];
-        if (cnt) cnt.textContent = rows.length + '건';
-        if (!tbody) return;
-        if (!rows.length) {
-          tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted)">📭 조회 결과 없음</td></tr>';
-          return;
-        }
-        tbody.innerHTML = rows.map(function(r, i){
-          var td = function(v){ return '<td style="text-align:center;white-space:nowrap">' + escapeHtml(String(v||'')) + '</td>'; };
-          return '<tr>' +
-            td(i+1) + td(r.created_at) + td(r.lot_no) + td(r.customer) + td(r.operator) +
-            '<td style="text-align:center;font-family:monospace;font-size:11px">' + escapeHtml(String(r.expected_uid||'')) + '</td>' +
-            '<td style="text-align:center;font-family:monospace;font-size:11px">' + escapeHtml(String(r.scanned_uid||'')) + '</td>' +
-            td(r.reason) + '</tr>';
-        }).join('');
-      })
-      .catch(function(e){
-        if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:red;padding:20px">❌ 조회 실패: ' + escapeHtml(String(e)) + '</td></tr>';
-        showToast('error','Swap 리포트 조회 실패');
-      });
-  };
-
-  window.swapReportExport = function() {
-    var start  = (document.getElementById('sr-start') || {}).value || '';
-    var end    = (document.getElementById('sr-end')   || {}).value || '';
-    var cust   = (document.getElementById('sr-cust')  || {}).value || '';
-    var lot    = (document.getElementById('sr-lot')   || {}).value || '';
-    var op     = (document.getElementById('sr-op')    || {}).value || '';
-    if (!start || !end) { showToast('warn','시작일과 종료일을 입력하세요'); return; }
-    var url = API + '/api/action2/swap-report/export?fmt=xlsx&start_date=' + encodeURIComponent(start) +
-              '&end_date=' + encodeURIComponent(end) +
-              '&customer=' + encodeURIComponent(cust) +
-              '&lot_no='   + encodeURIComponent(lot)  +
-              '&operator=' + encodeURIComponent(op);
-    sqmDownloadFileUrl(url, 'Swap_리포트_' + start + '_' + end + '.xlsx');
-  };
-
-  function _fixLotIntegrityClose() {
-    var ov = document.getElementById('fix-lot-integrity-overlay');
-    if (ov) ov.remove();
-    renderPage(_currentRoute || 'dashboard');
-  }
-  function showFixLotIntegrityModal() {
-    var ok = window.confirm(
-      'LOT 상태를 톤백 기준으로 일괄 보정합니다.\n\n' +
-      '• LOT=SOLD/OUTBOUND 이지만 AVAILABLE 톤백 잔존 → AVAILABLE/PARTIAL\n' +
-      '• LOT=AVAILABLE 이지만 전체 SOLD → OUTBOUND\n\n' +
-      '계속하시겠습니까?'
-    );
-    if (!ok) return;
-    showToast('info', '⏳ LOT 정합성 복구 실행 중...');
-    apiCall('POST', '/api/action/fix-integrity', {})
-      .then(function(res) {
-        if (!res || res.ok === false) {
-          showToast('error', 'LOT 정합성 복구 실패: ' + ((res && res.error) || '알 수 없는 오류'));
-          return;
-        }
-        var d = (res.data) || {};
-        var fixed  = d.fixed_count  !== undefined ? d.fixed_count  : (d.repaired || '?');
-        var total  = d.total_checked !== undefined ? d.total_checked : '';
-        var msg = 'LOT 정합성 복구 완료 — 수정: ' + fixed + '건';
-        if (total) msg += ' / 검사: ' + total + '건';
-        showToast('success', msg);
-        /* 결과 모달 */
-        var details = '';
-        if (d.details && d.details.length) {
-          details = '<ul style="text-align:left;max-height:200px;overflow:auto;padding-left:20px">' +
-            d.details.map(function(x){
-              return '<li style="font-size:12px;margin:2px 0">' +
-                escapeHtml(x.lot_no || x) + ' : ' +
-                escapeHtml(x.old_status || '') + ' → ' +
-                escapeHtml(x.new_status || '') + '</li>';
-            }).join('') + '</ul>';
-        }
-        var overlay = document.createElement('div');
-        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;display:flex;align-items:center;justify-content:center';
-        overlay.innerHTML = [
-          '<div style="background:var(--card-bg);border:1px solid var(--panel-border);border-radius:8px;padding:24px 28px;min-width:340px;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,.4)">',
-          '<h3 style="margin:0 0 12px;font-size:16px">🛠 LOT 정합성 복구 결과</h3>',
-          '<p style="margin:0 0 10px;font-size:14px">수정된 LOT: <strong>' + fixed + '건</strong>' + (total ? ' / 전체 검사: ' + total + '건' : '') + '</p>',
-          details || '<p style="color:var(--text-muted);font-size:13px">수정 대상 없음 (모두 정상)</p>',
-          '<div style="text-align:right;margin-top:16px">',
-          '<button onclick="_fixLotIntegrityClose()" style="padding:6px 18px;background:var(--accent);color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:13px">확인 &amp; 새로고침</button>',
-          '</div></div>'
-        ].join('');
-        document.body.appendChild(overlay);
-        overlay.addEventListener('click', function(e){ if(e.target===overlay) overlay.remove(); });
-      })
-      .catch(function(e) {
-        showToast('error', 'LOT 정합성 복구 오류: ' + (e.message || String(e)));
-      });
-  }
-
   function showProductMasterModal() {
-    var selectedId  = null;
-    var cacheItems  = [];
+    var selectedId = null;
+    var cacheItems = [];
 
-    /* ── 폼 비우기 ── */
-    function clearPmForm() {
-      selectedId = null;
-      ['pm-code','pm-name','pm-full','pm-korean','pm-sap','pm-spec','pm-unit','pm-remarks'].forEach(function(id){
-        var el = document.getElementById(id); if (el) el.value = '';
-      });
-      var tb = document.getElementById('pm-tonbag'); if (tb) tb.checked = false;
-      var ac = document.getElementById('pm-active'); if (ac) ac.checked = true;
-      var saveBtn = document.getElementById('pm-save');
-      if (saveBtn) saveBtn.textContent = '➕ 추가';
-    }
-
-    /* ── 핸들러 바인딩 ── */
     function bindPmHandlers() {
-      /* 기본 제품 동기화 */
-      var defBtn = document.getElementById('pm-sync-defaults');
-      if (defBtn) defBtn.addEventListener('click', function(){
-        apiPost('/api/product-master/sync-defaults', {}).then(function(res){
-          showToast('success', res.message || '기본 제품 동기화 완료');
-          loadPm();
-        }).catch(function(e){ showToast('error', String(e.message||e)); });
-      });
-      /* 재고 동기화 */
-      var invBtn = document.getElementById('pm-sync-inv');
-      if (invBtn) invBtn.addEventListener('click', function(){
+      var syncBtn = document.getElementById('pm-sync');
+      var saveBtn = document.getElementById('pm-save');
+      var newBtn = document.getElementById('pm-new');
+      var nameEl = document.getElementById('pm-name');
+      var sapEl = document.getElementById('pm-sap');
+      var specEl = document.getElementById('pm-spec');
+      var unitEl = document.getElementById('pm-unit');
+      var remEl = document.getElementById('pm-remarks');
+      if (!nameEl || !saveBtn) return;
+      if (syncBtn) syncBtn.addEventListener('click', function(){
         apiPost('/api/product-master/sync-from-inventory', {}).then(function(res){
+          if (res && res.ok === false) { showToast('error', res.error || '실패'); return; }
           showToast('success', res.message || '동기화 완료');
           loadPm();
         }).catch(function(e){ showToast('error', String(e.message||e)); });
       });
-      /* 폼 비우기 */
-      var newBtn = document.getElementById('pm-new');
-      if (newBtn) newBtn.addEventListener('click', clearPmForm);
-      /* 저장 (추가/수정) */
-      var saveBtn = document.getElementById('pm-save');
-      if (saveBtn) saveBtn.addEventListener('click', function(){
+      if (newBtn) newBtn.addEventListener('click', function(){
+        selectedId = null;
+        nameEl.value = ''; sapEl.value = ''; specEl.value = ''; unitEl.value = ''; remEl.value = '';
+      });
+      saveBtn.addEventListener('click', function(){
         var body = {
-          code:           (document.getElementById('pm-code')||{}).value || '',
-          product_name:   (document.getElementById('pm-name')||{}).value || '',
-          full_name:      (document.getElementById('pm-full')||{}).value || '',
-          korean_name:    (document.getElementById('pm-korean')||{}).value || '',
-          sap_no:         (document.getElementById('pm-sap')||{}).value || '',
-          spec:           (document.getElementById('pm-spec')||{}).value || '',
-          unit:           (document.getElementById('pm-unit')||{}).value || '',
-          remarks:        (document.getElementById('pm-remarks')||{}).value || '',
-          tonbag_support: (document.getElementById('pm-tonbag')||{}).checked ? 1 : 0,
-          is_active:      (document.getElementById('pm-active')||{}).checked ? 1 : 0,
-          sort_order:     0
+          product_name: nameEl.value.trim(),
+          sap_no: sapEl.value.trim(),
+          spec: specEl.value.trim(),
+          unit: unitEl.value.trim(),
+          remarks: remEl.value.trim()
         };
-        var displayName = body.code || body.product_name || body.full_name;
-        if (!displayName) { showToast('warning','약칭(code) 또는 제품명을 입력하세요'); return; }
+        if (!body.product_name) { showToast('warning', '제품명을 입력하세요'); return; }
         var req = selectedId
           ? apiCall('PUT', '/api/product-master/' + selectedId, body)
           : apiPost('/api/product-master/create', body);
         req.then(function(res){
           if (res && res.ok === false) { showToast('error', res.error || '실패'); return; }
           showToast('success', res.message || '저장됨');
-          clearPmForm();
+          selectedId = null;
+          nameEl.value = ''; sapEl.value = ''; specEl.value = ''; unitEl.value = ''; remEl.value = '';
           loadPm();
         }).catch(function(e){ showToast('error', String(e.message||e)); });
       });
-      /* 수정 버튼 */
       document.querySelectorAll('.pm-edit').forEach(function(btn){
         btn.addEventListener('click', function(){
           var id = parseInt(btn.getAttribute('data-id'), 10);
           var r = cacheItems.filter(function(x){ return Number(x.id) === id; })[0];
           if (!r) return;
           selectedId = id;
-          var set = function(eid, val){ var el=document.getElementById(eid); if(el) el.value=val||''; };
-          set('pm-code',   r.code);
-          set('pm-name',   r.product_name);
-          set('pm-full',   r.full_name);
-          set('pm-korean', r.korean_name);
-          set('pm-sap',    r.sap_no);
-          set('pm-spec',   r.spec);
-          set('pm-unit',   r.unit);
-          set('pm-remarks',r.remarks);
-          var tb = document.getElementById('pm-tonbag'); if(tb) tb.checked = !!r.tonbag_support;
-          var ac = document.getElementById('pm-active'); if(ac) ac.checked = (r.is_active !== 0);
-          var saveBtn = document.getElementById('pm-save');
-          if (saveBtn) saveBtn.textContent = '✏️ 수정 저장';
-          document.getElementById('pm-code').focus();
+          nameEl.value = r.product_name || '';
+          sapEl.value = r.sap_no || '';
+          specEl.value = r.spec || '';
+          unitEl.value = r.unit || '';
+          remEl.value = r.remarks || '';
         });
       });
-      /* 삭제 버튼 */
       document.querySelectorAll('.pm-del').forEach(function(btn){
         btn.addEventListener('click', function(){
-          var id  = parseInt(btn.getAttribute('data-id'), 10);
-          var def = btn.getAttribute('data-default') === '1';
-          if (def) { showToast('warning','기본 제품은 삭제할 수 없습니다. 비활성화를 사용하세요.'); return; }
-          if (!confirm('이 제품을 삭제하겠습니까?')) return;
+          var id = parseInt(btn.getAttribute('data-id'), 10);
+          if (!window.confirm('이 품목 마스터 행을 삭제할까요?')) return;
           apiCall('DELETE', '/api/product-master/' + id, null).then(function(res){
             if (res && res.ok === false) { showToast('error', res.error || '실패'); return; }
             showToast('success', '삭제됨');
-            clearPmForm();
-            loadPm();
-          }).catch(function(e){ showToast('error', String(e.message||e)); });
-        });
-      });
-      /* 비활성화 버튼 */
-      document.querySelectorAll('.pm-deact').forEach(function(btn){
-        btn.addEventListener('click', function(){
-          var id = parseInt(btn.getAttribute('data-id'), 10);
-          if (!confirm('이 제품을 비활성화하겠습니까?')) return;
-          apiPost('/api/product-master/deactivate/' + id, {}).then(function(res){
-            if (res && res.ok === false) { showToast('error', res.error || '실패'); return; }
-            showToast('success', '비활성화 완료');
             loadPm();
           }).catch(function(e){ showToast('error', String(e.message||e)); });
         });
       });
     }
 
-    /* ── 테이블 렌더 ── */
     function renderPm(data) {
       var items = (data && data.items) ? data.items : [];
       cacheItems = items.slice();
-      var inpStyle = 'width:100%;padding:6px 8px;margin-top:4px;background:var(--bg-hover);color:var(--text);border:1px solid var(--border);border-radius:6px;font-size:12px;box-sizing:border-box';
       var rows = items.map(function(r){
-        var isDef  = r.is_default ? 1 : 0;
-        var defTag = isDef ? '<span style="font-size:10px;color:#f59e0b;font-weight:700">★기본</span>' : '';
-        var actTag = r.is_active !== 0
-          ? '<span style="font-size:10px;color:#22c55e">●활성</span>'
-          : '<span style="font-size:10px;color:#888">○비활성</span>';
-        var delBtn = isDef
-          ? '<button type="button" class="btn btn-ghost pm-del" style="padding:3px 6px;font-size:11px;color:var(--text-muted);cursor:not-allowed" data-id="'+r.id+'" data-default="1" title="기본 제품 삭제 불가">🚫</button>'
-          : '<button type="button" class="btn btn-ghost pm-del" style="padding:3px 6px;font-size:11px;color:#ef4444" data-id="'+r.id+'" data-default="0" title="삭제">🗑</button>';
-        return '<tr style="' + (r.is_active===0?'opacity:0.45':'') + '">'
-          + '<td style="text-align:center;font-weight:700;color:var(--accent)">' + escapeHtml(r.code||'') + '</td>'
-          + '<td>' + escapeHtml(r.full_name||r.product_name||'') + '</td>'
-          + '<td>' + escapeHtml(r.korean_name||'') + '</td>'
-          + '<td class="mono-cell">' + escapeHtml(r.sap_no||'') + '</td>'
-          + '<td style="text-align:center">' + (r.tonbag_support?'✅':'—') + '</td>'
-          + '<td style="text-align:center">' + defTag + '</td>'
-          + '<td style="text-align:center">' + actTag + '</td>'
-          + '<td style="text-align:center;white-space:nowrap">'
-          +   '<button type="button" class="btn btn-ghost pm-edit" style="padding:3px 6px;font-size:11px" data-id="'+r.id+'" title="수정">✏️</button> '
-          +   delBtn + ' '
-          +   '<button type="button" class="btn btn-ghost pm-deact" style="padding:3px 6px;font-size:11px;color:#888" data-id="'+r.id+'" title="비활성화">⬜</button>'
+        return '<tr>'
+          + '<td style="font-weight:600">' + escapeHtml(r.product_name || '') + '</td>'
+          + '<td class="mono-cell">' + escapeHtml(r.sap_no || '') + '</td>'
+          + '<td>' + escapeHtml(r.spec || '') + '</td>'
+          + '<td>' + escapeHtml(r.unit || '') + '</td>'
+          + '<td style="white-space:nowrap">'
+          + '<button type="button" class="btn btn-ghost pm-edit" style="padding:4px 8px;font-size:.8rem" data-id="'+r.id+'">수정</button> '
+          + '<button type="button" class="btn btn-ghost pm-del" style="padding:4px 8px;font-size:.8rem;color:var(--danger,#c62828)" data-id="'+r.id+'">삭제</button>'
           + '</td></tr>';
       }).join('');
-
-      var tbody = rows || '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:20px">등록 없음 — 기본 제품 동기화 또는 직접 추가</td></tr>';
+      var tbody = rows || '<tr><td colspan="5" class="empty">등록 없음 — 상단에서 inventory 동기화 또는 신규 저장</td></tr>';
       var html = [
-        '<div style="max-width:900px">',
-        '  <h2 style="margin:0 0 8px 0">📦 제품 마스터 관리</h2>',
-        '  <p style="color:var(--text-muted);font-size:12px;margin-bottom:12px">표준 품목 코드·영문명·한글명·SAP·규격·톤백 지원 여부를 관리합니다. ★기본 제품은 삭제 불가.</p>',
-        /* ── 버튼 바 ── */
-        '  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">',
-        '    <button type="button" class="btn btn-primary btn-sm" id="pm-sync-defaults">⭐ 기본 제품 동기화 (8종)</button>',
-        '    <button type="button" class="btn btn-ghost btn-sm" id="pm-sync-inv">📥 재고 제품 가져오기</button>',
+        '<div style="max-width:720px">',
+        '  <h2 style="margin:0 0 10px 0">📦 제품 마스터</h2>',
+        '  <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:12px">표준 품목·SAP·규격 (inventory LOT와 별도 테이블).</p>',
+        '  <div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">',
+        '    <button type="button" class="btn btn-primary" id="pm-sync">📥 inventory에서 일괄 가져오기</button>',
         '  </div>',
-        /* ── 입력 폼 ── */
-        '  <div style="background:var(--panel);border:1px solid var(--panel-border);border-radius:8px;padding:12px;margin-bottom:14px">',
-        '    <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:var(--accent)">✏️ 제품 추가 / 수정</div>',
-        '    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">',
-        '      <label style="font-size:12px">약칭(code) *<input id="pm-code" type="text" maxlength="16" placeholder="예: NSH" style="'+inpStyle+'"/></label>',
-        '      <label style="font-size:12px">Full Name<input id="pm-full" type="text" placeholder="Nickel Sulfate Hexahydrate" style="'+inpStyle+'"/></label>',
-        '      <label style="font-size:12px">한글명<input id="pm-korean" type="text" placeholder="황산니켈" style="'+inpStyle+'"/></label>',
-        '      <label style="font-size:12px">제품명(product_name)<input id="pm-name" type="text" placeholder="product_name" style="'+inpStyle+'"/></label>',
-        '      <label style="font-size:12px">SAP No<input id="pm-sap" type="text" style="'+inpStyle+'"/></label>',
-        '      <label style="font-size:12px">규격<input id="pm-spec" type="text" style="'+inpStyle+'"/></label>',
-        '      <label style="font-size:12px">단위<input id="pm-unit" type="text" style="'+inpStyle+'"/></label>',
-        '      <label style="font-size:12px">비고<input id="pm-remarks" type="text" style="'+inpStyle+'"/></label>',
-        '      <div style="display:flex;gap:16px;align-items:flex-end;padding-bottom:2px">',
-        '        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer">',
-        '          <input id="pm-tonbag" type="checkbox"> 톤백지원',
-        '        </label>',
-        '        <label style="font-size:12px;display:flex;align-items:center;gap:4px;cursor:pointer">',
-        '          <input id="pm-active" type="checkbox" checked> 활성',
-        '        </label>',
-        '      </div>',
-        '    </div>',
-        '    <div style="display:flex;gap:8px;margin-top:10px">',
-        '      <button type="button" class="btn btn-primary" id="pm-save">➕ 추가</button>',
-        '      <button type="button" class="btn btn-ghost" id="pm-new">🗑 폼 비우기</button>',
-        '    </div>',
+        '  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">',
+        '    <label>제품명 *<input id="pm-name" type="text" style="width:100%;padding:8px;margin-top:4px;background:var(--bg-hover);color:var(--text);border:1px solid var(--border);border-radius:6px"/></label>',
+        '    <label>SAP<input id="pm-sap" type="text" style="width:100%;padding:8px;margin-top:4px;background:var(--bg-hover);color:var(--text);border:1px solid var(--border);border-radius:6px"/></label>',
+        '    <label>규격<input id="pm-spec" type="text" style="width:100%;padding:8px;margin-top:4px;background:var(--bg-hover);color:var(--text);border:1px solid var(--border);border-radius:6px"/></label>',
+        '    <label>단위<input id="pm-unit" type="text" style="width:100%;padding:8px;margin-top:4px;background:var(--bg-hover);color:var(--text);border:1px solid var(--border);border-radius:6px"/></label>',
+        '    <label style="grid-column:1/-1">비고<input id="pm-remarks" type="text" style="width:100%;padding:8px;margin-top:4px;background:var(--bg-hover);color:var(--text);border:1px solid var(--border);border-radius:6px"/></label>',
         '  </div>',
-        /* ── 테이블 ── */
-        '  <div style="overflow-x:auto;max-height:380px;border:1px solid var(--border);border-radius:8px">',
-        '    <table class="data-table"><thead><tr>',
-        '      <th style="text-align:center">약칭</th>',
-        '      <th>Full Name</th>',
-        '      <th>한글명</th>',
-        '      <th>SAP</th>',
-        '      <th style="text-align:center">톤백</th>',
-        '      <th style="text-align:center">기본</th>',
-        '      <th style="text-align:center">상태</th>',
-        '      <th style="text-align:center">작업</th>',
-        '    </tr></thead><tbody>',
+        '  <div style="display:flex;gap:8px;margin-bottom:14px">',
+        '    <button type="button" class="btn btn-primary" id="pm-save">저장 (신규/수정)</button>',
+        '    <button type="button" class="btn btn-ghost" id="pm-new">폼 비우기</button>',
+        '  </div>',
+        '  <div style="max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:8px">',
+        '    <table class="data-table"><thead><tr><th>제품명</th><th>SAP</th><th>규격</th><th>단위</th><th></th></tr></thead><tbody>',
         tbody,
         '    </tbody></table>',
         '  </div>',
-        '  <div style="margin-top:14px;text-align:right">',
-        '    <button type="button" class="btn btn-ghost" onclick="document.getElementById(\'sqm-modal\').style.display=\'none\'">닫기</button>',
-        '  </div>',
+        '  <div style="margin-top:14px;text-align:right"><button type="button" class="btn btn-ghost" onclick="document.getElementById(\'sqm-modal\').style.display=\'none\'">닫기</button></div>',
         '</div>'
       ].join('\n');
       document.getElementById('sqm-modal-content').innerHTML = html;
@@ -7009,8 +6652,7 @@
         var d = res.data || res || {};
         renderPm(d);
       }).catch(function(e){
-        document.getElementById('sqm-modal-content').innerHTML =
-          '<h2>제품 마스터</h2><div class="empty">'+escapeHtml(e.message||String(e))+'</div>';
+        document.getElementById('sqm-modal-content').innerHTML = '<h2>제품 마스터</h2><div class="empty">'+escapeHtml(e.message||String(e))+'</div>';
       });
     }
 
@@ -7374,7 +7016,7 @@
     'onInventoryAllocation': {m:'JS', u:'allocation-upload', lbl:'Allocation 입력'},
     'onIntegrityCheck':  {m:'GET',  u:'/api/action/integrity-check',             lbl:'정합성 검사'},
     'onInventoryReport': {m:'GET',  u:'/api/q/inventory-report',                 lbl:'재고 현황 보고서'},
-    'onInventoryTrend':  {m:'JS',   u:'inventory-trend-modal',                   lbl:'재고 추이 차트'},
+    'onInventoryTrend':  {m:'GET',  u:'/api/q/inventory-trend',                  lbl:'재고 추이 차트'},
 
     /* ── 보고서 메뉴 ── */
     'onReportDaily':     {m:'GET',  u:'/api/q2/report-daily',                    lbl:'일일 보고서'},
@@ -7382,7 +7024,7 @@
     'onReportCustom':    {m:'GET',  u:'/api/q/inventory-report',                   lbl:'맞춤 보고서'},
     'onInvoiceGenerate': {m:'GET',  u:'/api/action3/export-invoice-excel',         lbl:'거래명세서 생성'},
     'onDetailOfOutbound': {m:'GET', u:'/api/q2/detail-outbound',                 lbl:'Detail of Outbound'},
-    'onSalesOrderDN':    {m:'JS',   u:'sales-order-dn-template',                 lbl:'Sales Order DN'},
+    'onSalesOrderDN':    {m:'GET',  u:'/api/q3/sales-order-dn',                  lbl:'Sales Order DN'},
     'onDnCrossCheck':    {m:'GET',  u:'/api/q3/dn-cross-check',                  lbl:'DN 교차검증'},
     'onLotDetailPdf':    {m:'GET',  u:'/api/action/lot-detail',                  lbl:'LOT 상세'},
     /* 재고 메뉴: FileResponse — GET+json 모달이 아니라 다운로드 (onExportLot 과 동일 계열) */
@@ -7396,7 +7038,8 @@
     /* [Sprint 0] 'onSettings' removed — was wired to /api/menu/-on-settings (NotReadyError stub).
        Real settings dialog ships in Sprint 2 (SettingsDialogMixin port, ~5d). */
     'onProductMaster':   {m:'JS',   u:'product-master',                            lbl:'제품 마스터'},
-    'onIntegrityRepair': {m:'JS',   u:'fix-lot-integrity',                              lbl:'LOT 정합성 복구'},
+    'onProductInventoryReport': {m:'GET', u:'/api/q/product-inventory',           lbl:'제품별 재고 현황'},
+    'onIntegrityRepair': {m:'GET',  u:'/api/action/integrity-check',                     lbl:'정합성 검사/복구'},
     'onOptimizeDb':      {m:'POST', u:'/api/action3/optimize-db',                 lbl:'DB 최적화'},
     'onCleanupLogs':     {m:'POST', u:'/api/action3/cleanup-logs',                lbl:'로그 정리'},
     'onDbInfo':          {m:'GET',  u:'/api/info/system-info',                    lbl:'DB 정보'},
@@ -7416,6 +7059,8 @@
     'onAbout':           {m:'GET',  u:'/api/info/version',                        lbl:'버전 정보'},
 
     /* ── 탭 이동 ── */
+    'onGoScanTab':       {m:'JS',   u:'scan',                                     lbl:'스캔 탭'},
+    'onGoAllocationTab': {m:'JS',   u:'allocation',                               lbl:'배정 탭'},
 
     /* ── 툴바 ── */
     /* v864.3 Phase 4-B: 툴바 PDF 입고 — 네이티브 모달 */
@@ -7439,7 +7084,7 @@
     'onFontSizeSettings':    {m:'JS', u:'font-size-settings',                       lbl:'🔤 화면 폰트 크기'},
     'onEmailConfig':     {m:'JS',   u:'email-config',                              lbl:'이메일 설정'},
     'onIntegrityReport': {m:'GET',  u:'/api/action/integrity-check',              lbl:'정합성 검증 (시각화)'},
-    'onFixLotIntegrity': {m:'JS',   u:'fix-lot-integrity',                        lbl:'LOT 정합성 복구'},
+    'onFixLotIntegrity': {m:'GET',  u:'/api/action/integrity-check',              lbl:'LOT 정합성 검사'},
     'onExportCustoms':   {m:'JS',   u:'export-dl-e1',                             lbl:'통관요청 양식'},
     'onExportRubyli':    {m:'JS',   u:'export-dl-e3',                             lbl:'루비리 양식'},
     'onExportTonbag':    {m:'JS',   u:'export-dl-e4',                             lbl:'톤백 현황'},
@@ -7466,7 +7111,10 @@
 
     /* ── 재고 메뉴: LOT Excel은 FileResponse → 새 창 다운로드 / 추이는 JSON 모달 ── */
     'onExportLot':         {m:'JS', u:'export-lot-excel-dl',                       lbl:'📊 LOT 리스트 Excel'},
-    'onStockTrendChart':   {m:'JS',  u:'inventory-trend-modal',                    lbl:'📊 재고 추이 차트'},
+    'onStockTrendChart':   {m:'GET', u:'/api/q/inventory-trend',                   lbl:'📊 재고 추이 차트'},
+
+    /* 전역 검색: v866는 Inventory 탭 검색으로 대체 (기능 단위 동등 목표) */
+    'onGlobalSearch':      {m:'JS', u:'inventory',                                lbl:'🔍 전역 검색'},
 
     /* View 메뉴 탭 이동 */
     'onGoInventoryTab':  {m:'JS',   u:'inventory',                                lbl:'Inventory 탭'},
@@ -7480,7 +7128,7 @@
     /* ── 업로드 / 보고서 ── */
     'onDoUpload':          {m:'JS',  u:'do-upload',                               lbl:'D/O PDF 업로드'},
     'onSalesOrderUpload':  {m:'JS',  u:'sales-order-upload',                      lbl:'Sales Order Excel 업로드'},
-    'onSwapReport':        {m:'JS',  u:'swap-report-modal',                        lbl:'Swap 리포트'},
+    'onSwapReport':        {m:'GET', u:'/api/action2/swap-report',                 lbl:'Swap 보고서'},
     'onStockAlerts':       {m:'GET', u:'/api/dashboard/alerts',                    lbl:'재고 알림'},
 
     /* ── 기타 ── */
@@ -7544,6 +7192,11 @@
       }
       if (conf.u === 'picking-list-pdf') {
         showPickingListPdfModal();
+        return;
+      }
+      if (conf.u === 'advanced-tools') {
+        if (typeof showAdvancedToolsHubModal === 'function') { showAdvancedToolsHubModal(); }
+        else { showToast('info', '고급 도구 허브 준비 중'); }
         return;
       }
       if (conf.u === 'quick-outbound-paste') {
@@ -7650,16 +7303,7 @@
         return;
       }
       if (conf.u === 'export-tonbag-simple-dl') {
-        showToast('info', '⏳ 톤백리스트 Excel 생성 중...');
-        apiCall('GET', '/api/action2/open-tonbag-excel')
-          .then(function(res) {
-            if (res && res.data && res.data.opened) {
-              showToast('success', '✅ 톤백리스트 열림 (' + res.data.rows + '행)\n📁 ' + res.data.filename);
-            } else {
-              showToast('error', '❌ 파일 열기 실패');
-            }
-          })
-          .catch(function(e) { showToast('error', '❌ 오류: ' + e); });
+        sqmDownloadFileUrl(API + '/api/action2/export-tonbag-excel', conf.lbl);
         return;
       }
       if (conf.u === 'product-summary') {
@@ -7682,37 +7326,12 @@
         showSalesOrderUploadModal();
         return;
       }
-      if (conf.u === 'sales-order-dn-template') {
-        showSalesOrderDnTemplateModal();
-        return;
-      }
       if (conf.u === 'carrier-profile') {
         showCarrierProfileModal();
         return;
       }
       if (conf.u === 'export-lot-excel-dl') {
-        showToast('info', '⏳ LOT 리스트 Excel 생성 중...');
-        apiCall('GET', '/api/action/open-lot-excel')
-          .then(function(res) {
-            if (res && res.data && res.data.opened) {
-              showToast('success', '✅ LOT 리스트 열림 (' + res.data.rows + ' LOT)\n📁 ' + res.data.filename);
-            } else {
-              showToast('error', '❌ 파일 열기 실패');
-            }
-          })
-          .catch(function(e) { showToast('error', '❌ 오류: ' + e); });
-        return;
-      }
-      if (conf.u === 'fix-lot-integrity') {
-        showFixLotIntegrityModal();
-        return;
-      }
-      if (conf.u === 'swap-report-modal') {
-        showSwapReportModal();
-        return;
-      }
-      if (conf.u === 'inventory-trend-modal') {
-        showInventoryTrendModal();
+        sqmDownloadFileUrl(API + '/api/action/export-lot-excel', conf.lbl);
         return;
       }
       if (conf.u === 'product-master') {
@@ -7856,26 +7475,14 @@
         var dropdown = parent ? parent.querySelector('.submenu-dropdown') : null;
         if (!parent || !dropdown) return;
         var open = parent.classList.contains('open');
+        closeSiblingSubmenus(parent);
         if (open) {
           parent.classList.remove('open');
-          parent.classList.remove('hover-active');
           dropdown.style.display = '';
         } else {
-          activateSubmenuParent(parent, true);
+          parent.classList.add('open');
+          dropdown.style.display = 'block';
         }
-      });
-    });
-
-    // Keep submenu highlight tied to the item under the pointer/focus, not the
-    // previously clicked submenu button.
-    document.querySelectorAll('.submenu-parent').forEach(function(parent){
-      if (parent.dataset._sqmSubmenuHoverBound) return;
-      parent.dataset._sqmSubmenuHoverBound = '1';
-      parent.addEventListener('mouseenter', function(){
-        activateSubmenuParent(parent, false);
-      });
-      parent.addEventListener('focusin', function(){
-        activateSubmenuParent(parent, false);
       });
     });
 
@@ -7919,7 +7526,7 @@
       }
     });
 
-    console.info('[SQM v864.3] bindAll complete');
+    console.info('[SQM v8.6.6] bindAll complete');
   }
 
   function boot() {
@@ -7953,11 +7560,11 @@
     }, 30000);
 
     window.SQM = window.SQM || {};
-    window.SQM.version = '864.3-phase5';
+    window.SQM.version = '866-phase5-menu';
     window.SQM.renderPage = renderPage;
     window.SQM.dispatchAction = dispatchAction;
     window.SQM.currentRoute = function(){ return _currentRoute; };
-    console.info('[SQM v864.3] boot complete. initial route:', initial);
+    console.info('[SQM v8.6.6] boot complete. initial route:', initial);
   }
 
   /* sqm-onestop-inbound.js 의존성 전역 노출 */

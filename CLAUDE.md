@@ -350,76 +350,45 @@ Claude_SQM_v864_3/
 
 ---
 
-## 🔜 다음 세션 인수인계 (2026-05-02 기준)
+## 🔜 다음 세션 인수인계 (2026-05-02 기준 — JS 복원 완료)
 
 > **새 세션 시작 시 이 섹션부터 읽을 것.**
 
-### 완료된 작업 (v8.6.6)
+### 완료된 작업 (v8.6.6 + 메뉴 재구조화 + PL 파서 + JS 복원)
 - ✅ ONE BL 파싱 3종 버그 수정 (bl_mixin.py)
 - ✅ Gemini DO hint mrn/msn 4선사 추가 (ai_fallback.py)
 - ✅ parse_alarm.py 신규 (CRITICAL/WARNING/INFO 알람 시스템)
 - ✅ inbound.py parse_alarm 연결 + parse_alarms 응답 키 추가
 - ✅ carrier_rules DB 테이블 생성 + ONE BL ONEY 패턴 등록
 - ✅ Phase 1 Release Hardening 4-에이전트 완료 → CRITICAL 3건 수정
-  - inbound.py inbound_bl() 함수 복원 (1945→1974줄)
-  - sqm-inline.js null 바이트 13,497개 제거
-  - sqm-onestop-inbound.js null 바이트 16,756개 제거
+- ✅ 메뉴 재구조화 10항목 완료 (menu_patch_1+2 scripts 실행, index.html 확정)
+  - 최종 메뉴 순서: 파일 / 입고 / 📋Allocation(NEW) / 출고 / 재고 / 보고서 / 설정/도구 / 도움말
+  - data-action 88개, 중복 0, HTML 문법 OK
+- ✅ Git push 완료 (v8.6.6 + Phase1 + Menu → GitHub main)
+- ✅ Picking List 파서 구현 완료
+  - picking_mixin.py: parse_picking_list_auto() 통합 진입점 (텍스트 → coord parser, 이미지 → Gemini)
+  - ai_fallback.py: parse_picking_ai() 추가 (스캔 PDF → Gemini Vision → PickingListResult)
+  - backend/api/outbound_picking.py: POST /api/outbound/picking 엔드포인트 신규
+  - backend/api/__init__.py: outbound_picking router 등록
+- ✅ **sqm-inline.js 복원 완료** (5817줄 잘린 파일 → 7588줄 완전체)
+  - ENDPOINTS + dispatchAction + bindAll + boot 섹션 복원
+  - showPickingListPdfModal: 엔드포인트 `/api/outbound/picking` 업데이트
+  - onSuccess UI: 파일명 · 유형(텍스트/AI) · LOT수 · MT · 선적메타 · 톤백목록 · 샘플목록 표시
+  - JS syntax OK, null byte 0, data-action 86/88 커버 (theme-dark/light는 bindAll 별도처리)
 
 ### 🔴 미완료 — 최우선 처리
-1. **git push** — `git_final_push.bat` 더블클릭으로 완료
-   - index.lock 문제 있었음. 배치 파일이 자동 처리함
-   - 커밋 메시지: COMMIT_MSG_866.txt + COMMIT_MSG_phase1.txt
+1. **Git push (이번 세션 변경분)**
+   - 변경 파일: `frontend/js/sqm-inline.js`, `backend/api/outbound_picking.py`,
+     `parsers/document_parser_modular/picking_mixin.py`,
+     `parsers/document_parser_modular/ai_fallback.py`
+   - `git_final_push.bat` 실행하거나 수동 커밋
 
-2. **메뉴 재구조화** (이 세션에서 중단 → 다음 세션 작업 예정)
-   - 대상 파일: `frontend/index.html` + `frontend/js/sqm-inline.js`
-   - **절대 주의: sqm-inline.js (321KB) Edit 툴 직접 수정 금지 → Python 스크립트 사용**
+2. **Picking List 파서 실전 테스트**
+   - LBM 텍스트 PDF: `temp/LBM AP - SO 3073 - Picking list1.pdf`
+   - Posco 스캔 이미지 PDF: `temp/박아름/` 폴더 내 Posco 파일들
+   - 앱 기동 후 출고 메뉴 > 📋 Picking List에서 테스트
 
-   **변경 내용 10가지 (2026-05-02 전체 검토 완료):**
-   ```
-   ━━━ 구조 변경 (메뉴 이동/승격) ━━━
-   ① Allocation → 최상위 독립 메뉴 승격 (입고↔출고 사이)
-      - 포함: Allocation 입력, 승인 대기, 예약 반영, 승인 이력 조회
-      - LOT Allocation 톤백 현황 (설정>제품관리에서 이동)
-
-   ② 출고 메뉴 슬림화 → 실행 메뉴만 유지
-      - 남기는 것: 즉시 출고, Picking List, 조회/관리
-      - 제거: Allocation(①), Sales Order(③)
-
-   ③ Sales Order → 보고서 메뉴로 이동
-      - onSalesOrderUpload → 보고서 > 📊 Sales Order 신규 서브메뉴
-      - onSalesOrderDN 중복 제거 (보고서>송장/DN에만 유지)
-
-   ④ BL 선사 도구 → 파일 메뉴에서 입고 메뉴로 이동
-      - 이유: 입고 파싱 작업과 직접 관련
-
-   ⑤ Gemini AI → 파일 메뉴에서 설정/도구로 이동
-      - API 키 설정, 연결 테스트, AI 채팅 모두 이동
-
-   ⑥ 톤백 위치 매핑 → 입고 메뉴에서 재고>🏭 창고관리 신규 서브메뉴로 이동
-
-   ⑦ 대량 이동 승인 → 입고 메뉴에서 재고>🏭 창고관리로 이동
-
-   ━━━ 중복 제거 ━━━
-   ⑧ onIntegrityCheck 중복 제거
-      - 입고>정합성 항목 제거, 설정/도구>정합성만 유지
-
-   ⑨ onInboundTemplateManage 중복 제거
-      - 입고 직속 버튼 제거, 입고>조회/관리 안에만 유지
-
-   ⑩ onSalesOrderDN 중복 제거
-      - 출고>Sales Order 항목 제거, 보고서>송장/DN에만 유지
-   ```
-   **최종 메뉴 순서:** 파일 / 입고 / 📋Allocation(NEW) / 출고 / 재고 / 보고서 / 설정/도구 / 도움말
-
-3. **Picking List 신규 파서** (이 세션에서 분석 완료 → 구현 예정)
-   - 샘플: `temp/LBM AP - SO 3073 - Picking list1.pdf`
-   - 발행: SOQUIMICH LLC. (SQM 한국법인, SAP 자동생성)
-   - 방향: 출고 (광양→해외), 아웃바운드 문서
-   - 아키텍처: picking_mixin.py 신규 + ai_fallback.py parse_picking_ai() 추가
-   - 핵심 필드: outbound_id, sales_order, customer_ref, plan_loading_date,
-               port_of_loading/discharge, batch_no[], batch_qty, packing_type,
-               net_weight_kg, gross_weight_kg
-   - 배치 행 정규식: `Quantity:\s*(\d+\.?\d*)\s*(MT|KG)\s+Batch number:\s*(\d+)`
+3. **Phase 6 EXE 빌드** — PyInstaller 단일 파일 배포
 
 ### 현재 DB 상태
 - carrier_rules 테이블: 코드 자동 마이그레이션 준비됨, 앱 최초 기동 시 생성
@@ -429,10 +398,12 @@ Claude_SQM_v864_3/
 | 용도 | 경로 |
 |------|------|
 | 메뉴 HTML | frontend/index.html |
-| JS 로직 | frontend/js/sqm-inline.js (321KB, Python 수정 필수) |
+| JS 로직 | frontend/js/sqm-inline.js (7588줄, Python 수정 필수) |
 | 알람 시스템 | utils/parse_alarm.py |
 | 입고 API | backend/api/inbound.py (1974줄, 정상) |
-| PL 파서 | parsers/document_parser_modular/packing_mixin.py |
+| PL 파서 | parsers/document_parser_modular/picking_mixin.py |
+| PL AI 파서 | parsers/document_parser_modular/ai_fallback.py (parse_picking_ai) |
+| PL API | backend/api/outbound_picking.py |
 | PL 샘플 | temp/LBM AP - SO 3073 - Picking list1.pdf |
 | Phase1 보고서 | REPORTS/phase1_summary.md |
 

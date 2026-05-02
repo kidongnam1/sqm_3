@@ -673,3 +673,58 @@ class PickingListParserMixin:
             "[PL-COORD] 배치 추출: tonbag %d개 / sample %d개",
             len(result.tonbag), len(result.sample),
         )
+
+    # =========================================================
+    # 통합 진입점 — 텍스트 PDF / 이미지 PDF 자동 분기
+    # =========================================================
+
+    @staticmethod
+    def _detect_pdf_type(pdf_path: str) -> str:
+        """텍스트 추출 가능 여부로 PDF 타입 판단.
+        반환: 'text' | 'image'
+        """
+        try:
+            import fitz
+            doc = fitz.open(pdf_path)
+            for page in doc:
+                text = page.get_text().strip()
+                if len(text) > 50:
+                    doc.close()
+                    return "text"
+            doc.close()
+        except Exception:
+            pass
+        return "image"
+
+    def parse_picking_list_auto(self, pdf_path: str, owner=None) -> "PickingListResult":
+        """
+        통합 진입점.
+        - 텍스트 PDF → parse_picking_list_coord() (좌표 기반)
+        - 이미지 PDF → parse_picking_ai() (Gemini Vision)
+
+        owner: MultiProviderParserV2 또는 GeminiDocumentParser 인스턴스.
+               None이면 텍스트 경로만 사용 (이미지 PDF는 errors 반환).
+        """
+        pdf_type = self._detect_pdf_type(pdf_path)
+        logger.info("[PL-AUTO] %s → %s 경로", pdf_path, pdf_type)
+
+        if pdf_type == "text":
+            return self.parse_picking_list_coord(pdf_path, fallback=True)
+
+        # 이미지 PDF
+        if owner is None:
+            result = PickingListResult()
+            result.errors.append(
+                "이미지 PDF 감지 — Gemini API 키가 필요합니다. "
+                "설정/도구 > Gemini AI > API 키 설정에서 등록하세요."
+            )
+            return result
+
+        try:
+            from .ai_fallback import parse_picking_ai
+            return parse_picking_ai(owner, pdf_path)
+        except Exception as e:
+            result = PickingListResult()
+            result.errors.append(f"AI 파싱 실패: {e}")
+            logger.exception("[PL-AUTO] AI 파싱 예외: %s", e)
+            return result

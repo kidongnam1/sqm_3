@@ -221,6 +221,13 @@ try:
 except Exception as e:
     logging.warning(f"outbound_api router load failed: {e}")
 
+try:
+    from backend.api.outbound_picking import router as outbound_picking_router
+    app.include_router(outbound_picking_router)
+    logging.info("outbound_picking router loaded OK (POST /api/outbound/picking)")
+except Exception as e:
+    logging.warning(f"outbound_picking router load failed: {e}")
+
 # ── v864.3 Phase 4-B: 톤백 위치 매핑 (F004) 네이티브 ─────
 try:
     from backend.api.tonbag_api import router as tonbag_api_router
@@ -593,86 +600,4 @@ def integrity_quick():
 # ── Export ───────────────────────────────────────────────────
 @app.post("/api/export/excel")
 def export_excel(payload: dict):
-    option = payload.get("option", 1)
-    if not ENGINE_AVAILABLE:
-        raise HTTPException(503, "Engine unavailable")
-    try:
-        import tempfile, os
-        from backend.common.excel_alignment import safe_apply_sqm_file
-
-        out = os.path.join(tempfile.gettempdir(), f"sqm_export_option{option}.xlsx")
-        engine.export_to_excel(out, option=option)
-        safe_apply_sqm_file(out)
-        return {"success": True, "path": out}
-    except Exception as e:
-        raise HTTPException(500, str(e))
-
-# ── Activity Log ─────────────────────────────────────────────
-@app.get("/api/log/activity")
-def get_activity_log(limit: int = Query(100, ge=1, le=1000)):
-    if not ENGINE_AVAILABLE:
-        return _sample_activity()
-    try:
-        return engine.get_outbound_event_log(limit=limit)
-    except Exception as e:
-        raise HTTPException(500, str(e))
-
-# ── Sample Data Fallbacks ────────────────────────────────────
-def _sample_dashboard():
-    return {
-        "available_lots": 247, "reserved_lots": 38, "picked_lots": 15,
-        "outbound_lots_month": 89, "return_lots": 3,
-        "available_kg": 12340000,
-    }
-
-def _sample_inventory(page=1, page_size=50):
-    rows = [
-        {"lot": "SQM-2026-0421", "sap": "1000421001", "bl": "COAU2604210",
-         "product": "PP", "status": "AVAILABLE",
-         "balance": 500.0, "net": 500.0, "container": "CRXU1234567",
-         "mxbg_pallet": 20, "avail_bags": 1000,
-         "invoice_no": "", "ship_date": "", "arrival_date": "2026-04-21",
-         "con_return": "", "free_time": 0, "wh": "광양", "customs": "",
-         "initial_weight": 500.0, "outbound_weight": 0.0,
-         "date": "2026-04-21", "location": "A-01",
-         "sale_ref": "", "customer": "", "remarks": ""},
-    ]
-    start = (page - 1) * page_size
-    return {"total": len(rows), "page": page, "page_size": page_size, "data":rows[start:start+page_size]}
-
-def _sample_allocation():
-    return {"total": 0, "data": []}
-
-def _sample_activity():
-    return [
-        {"time": "14:32", "type": "INBOUND", "lot": "SQM-2026-0421", "note": "PP 500KG"},
-    ]
-
-
-# ══════════════════════════════════════════════════════════════
-# ── Static frontend mount (MUST be LAST) ──────────────────────
-# ══════════════════════════════════════════════════════════════
-# v864.3 Phase 2 fix: Starlette matches routes in registration order.
-# Mounting "/" at the END ensures every inline @app.get("/api/...")
-# above is checked FIRST; only unmatched paths fall through to
-# serving frontend/ static files. Previous position (before the
-# @app.get decorators) caused HTTP 404 on /api/health, /api/dashboard,
-# /api/inventory because the mount swallowed every path.
-try:
-    import mimetypes
-    # Windows: fix .js/.css MIME type misidentification
-    mimetypes.add_type("application/javascript", ".js")
-    mimetypes.add_type("text/css", ".css")
-except Exception:
-    pass
-
-from fastapi.staticfiles import StaticFiles as _StaticFiles
-_FRONTEND_DIR = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "frontend"
-)
-if os.path.isdir(_FRONTEND_DIR):
-    app.mount("/", _StaticFiles(directory=_FRONTEND_DIR, html=True), name="frontend")
-    logging.info(f"Static frontend mounted: {_FRONTEND_DIR}")
-else:
-    logging.warning(f"frontend/ not found — GET / will return 404: {_FRONTEND_DIR}")
+    option = payload.ge

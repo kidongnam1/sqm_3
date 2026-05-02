@@ -1068,12 +1068,13 @@ def parse_do_ai(owner: Any, pdf_path: str, *, partial: Any = None,
                 container_no=_clean_text(getattr(item, "container_no", "")),
                 seal_no=_clean_text(getattr(item, "seal_no", "")),
                 packages=_to_int(getattr(item, "packages", 0)),
-                weight_kg=_to_kg(getattr(item, "weight_kg", 0) or
-                                  getattr(item, "gross_weight_kg", 0)),
+                weight_kg=_to_kg(getattr(item, "weight_kg", 0)),
                 cbm=float(getattr(item, "cbm", 0) or 0),
-                free_time_date=_parse_date(getattr(item, "free_time_date", None)),
-                return_yard=_clean_text(getattr(item, "return_yard", "") or
-                                         getattr(item, "return_location", "")),
+                free_time=_clean_text(getattr(item, "free_time", "") or
+                                      getattr(item, "free_time_date", "")),
+                return_yard=_clean_text(getattr(item, "return_yard", "")),
+                mrn=_clean_text(getattr(item, "mrn", "")),
+                msn=_clean_text(getattr(item, "msn", "")),
             ))
         except Exception:
             logger.debug("[AI-FALLBACK] DO container item 변환 실패")
@@ -1081,10 +1082,159 @@ def parse_do_ai(owner: Any, pdf_path: str, *, partial: Any = None,
     _copy_if_empty(result, partial, (
         "do_no", "bl_no", "vessel", "voyage",
         "port_of_loading", "port_of_discharge", "sap_no",
+        "arrival_date", "issue_date",
     ))
 
     result.success = bool(result.do_no or result.bl_no)
-    logger.info("[AI-FALLBACK] DO %s success=%s do=%s",
-                used_provider, result.success, result.do_no)
+    logger.info("[AI-FALLBACK] DO %s success=%s do=%s bl=%s",
+                used_provider, result.success, result.do_no, result.bl_no)
     result._ai_provider = used_provider
+    return result
+
+
+# ─────────────────────────────────────────────────────────────
+# Picking List AI 파서 (이미지 PDF 전용)
+# ─────────────────────────────────────────────────────────────
+def parse_picking_ai(owner: Any, pdf_path: str, *, provider: Optional[str] = None):
+    """
+    이미지 PDF(스캔본) Picking List → Gemini Vision → PickingListResult.
+    진입점: PickingListParserMixin.parse_picking_list_auto() 에서 호출.
+    """
+    from .picking_mixin import PickingListResult, PickingListMeta, PickingLotItem
+
+    result = PickingListResult()
+
+    PROMPT = (
+        "This is a SAP-generated Picking List PDF from SOQUIMICH LLC (SQM Korea).\n"
+        "Extract ALL fields and return ONLY valid JSON (no markdown, no explanation).\n\n"
+        "Required JSON structure:\n"
+        "{\n"
+        '  "outbound_id": "string",\n'
+        '  "sales_order": "string",\n'
+        '  "customer_ref": "string",\n'
+        '  "creation_date": "YYYY-MM-DD or empty",\n'
+        '  "plan_loading_date": "YYYY-MM-DD or empty",\n'
+        '  "cutoff_date": "YYYY-MM-DD or empty",\n'
+        '  "delivery_terms": "string",\n'
+        '  "containers": "string e.g. 15 x40 Containers",\n'
+        '  "contact_person": "string",\n'
+        '  "contact_email": "string",\n'
+        '  "port_of_loading": "string",\n'
+        '  "port_of_discharge": "string",\n'
+        '  "materials": [\n'
+        "    {\n"
+        '      "material_no": "string",\n'
+        '      "description": "string",\n'
+        '      "total_qty": 0,\n'
+        '      "unit": "MT or KG",\n'
+        '      "customs_status": "cleared or uncleared",\n'
+        '      "batches": [\n'
+        "        {\n"
+        '          "batch_no": "string",\n'
+        '          "qty": 0,\n'
+        '          "unit": "MT or KG",\n'
+        '          "storage_location": "string"\n'
+        "        }\n"
+        "      ],\n"
+        '      "packing": {\n'
+        '        "packing_type": "string e.g. big bags 450 kgs",\n'
+        '        "qty": 0,\n'
+        '        "net_weight_kg": 0,\n'
+        '        "gross_weight_kg": 0\n'
+        "      }\n"
+        "    }\n"
+        "  ]\n"
+        "}\n\n"
+        "Rules:\n"
+        "- batch_no is the SAP batch/lot number (e.g. 1324122406)\n"
+        "- EXW delivery: port_of_loading and port_of_discharge may be empty\n"
+        "- packing section: only if present in document\n"
+        "- dates must be YYYY-MM-DD format\n"
+        "- empty string for missing text, 0 for missing numbers"
+    )
+
+    raw_text = ""
+    try:
+        gp, used_provider = _get_provider_parser(owner, provider)
+        raw_text = gp._call_gemini_pdf(PROMPT, pdf_path)
+        if not raw_text:
+            result.errors.append("Gemini 응답 없음")
+            return result
+
+        json_text = raw_text.strip()
+        m = re.search(r"```(?:json)?\s*([\s\S]+?)\s*```", json_text)
+        if m:
+            json_text = m.group(1).strip()
+
+        data = json.loads(json_text)
+
+        meta = PickingListMeta()
+        meta.outbound_id       = str(data.get("outbound_id", "") or "")
+        meta.sales_order       = str(data.get("sales_order", "") or "")
+        meta.picking_no        = str(data.get("customer_ref", "") or "")
+        meta.creation_date     = str(data.get("creation_date", "") or "")
+        meta.plan_loading_date = str(data.get("plan_loading_date", "") or "")
+        meta.cutoff_date       = str(data.get("cutoff_date", "") or "")
+        meta.delivery_terms    = str(data.get("delivery_terms", "") or "")
+        meta.containers        = str(data.get("containers", "1") or "1")
+        meta.contact_person    = str(data.get("contact_person", "") or "")
+        meta.contact_email     = str(data.get("contact_email", "") or "")
+        meta.port_loading      = str(data.get("port_of_loading", "") or "")
+        meta.port_discharge    = str(data.get("port_of_discharge", "") or "")
+        result.meta = meta
+
+        tonbag_seen: dict = {}
+        sample_seen: dict = {}
+        for mat in data.get("materials", []):
+            for b in mat.get("batches", []):
+                batch_no = str(b.get("batch_no", "")).strip()
+                if not batch_no:
+                    continue
+                qty  = float(b.get("qty", 0) or 0)
+                unit = str(b.get("unit", "MT")).upper()
+                storage = str(b.get("storage_location", "") or "")
+                wt_kg = qty * 1000.0 if unit == "MT" else qty
+                item = PickingLotItem(lot_no=batch_no, weight_kg=wt_kg,
+                                      unit=unit, storage=storage)
+                if unit == "MT":
+                    tonbag_seen.setdefault(batch_no, item)
+                else:
+                    sample_seen.setdefault(batch_no, item)
+            packing = mat.get("packing") or {}
+            pk_type = str(packing.get("packing_type", "") or "")
+            bm = re.search(r"(\d+)\s*kg", pk_type, re.IGNORECASE)
+            if bm and not meta.bag_weight_kg:
+                try:
+                    meta.bag_weight_kg = int(bm.group(1))
+                except (ValueError, TypeError):
+                    pass
+
+        result.tonbag = list(tonbag_seen.values())
+        result.sample = list(sample_seen.values())
+
+        tb_set = {r.lot_no for r in result.tonbag}
+        total_mt   = sum(r.weight_kg for r in result.tonbag) / 1000.0
+        total_spkg = sum(r.weight_kg for r in result.sample)
+        result.summary = {
+            "total_lots":      len(tb_set),
+            "total_mt":        total_mt,
+            "total_sample_kg": total_spkg,
+            "lot_integrity":   tb_set == {s.lot_no for s in result.sample},
+            "tonbag_count":    len(result.tonbag),
+            "sample_count":    len(result.sample),
+            "warning_count":   0,
+            "ai_provider":     used_provider,
+        }
+        result.success = bool(result.tonbag)
+        if not result.tonbag:
+            result.errors.append("배치 데이터 없음 — Gemini 응답을 확인하세요")
+        logger.info("[PICKING-AI] %s success=%s lots=%d mt=%.1f",
+                    used_provider, result.success, len(tb_set), total_mt)
+
+    except json.JSONDecodeError as e:
+        result.errors.append(f"JSON 파싱 실패: {e} / 응답: {raw_text[:200]}")
+    except Exception as e:
+        result.errors.append(f"AI 파싱 오류: {e}")
+        logger.exception("[PICKING-AI] 예외: %s", e)
+
     return result
