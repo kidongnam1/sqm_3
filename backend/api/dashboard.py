@@ -203,6 +203,8 @@ def get_dashboard_stats():
                 SUM(CASE WHEN tb.status IN ('OUTBOUND','SOLD','SHIPPED','CONFIRMED') THEN 1 ELSE 0 END) AS outbound,
                 SUM(CASE WHEN tb.status = 'RETURN'    THEN 1 ELSE 0 END) AS return_cnt,
                 COUNT(*)                         AS total,
+                COUNT(DISTINCT CASE WHEN tb.status IN ('AVAILABLE','RESERVED','PICKED','RETURN')
+                    THEN tb.lot_no END)           AS lot_count,
                 COALESCE(SUM(tb.weight), 0)      AS weight_kg
             FROM inventory_tonbag tb
             LEFT JOIN inventory i ON tb.lot_no = i.lot_no
@@ -221,7 +223,8 @@ def get_dashboard_stats():
                 "outbound":   row[5],
                 "return":     row[6],
                 "total":      row[7],
-                "weight_mt":  round(float(row[8]) / 1000.0, 2),
+                "lot_count":  row[8],
+                "weight_mt":  round(float(row[9]) / 1000.0, 2),
             })
 
         # ── 정합성 요약 (총입고 = 현재재고 + 출고누계) ──

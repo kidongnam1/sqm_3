@@ -402,7 +402,8 @@ def get_tonbags(
                 t.picked_to     AS container,
                 i.product,
                 t.tonbag_uid,
-                t.tonbag_no
+                t.tonbag_no,
+                COALESCE(t.is_sample, 0) AS is_sample
             FROM inventory_tonbag t
             LEFT JOIN inventory i ON i.lot_no = t.lot_no
             WHERE 1=1

@@ -905,7 +905,7 @@
     el.innerHTML = html;
   }
 
-  /* -- 제품x상태 매트릭스 테이블 (정상/샘플 행 분리) -- */
+  /* -- 제품x상태 매트릭스 테이블 (제품별 단일 행 — 샘플 괄호 병기) -- */
   function renderProductMatrix(rows) {
     var el = document.getElementById('dash-matrix-area');
     if (!el) return;
@@ -923,9 +923,9 @@
       else             productMap[prod].normal = r;
     });
 
-    /* 전체 합계 (정상만) */
-    var totN = {available:0, reserved:0, picked:0, outbound:0, ret:0, total:0, wt:0};
-    var totS = {available:0, reserved:0, picked:0, outbound:0, ret:0, total:0, wt:0};
+    /* 전체 합계 */
+    var totN = {available:0,reserved:0,picked:0,outbound:0,ret:0,total:0,wt:0};
+    var totS = {available:0,reserved:0,picked:0,outbound:0,ret:0,total:0,wt:0};
     rows.forEach(function(r) {
       var t = r.is_sample ? totS : totN;
       t.available += (r.available||0);
@@ -937,77 +937,84 @@
       t.wt        += (r.weight_mt||0);
     });
 
-    var TH = 'style="padding:6px 8px;text-align:right"';
+    /* 셀 렌더 헬퍼: 정상값 + 샘플값 괄호 병기 */
+    function cell(nVal, sVal, isWt) {
+      var n = nVal || 0;
+      var s = sVal || 0;
+      var nStr = isWt ? n.toFixed(2) : String(n);
+      var sStr = isWt ? s.toFixed(2) : String(s);
+      var base = '<td style="text-align:right;padding:5px 8px">' + nStr;
+      if (s > 0) base += ' <span style="font-size:11px;color:#eab308">(+' + sStr + '\u{1F52C})</span>';
+      base += '</td>';
+      return base;
+    }
+    function cellBold(nVal, sVal, isWt) {
+      var n = nVal || 0;
+      var s = sVal || 0;
+      var nStr = isWt ? n.toFixed(2) : String(n);
+      var sStr = isWt ? s.toFixed(2) : String(s);
+      var base = '<td style="text-align:right;padding:5px 8px;font-weight:700">' + nStr;
+      if (s > 0) base += ' <span style="font-size:11px;color:#eab308">(+' + sStr + '\u{1F52C})</span>';
+      base += '</td>';
+      return base;
+    }
+    /* 톤백(개) 셀 — LOT수 + 톤백수 병기 */
+    function cellLot(nLot, nTotal, sLot, sTotal) {
+      var nl = nLot || 0;
+      var nt = nTotal || 0;
+      var sl = sLot || 0;
+      var st = sTotal || 0;
+      var base = '<td style="text-align:right;padding:5px 8px">'
+               + '<span style="color:#94a3b8;font-size:11px;font-weight:400">' + nl + ' LOT</span>'
+               + '<span style="font-weight:700;margin-left:4px">· ' + nt + '</span>';
+      if (st > 0) base += ' <span style="font-size:11px;color:#eab308">(+' + sl + 'LOT/' + st + '\u{1F52C})</span>';
+      base += '</td>';
+      return base;
+    }
+
+    var TH  = 'style="padding:6px 8px;text-align:right"';
     var THL = 'style="text-align:left;padding:6px 10px"';
 
-    var html = '<h3 style="margin:16px 0 8px;font-size:15px;color:var(--text-primary,#e0e0e0)">제품×상태 매트릭스</h3>';
+    var html = '<h3 style="margin:16px 0 8px;font-size:15px;color:var(--text-primary,#e0e0e0)">제품\xD7상태 매트릭스</h3>';
     html += '<div style="overflow-x:auto"><table class="sqm-table" style="width:100%;font-size:13px;border-collapse:collapse">';
     html += '<thead><tr style="background:var(--bg-header,#2a2a3e)">';
-    html += '<th '+THL+'>제품</th>';
-    html += '<th style="padding:6px 8px;color:#94a3b8">구분</th>';
-    html += '<th '+TH+' style="color:#22c55e">Available</th>';
-    html += '<th '+TH+' style="color:#3b82f6">Reserved</th>';
-    html += '<th '+TH+' style="color:#f59e0b">Picked</th>';
-    html += '<th '+TH+' style="color:#ef4444">Outbound</th>';
-    html += '<th '+TH+' style="color:#8b5cf6">Return</th>';
-    html += '<th '+TH+'>톤백(개)</th>';
-    html += '<th '+TH+'>중량(MT)</th>';
+    html += '<th ' + THL + '>제품</th>';
+    html += '<th ' + TH + ' style="color:#22c55e">Available</th>';
+    html += '<th ' + TH + ' style="color:#3b82f6">Reserved</th>';
+    html += '<th ' + TH + ' style="color:#f59e0b">Picked</th>';
+    html += '<th ' + TH + ' style="color:#ef4444">Outbound</th>';
+    html += '<th ' + TH + ' style="color:#8b5cf6">Return</th>';
+    html += '<th ' + TH + '>톤백(개)</th>';
+    html += '<th ' + TH + '>중량(MT)</th>';
     html += '</tr></thead><tbody>';
 
     var products = Object.keys(productMap).sort();
     products.forEach(function(prod) {
       var g = productMap[prod];
-      var hasNormal = !!g.normal;
-      var hasSample = !!g.sample;
-      var rowspan   = (hasNormal && hasSample) ? 2 : 1;
-      var firstRow  = true;
-
-      function renderRow(r, label, bgColor, textColor) {
-        var row = '<tr style="background:' + bgColor + '">';
-        if (firstRow) {
-          row += '<td style="text-align:left;padding:5px 10px;font-weight:700;vertical-align:middle" rowspan="'+rowspan+'">'
-               + escapeHtml(prod) + '</td>';
-          firstRow = false;
-        }
-        row += '<td style="padding:5px 8px;font-size:12px;color:'+textColor+';white-space:nowrap">'
-             + label + '</td>';
-        row += '<td style="text-align:right;padding:5px 8px">'+(r.available||0)+'</td>';
-        row += '<td style="text-align:right;padding:5px 8px">'+(r.reserved||0)+'</td>';
-        row += '<td style="text-align:right;padding:5px 8px">'+(r.picked||0)+'</td>';
-        row += '<td style="text-align:right;padding:5px 8px">'+(r.outbound||0)+'</td>';
-        row += '<td style="text-align:right;padding:5px 8px">'+(r['return']||0)+'</td>';
-        row += '<td style="text-align:right;padding:5px 8px;font-weight:600">'+(r.total||0)+'</td>';
-        row += '<td style="text-align:right;padding:5px 8px;color:#94a3b8">'+(r.weight_mt||0).toFixed(2)+'</td>';
-        row += '</tr>';
-        return row;
-      }
-
-      if (hasNormal) html += renderRow(g.normal, '📦 정상', 'transparent', '#22c55e');
-      if (hasSample) html += renderRow(g.sample, '🔬 샘플', 'rgba(234,179,8,0.06)', '#eab308');
+      var n = g.normal || {};
+      var s = g.sample || {};
+      html += '<tr>';
+      html += '<td style="text-align:left;padding:5px 10px;font-weight:700">' + escapeHtml(prod) + '</td>';
+      html += cell(n.available,  s.available,  false);
+      html += cell(n.reserved,   s.reserved,   false);
+      html += cell(n.picked,     s.picked,     false);
+      html += cell(n.outbound,   s.outbound,   false);
+      html += cell(n['return'],  s['return'],  false);
+      html += cellLot(n.lot_count, n.total, s.lot_count, s.total);
+      html += cell(n.weight_mt,  s.weight_mt,  true);
+      html += '</tr>';
     });
 
     /* 합계 행 */
     html += '<tr style="border-top:2px solid var(--border-color,#444);background:var(--bg-header,#2a2a3e)">';
-    html += '<td style="text-align:left;padding:5px 10px;font-weight:700" colspan="2">합계</td>';
-
-    function sumCell(n, s, color) {
-      var total = n + s;
-      if (s > 0)
-        return '<td style="text-align:right;padding:5px 8px;font-weight:700"><span style="color:#e0e0e0">'
-             + total + '</span> <span style="font-size:11px;color:#eab308">(샘플 ' + s + ')</span></td>';
-      return '<td style="text-align:right;padding:5px 8px;font-weight:700">' + total + '</td>';
-    }
-    html += sumCell(totN.available, totS.available);
-    html += sumCell(totN.reserved,  totS.reserved);
-    html += sumCell(totN.picked,    totS.picked);
-    html += sumCell(totN.outbound,  totS.outbound);
-    html += sumCell(totN.ret,       totS.ret);
-    html += '<td style="text-align:right;padding:5px 8px;font-weight:700">'
-         +  (totN.total+totS.total)
-         +  (totS.total>0 ? ' <span style="font-size:11px;color:#eab308">(샘플 '+totS.total+')</span>' : '')
-         + '</td>';
-    html += '<td style="text-align:right;padding:5px 8px;font-weight:700">'
-         +  (totN.wt+totS.wt).toFixed(2)+'</td>';
+    html += '<td style="text-align:left;padding:5px 10px;font-weight:700">합계</td>';
+    html += cellBold(totN.available, totS.available, false);
+    html += cellBold(totN.reserved,  totS.reserved,  false);
+    html += cellBold(totN.picked,    totS.picked,    false);
+    html += cellBold(totN.outbound,  totS.outbound,  false);
+    html += cellBold(totN.ret,       totS.ret,       false);
+    html += cellBold(totN.total,     totS.total,     false);
+    html += cellBold(totN.wt,        totS.wt,        true);
     html += '</tr>';
     html += '</tbody></table></div>';
     el.innerHTML = html;
@@ -1112,19 +1119,26 @@
           sampleRow =
             '<tr style="background:rgba(234,179,8,0.08);border-left:3px solid #eab308">' +
             '<td class="mono-cell" style="color:#eab308;font-size:11px;text-align:center">🔬</td>' +
-            '<td class="mono-cell" style="color:#eab308;font-size:12px;font-weight:600" colspan="3">' +
-              lotKey + ' <span style="color:#94a3b8;font-weight:400;font-size:11px">샘플 재고</span>' +
-            '</td>' +
+            '<td class="mono-cell" style="color:#eab308;font-size:12px;font-weight:700">'+lotKey+'(SP)</td>' +
+            '<td class="mono-cell" style="color:#94a3b8;font-size:11px">'+escapeHtml(r.sap||'')+'</td>' +
+            '<td class="mono-cell" style="color:#94a3b8;font-size:11px">'+escapeHtml(r.bl||'')+'</td>' +
             '<td><span class="tag" style="background:rgba(234,179,8,0.2);color:#eab308">'+escapeHtml(r.product||'')+'</span></td>' +
             '<td style="font-size:11px;color:#eab308;font-weight:600">SAMPLE</td>' +
             '<td class="mono-cell" style="text-align:right;color:#eab308;font-weight:600">'+fmtN(r.sample_weight_mt||0)+'</td>' +
-            '<td class="mono-cell" style="color:#555">—</td>' +
+            '<td class="mono-cell" style="text-align:right;color:#eab308">'+fmtN(r.sample_weight_mt||0)+'</td>' +
             '<td class="mono-cell" style="font-size:11px;color:#94a3b8">'+escapeHtml(r.container||'')+'</td>' +
             '<td class="mono-cell" style="text-align:center;color:#eab308;font-weight:700">'+r.sample_bags+'</td>' +
-            '<td class="mono-cell" style="text-align:center;color:#555">—</td>' +
-            '<td colspan="9" style="color:#94a3b8;font-size:11px;padding:3px 8px">' +
-              '🔬 샘플 ' + r.sample_bags + '포대 · ' + fmtN(r.sample_weight_mt||0) + ' MT (검사용 재고, 출고 불가)' +
-            '</td>' +
+            '<td class="mono-cell" style="text-align:center;color:#eab308;font-weight:700">'+r.sample_bags+'</td>' +
+            '<td class="mono-cell" style="font-size:11px;color:#94a3b8">'+escapeHtml(r.invoice_no||'')+'</td>' +
+            '<td class="mono-cell" style="font-size:11px;color:#94a3b8">'+escapeHtml((r.ship_date||'').slice(0,10))+'</td>' +
+            '<td class="mono-cell" style="font-size:11px;color:#94a3b8">'+escapeHtml((r.arrival_date||'').slice(0,10))+'</td>' +
+            '<td class="mono-cell" style="color:#555">—</td>' +
+            '<td class="mono-cell" style="color:#555">—</td>' +
+            '<td class="mono-cell" style="font-size:11px;color:#94a3b8">'+escapeHtml(r.wh||'')+'</td>' +
+            '<td class="mono-cell" style="color:#555">—</td>' +
+            '<td class="mono-cell" style="color:#555">—</td>' +
+            '<td class="mono-cell" style="color:#555">—</td>' +
+            '<td><span class="tag" style="background:rgba(234,179,8,0.1);color:#94a3b8">'+escapeHtml(r.location||'-')+'</span></td>' +
             '<td></td>' +
             '</tr>';
         }
@@ -1139,7 +1153,13 @@
           '<td class="mono-cell" style="text-align:right">'+(r.balance!=null?fmtN(r.balance):'-')+'</td>' +
           '<td class="mono-cell" style="text-align:right">'+(r.net!=null?fmtN(r.net):'-')+'</td>' +
           '<td class="mono-cell">'+escapeHtml(r.container||'')+'</td>' +
-          '<td class="mono-cell" style="text-align:center">'+(r.mxbg_pallet||'-')+'</td>' +
+          '<td class="mono-cell" style="text-align:center">' +
+          (r.mxbg_pallet > 0
+            ? '<button class="btn btn-ghost btn-xs" style="font-weight:700;color:var(--accent);padding:0 4px" '
+            + 'onclick="window.showTonbagModal(\'' + lotKey + '\')" title="톤백 세부 보기">'
+            + r.mxbg_pallet + '</button>'
+            : '-') +
+          '</td>' +
           '<td class="mono-cell" style="text-align:center">'+(r.avail_bags!=null?r.avail_bags:'-')+'</td>' +
           '<td class="mono-cell">'+escapeHtml(r.invoice_no||'')+'</td>' +
           '<td class="mono-cell">'+escapeHtml((r.ship_date||'').slice(0,10))+'</td>' +
@@ -1261,6 +1281,101 @@
     if (!lot) return;
     renderPage('return');
     showToast('info', '🔄 반품 탭으로 이동: ' + lot);
+  };
+
+  /* ── 톤백 세부 모달 ─────────────────────────────── */
+  window.showTonbagModal = function(lotNo) {
+    if (!lotNo) return;
+    var modal = document.getElementById('tonbag-modal');
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = 'tonbag-modal';
+      modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center';
+      modal.innerHTML =
+        '<div style="background:var(--card-bg,#1e293b);border:1px solid var(--border,#334155);border-radius:12px;'
+        + 'width:min(900px,95vw);max-height:85vh;display:flex;flex-direction:column;padding:20px;gap:12px">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between">'
+        + '<h3 id="tbm-title" style="margin:0;font-size:16px;font-weight:700">톤백 세부</h3>'
+        + '<div style="display:flex;gap:8px;align-items:center">'
+        + '<select id="tbm-filter" onchange="window._filterTonbagModal()" '
+        + 'style="background:var(--input-bg,#0f172a);border:1px solid var(--border,#334155);border-radius:6px;padding:4px 8px;color:inherit;font-size:13px">'
+        + '<option value="">전체 상태</option>'
+        + '<option value="AVAILABLE">AVAILABLE</option>'
+        + '<option value="RESERVED">RESERVED</option>'
+        + '<option value="PICKED">PICKED</option>'
+        + '<option value="RETURN">RETURN</option>'
+        + '<option value="SOLD">SOLD</option>'
+        + '</select>'
+        + '<button onclick="document.getElementById(\'tonbag-modal\').remove()" '
+        + 'style="background:none;border:none;color:var(--text-muted,#94a3b8);font-size:20px;cursor:pointer;line-height:1">✕</button>'
+        + '</div></div>'
+        + '<div style="overflow:auto;flex:1">'
+        + '<table id="tbm-table" style="width:100%;border-collapse:collapse;font-size:13px">'
+        + '<thead><tr style="background:var(--table-header,#0f172a);position:sticky;top:0">'
+        + '<th style="padding:8px;text-align:right;white-space:nowrap">#</th>'
+        + '<th style="padding:8px;text-align:left;white-space:nowrap">Sub-LT</th>'
+        + '<th style="padding:8px;text-align:right;white-space:nowrap">무게(MT)</th>'
+        + '<th style="padding:8px;text-align:center;white-space:nowrap">상태</th>'
+        + '<th style="padding:8px;text-align:center;white-space:nowrap">구분</th>'
+        + '<th style="padding:8px;text-align:left;white-space:nowrap">위치</th>'
+        + '<th style="padding:8px;text-align:left;white-space:nowrap">컨테이너</th>'
+        + '<th style="padding:8px;text-align:left;white-space:nowrap">입고일</th>'
+        + '</tr></thead>'
+        + '<tbody id="tbm-body"></tbody>'
+        + '</table></div>'
+        + '<div id="tbm-summary" style="font-size:12px;color:var(--text-muted,#94a3b8);text-align:right"></div>'
+        + '</div>';
+      document.body.appendChild(modal);
+      modal.addEventListener('click', function(e){ if (e.target === modal) modal.remove(); });
+    }
+    document.getElementById('tbm-title').textContent = '톤백 세부 — LOT ' + lotNo;
+    document.getElementById('tbm-filter').value = '';
+    document.getElementById('tbm-body').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:#94a3b8">로딩 중...</td></tr>';
+    document.getElementById('tbm-summary').textContent = '';
+    modal.style.display = 'flex';
+    modal._allRows = [];
+    apiGet('/api/tonbags?lot_no=' + encodeURIComponent(lotNo) + '&limit=500')
+      .then(function(res){
+        var rows = Array.isArray(res) ? res : (res.data || res.items || []);
+        modal._allRows = rows;
+        window._filterTonbagModal();
+      })
+      .catch(function(){ document.getElementById('tbm-body').innerHTML =
+        '<tr><td colspan="8" style="text-align:center;padding:20px;color:#ef4444">로드 실패</td></tr>'; });
+  };
+
+  window._filterTonbagModal = function() {
+    var modal = document.getElementById('tonbag-modal');
+    if (!modal || !modal._allRows) return;
+    var filter = document.getElementById('tbm-filter').value;
+    var rows = filter ? modal._allRows.filter(function(r){ return r.status === filter; }) : modal._allRows;
+    var STATUS_COLOR = {
+      AVAILABLE:'#22c55e', RESERVED:'#f59e0b', PICKED:'#3b82f6',
+      RETURN:'#a855f7', SOLD:'#ef4444'
+    };
+    var html = '';
+    rows.forEach(function(r, i){
+      var isSample = r.is_sample == 1 || r.is_sample === true;
+      var rowBg = isSample ? 'background:rgba(234,179,8,0.10)' : '';
+      var sc = STATUS_COLOR[r.status] || '#94a3b8';
+      html += '<tr style="border-bottom:1px solid var(--border,#334155);' + rowBg + '">'
+        + '<td style="padding:6px 8px;text-align:right;color:#94a3b8">' + (i+1) + '</td>'
+        + '<td style="padding:6px 8px;font-family:monospace">' + escapeHtml(r.sub_lot_no || r.tonbag_no || '') + '</td>'
+        + '<td style="padding:6px 8px;text-align:right">' + (r.weight_mt != null ? Number(r.weight_mt).toFixed(3) : '-') + '</td>'
+        + '<td style="padding:6px 8px;text-align:center"><span style="color:' + sc + ';font-weight:700">' + escapeHtml(r.status||'') + '</span></td>'
+        + '<td style="padding:6px 8px;text-align:center">' + (isSample ? '🔬 샘플' : '📦 일반') + '</td>'
+        + '<td style="padding:6px 8px">' + escapeHtml(r.location || '-') + '</td>'
+        + '<td style="padding:6px 8px;font-family:monospace">' + escapeHtml(r.container_no || '-') + '</td>'
+        + '<td style="padding:6px 8px">' + escapeHtml((r.inbound_date || r.created_at || '').slice(0,10)) + '</td>'
+        + '</tr>';
+    });
+    document.getElementById('tbm-body').innerHTML = html ||
+      '<tr><td colspan="8" style="text-align:center;padding:20px;color:#94a3b8">데이터 없음</td></tr>';
+    var totalMt = rows.reduce(function(s,r){ return s + (parseFloat(r.weight_mt)||0); }, 0);
+    var sampleCnt = rows.filter(function(r){ return r.is_sample==1||r.is_sample===true; }).length;
+    document.getElementById('tbm-summary').textContent =
+      '표시 ' + rows.length + '개 / 합계 ' + totalMt.toFixed(3) + ' MT'
+      + (sampleCnt > 0 ? ' (🔬 샘플 ' + sampleCnt + '개 포함)' : '');
   };
 
   window.invShowLotHistory = function(lot) {
