@@ -192,32 +192,36 @@ def get_dashboard_stats():
             s = status_summary[grp_name]
             s["weight_kg"] = round(s["weight_kg"], 1)
 
-        # ── 제품x상태 매트릭스 (제품별 톤백 수량) ──
+        # ── 제품x상태 매트릭스 (제품별 톤백 수량, 정상/샘플 분리) ──
         matrix_rows = c.execute("""
             SELECT
-                COALESCE(i.product, '(미지정)') AS product,
+                COALESCE(i.product, '(미지정)')  AS product,
+                COALESCE(tb.is_sample, 0)        AS is_sample,
                 SUM(CASE WHEN tb.status = 'AVAILABLE' THEN 1 ELSE 0 END) AS available,
                 SUM(CASE WHEN tb.status = 'RESERVED'  THEN 1 ELSE 0 END) AS reserved,
                 SUM(CASE WHEN tb.status = 'PICKED'    THEN 1 ELSE 0 END) AS picked,
                 SUM(CASE WHEN tb.status IN ('OUTBOUND','SOLD','SHIPPED','CONFIRMED') THEN 1 ELSE 0 END) AS outbound,
                 SUM(CASE WHEN tb.status = 'RETURN'    THEN 1 ELSE 0 END) AS return_cnt,
-                COUNT(*) AS total
+                COUNT(*)                         AS total,
+                COALESCE(SUM(tb.weight), 0)      AS weight_kg
             FROM inventory_tonbag tb
             LEFT JOIN inventory i ON tb.lot_no = i.lot_no
-            GROUP BY COALESCE(i.product, '(미지정)')
-            ORDER BY COALESCE(i.product, '(미지정)')
+            GROUP BY COALESCE(i.product, '(미지정)'), COALESCE(tb.is_sample, 0)
+            ORDER BY COALESCE(i.product, '(미지정)'), COALESCE(tb.is_sample, 0)
         """).fetchall()
 
         product_matrix = []
         for row in matrix_rows:
             product_matrix.append({
-                "product":   row[0],
-                "available": row[1],
-                "reserved":  row[2],
-                "picked":    row[3],
-                "outbound":  row[4],
-                "return":    row[5],
-                "total":     row[6],
+                "product":    row[0],
+                "is_sample":  bool(row[1]),
+                "available":  row[2],
+                "reserved":   row[3],
+                "picked":     row[4],
+                "outbound":   row[5],
+                "return":     row[6],
+                "total":      row[7],
+                "weight_mt":  round(float(row[8]) / 1000.0, 2),
             })
 
         # ── 정합성 요약 (총입고 = 현재재고 + 출고누계) ──
@@ -299,56 +303,4 @@ def get_dashboard_stats():
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # GET /api/dashboard/alerts — ALERTS 패널
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-@router.get("/alerts")
-def get_dashboard_alerts():
-    try:
-        db_path = _get_db_path()
-        db = sqlite3.connect(db_path, timeout=10)
-        c  = db.cursor()
-        alerts = []
-        # 프리타임 만료 임박 LOT
-        ft_rows = c.execute("""
-            SELECT i.lot_no, i.container_no, fi.free_time_date
-            FROM freetime_info fi
-            JOIN inventory i ON i.lot_no = fi.lot_no
-            WHERE fi.free_time_date IS NOT NULL
-              AND date(fi.free_time_date) <= date('now', '+7 days')
-              AND i.status NOT IN ('RETURNED','CANCELLED')
-            LIMIT 5
-        """).fetchall()
-        for r in ft_rows:
-            alerts.append({
-                "type": "warning",
-                "message": f"FREE TIME 임박: LOT {r[0]} / {r[1]} ({r[2]})",
-                "level": "WARNING"
-            })
-        # 위치 미배정 톤백
-        no_loc = c.execute("""
-            SELECT COUNT(*) FROM inventory_tonbag
-            WHERE (location IS NULL OR location='') AND status='AVAILABLE'
-        """).fetchone()[0]
-        if no_loc > 0:
-            alerts.append({
-                "type": "info",
-                "message": f"위치 미배정 톤백 {no_loc}개 있음",
-                "level": "INFO"
-            })
-        # 최근 감사로그 에러
-        err_rows = c.execute("""
-            SELECT event_type, event_data FROM audit_log
-            WHERE event_type LIKE '%ERROR%' OR event_type LIKE '%FAIL%'
-            ORDER BY created_at DESC LIMIT 3
-        """).fetchall()
-        for r in err_rows:
-            alerts.append({
-                "type": "error",
-                "message": f"[{r[0]}] {str(r[1])[:80]}",
-                "level": "ERROR"
-            })
-        db.close()
-        if not alerts:
-            alerts.append({"type": "ok", "message": "정상 — 경고 없음", "level": "OK"})
-        return alerts
-    except Exception as e:
-        return [{"type": "error", "message": str(e), "level": "ERROR"}]
+# ━━━━━━━━━━━━━━━━━━━━━━━

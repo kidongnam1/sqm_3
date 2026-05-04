@@ -83,6 +83,14 @@ def get_inventory(
                 (SELECT COUNT(*) FROM inventory_tonbag t
                  WHERE t.lot_no = i.lot_no AND t.status IN ('SOLD','OUTBOUND','CONFIRMED','SHIPPED') AND t.is_sample = 0
                 ) AS tb_sold,
+                (SELECT COUNT(*) FROM inventory_tonbag t
+                 WHERE t.lot_no = i.lot_no AND t.is_sample = 1
+                   AND t.status IN ('AVAILABLE','RESERVED','PICKED','RETURN')
+                ) AS sample_bags,
+                ROUND((SELECT COALESCE(SUM(t.weight),0) FROM inventory_tonbag t
+                 WHERE t.lot_no = i.lot_no AND t.is_sample = 1
+                   AND t.status IN ('AVAILABLE','RESERVED','PICKED','RETURN')
+                ) / 1000.0, 3) AS sample_weight_mt,
                 i.salar_invoice_no AS invoice_no,
                 i.ship_date,
                 i.arrival_date,

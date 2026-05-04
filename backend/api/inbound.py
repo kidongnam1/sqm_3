@@ -1584,20 +1584,51 @@ def _tpl_new_id() -> str:
     return _dt.now().strftime("%Y%m%d_%H%M%S_") + str(_uuid.uuid4())[:8]
 
 
+
+def _get_layer1_gemini_hint(carrier_id: str, doc_type: str = "BL") -> str:
+    """Layer 1 Python 템플릿에서 gemini_hint 자동 조회."""
+    try:
+        from features.ai.multi_template_registry import get_candidate_templates
+        candidates = get_candidate_templates(
+            text=carrier_id, filename="", doc_type=doc_type, top_k=1
+        )
+        if candidates:
+            hint = candidates[0].get("template_hint", {}).get("gemini_hint", "")
+            if hint:
+                return hint
+    except Exception:
+        pass
+    return ""
+
+
+def _merge_hints(layer2_hint: str, layer1_hint: str) -> str:
+    """Layer 2 사용자 hint + Layer 1 파이썬 hint 병합."""
+    parts = []
+    if layer2_hint and layer2_hint.strip():
+        parts.append(layer2_hint.strip())
+    if layer1_hint and layer1_hint.strip() and layer1_hint.strip() not in layer2_hint:
+        parts.append(layer1_hint.strip())
+    return "\n---\n".join(parts) if parts else ""
+
+
 @router.post("/templates", summary="📋 입고 템플릿 신규 생성")
 def create_template(req: TemplateUpsertRequest):
     try:
         con = _open_db()
         _ensure_inbound_template_columns(con)
         tid = _tpl_new_id()
+        # Layer 1↔2 bridge: carrier_id로 Python 템플릿 hint 자동 보강
+        l1_hint_bl = _get_layer1_gemini_hint(req.carrier_id or "", "BL")
+        merged_hint_bl = _merge_hints(req.gemini_hint_bl or "", l1_hint_bl) if hasattr(req, "gemini_hint_bl") else l1_hint_bl
         con.execute(
             "INSERT INTO inbound_template "
             "(template_id, template_name, carrier_id, bag_weight_kg, "
-            "product_hint, bl_format, note, gemini_hint_packing, is_active, "
+            "product_hint, bl_format, note, gemini_hint_packing, gemini_hint_bl, is_active, "
             "lot_sqm, mxbg_pallet, sap_no) "
-            "VALUES (?,?,?,?,?,?,?,?,1,?,?,?)",
+            "VALUES (?,?,?,?,?,?,?,?,?,1,?,?,?)",
             (tid, req.template_name, req.carrier_id, req.bag_weight_kg,
              req.product_hint, req.bl_format, req.note, req.gemini_hint_packing,
+             merged_hint_bl,
              req.lot_sqm, req.mxbg_pallet, req.sap_no)
         )
         con.commit()

@@ -12,7 +12,7 @@ sys.path.insert(0, PROJECT_ROOT)
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from typing import Optional, List
 import logging
 
@@ -125,6 +125,19 @@ def _run_db_migrations():
 _run_db_migrations()
 
 app = FastAPI(title="SQM Inventory API", version="8.6.4")
+
+
+# ── Swagger UI 브라우저 열기 ─────────────────────────────────────────────────
+@app.get("/api/system/open-docs", tags=["system"],
+         summary="📖 Swagger UI를 기본 브라우저에서 열기")
+def open_docs_in_browser():
+    """SQM API 관리 페이지(Swagger UI)를 기본 브라우저로 엽니다.
+    선사 템플릿 추가·수정·삭제 등 고급 설정에 사용합니다."""
+    import webbrowser as _wb
+    _url = "http://127.0.0.1:8765/docs"
+    _wb.open(_url)
+    return {"ok": True, "url": _url,
+            "message": f"Swagger UI를 기본 브라우저로 열었습니다: {_url}"}
 
 
 @app.on_event("startup")
@@ -384,6 +397,29 @@ try:
 except Exception as e:
     logging.warning(f"ai_gemini router load failed: {e}")
 
+# v866: 재고조정 (자연어 파서 + DB/엑셀 실행)
+try:
+    from backend.api.inventory_adjust_api import router as inventory_adjust_router
+    app.include_router(inventory_adjust_router)
+    logging.info("inventory_adjust router loaded OK (/api/inventory/adjust/*)")
+except Exception as e:
+    logging.warning(f"inventory_adjust router load failed: {e}")
+
+try:
+    from backend.api.refresh_excel_api import router as refresh_excel_router
+    app.include_router(refresh_excel_router)
+    logging.info("refresh_excel router loaded OK (/api/inventory/refresh-excel-status)")
+except Exception as e:
+    logging.warning(f"refresh_excel router load failed: {e}")
+
+try:
+    from backend.api.template_ai_api import router as template_ai_router
+    app.include_router(template_ai_router)
+    logging.info("template_ai router loaded OK (POST /api/inbound/templates/generate-from-docs)")
+except Exception as e:
+    logging.warning(f"template_ai router load failed: {e}")
+
+
 # ── 표준 예외 핸들러 설치 ────────────────────────────────────
 # v864.3 Phase 2: static mount moved to END of file — Starlette matches
 # routes in registration order, so app.mount("/") at this position was
@@ -600,4 +636,86 @@ def integrity_quick():
 # ── Export ───────────────────────────────────────────────────
 @app.post("/api/export/excel")
 def export_excel(payload: dict):
-    option = payload.ge
+    option = payload.get("option", 1)
+    if not ENGINE_AVAILABLE:
+        raise HTTPException(503, "Engine unavailable")
+    try:
+        import tempfile, os
+        from backend.common.excel_alignment import safe_apply_sqm_file
+
+        out = os.path.join(tempfile.gettempdir(), f"sqm_export_option{option}.xlsx")
+        engine.export_to_excel(out, option=option)
+        safe_apply_sqm_file(out)
+        return {"success": True, "path": out}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+# ── Activity Log ─────────────────────────────────────────────
+@app.get("/api/log/activity")
+def get_activity_log(limit: int = Query(100, ge=1, le=1000)):
+    if not ENGINE_AVAILABLE:
+        return _sample_activity()
+    try:
+        return engine.get_outbound_event_log(limit=limit)
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+# ── Sample Data Fallbacks ────────────────────────────────────
+def _sample_dashboard():
+    return {
+        "available_lots": 247, "reserved_lots": 38, "picked_lots": 15,
+        "outbound_lots_month": 89, "return_lots": 3,
+        "available_kg": 12340000,
+    }
+
+def _sample_inventory(page=1, page_size=50):
+    rows = [
+        {"lot": "SQM-2026-0421", "sap": "1000421001", "bl": "COAU2604210",
+         "product": "PP", "status": "AVAILABLE",
+         "balance": 500.0, "net": 500.0, "container": "CRXU1234567",
+         "mxbg_pallet": 20, "avail_bags": 1000,
+         "invoice_no": "", "ship_date": "", "arrival_date": "2026-04-21",
+         "con_return": "", "free_time": 0, "wh": "광양", "customs": "",
+         "initial_weight": 500.0, "outbound_weight": 0.0,
+         "date": "2026-04-21", "location": "A-01",
+         "sale_ref": "", "customer": "", "remarks": ""},
+    ]
+    start = (page - 1) * page_size
+    return {"total": len(rows), "page": page, "page_size": page_size, "data":rows[start:start+page_size]}
+
+def _sample_allocation():
+    return {"total": 0, "data": []}
+
+def _sample_activity():
+    return [
+        {"time": "14:32", "type": "INBOUND", "lot": "SQM-2026-0421", "note": "PP 500KG"},
+    ]
+
+
+# ══════════════════════════════════════════════════════════════
+# ── Static frontend mount (MUST be LAST) ──────────────────────
+# ══════════════════════════════════════════════════════════════
+# v864.3 Phase 2 fix: Starlette matches routes in registration order.
+# Mounting "/" at the END ensures every inline @app.get("/api/...")
+# above is checked FIRST; only unmatched paths fall through to
+# serving frontend/ static files. Previous position (before the
+# @app.get decorators) caused HTTP 404 on /api/health, /api/dashboard,
+# /api/inventory because the mount swallowed every path.
+try:
+    import mimetypes
+    # Windows: fix .js/.css MIME type misidentification
+    mimetypes.add_type("application/javascript", ".js")
+    mimetypes.add_type("text/css", ".css")
+except Exception:
+    pass
+
+from fastapi.staticfiles import StaticFiles as _StaticFiles
+_FRONTEND_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "frontend"
+)
+if os.path.isdir(_FRONTEND_DIR):
+    app.mount("/", _StaticFiles(directory=_FRONTEND_DIR, html=True), name="frontend")
+    logging.info(f"Static frontend mounted: {_FRONTEND_DIR}")
+else:
+    logging.warning(f"frontend/ not found — GET / will return 404: {_FRONTEND_DIR}")
