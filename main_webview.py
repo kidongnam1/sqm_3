@@ -247,6 +247,14 @@ def main():
                 suggested_filename: str = "SQM-export.xlsx",
                 open_after_save: bool = False,
             ) -> dict:
+                """
+                엑셀 내보내기 저장.
+
+                BUG-003 수정 (2026-05-04):
+                  구: download(timeout=300) → dialog  ← 최대 5분 UI 동결
+                  신: dialog 먼저 → download(timeout=60) → write
+                     취소 시 불필요한 서버 부하 없음
+                """
                 try:
                     import urllib.request
 
@@ -254,15 +262,7 @@ def main():
                     if not u.startswith(("http://127.0.0.1:", "http://localhost:")):
                         return {"ok": False, "error": "로컬 API URL만 허용됩니다."}
 
-                    req = urllib.request.Request(
-                        u,
-                        headers={"User-Agent": "SQM-PyWebView-Export/1.0"},
-                    )
-                    with urllib.request.urlopen(req, timeout=300) as resp:
-                        body = resp.read()
-                    if not body:
-                        return {"ok": False, "error": "서버 응답이 비어 있습니다."}
-
+                    # 1단계: 저장 경로 선택 (다운로드 없이 즉시 응답)
                     wins = webview.windows
                     if not wins:
                         return {"ok": False, "error": "webview 창이 없습니다."}
@@ -282,6 +282,17 @@ def main():
                     if not path or not isinstance(path, str):
                         return {"ok": False, "error": "저장 경로를 확인할 수 없습니다."}
 
+                    # 2단계: 다운로드 (dialog 후 → timeout=60s)
+                    req = urllib.request.Request(
+                        u,
+                        headers={"User-Agent": "SQM-PyWebView-Export/1.0"},
+                    )
+                    with urllib.request.urlopen(req, timeout=60) as resp:
+                        body = resp.read()
+                    if not body:
+                        return {"ok": False, "error": "서버 응답이 비어 있습니다."}
+
+                    # 3단계: 파일 기록
                     with open(path, "wb") as f:
                         f.write(body)
                     log.info("PyWebView 엑셀 저장: %d bytes -> %s", len(body), path)

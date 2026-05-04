@@ -271,6 +271,164 @@ def create_ocr_tuner(ocr_func: Callable,
     )
 
 
+
+# =============================================================================
+# GeminiCallGate — 단일 호출 게이트 (acquire/release 패턴)
+# gemini_parser.py에서 사용하는 인터페이스 구현
+# =============================================================================
+
+class GeminiCallGate:
+    """
+    Gemini API 단일 호출을 위한 Circuit Breaker + Semaphore 게이트.
+
+    OCRAutoTuner가 배치 처리용이라면, 이 클래스는 단건 호출용입니다.
+    gemini_parser.py의 acquire/release/record_result 인터페이스를 구현합니다.
+
+    Circuit Breaker 상태:
+      - CLOSED (정상): 요청 허용
+      - OPEN (차단): 연속 429가 임계값 초과 시 → 일정 시간 후 HALF-OPEN
+      - HALF-OPEN: 1건 시험 허용 → 성공 시 CLOSED, 실패 시 OPEN 복귀
+    """
+
+    OPEN_THRESHOLD_429 = 5        # 연속 429 발생 시 OPEN 전환 임계값
+    HALF_OPEN_COOLDOWN = 30.0     # OPEN → HALF-OPEN 대기 시간 (초)
+    MAX_CONCURRENCY = 3           # 동시 허용 호출 수
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._semaphore = threading.Semaphore(self.MAX_CONCURRENCY)
+        self._consecutive_429 = 0
+        self._open_since: float = 0.0
+        self._state = "CLOSED"   # CLOSED / OPEN / HALF_OPEN
+
+        # 메트릭
+        self._total = 0
+        self._success = 0
+        self._error_429 = 0
+        self._response_times: deque = field_factory()
+        self._concurrency = self.MAX_CONCURRENCY
+
+    def acquire(self) -> bool:
+        """
+        호출 권한 획득.
+        Returns:
+            True  — 호출 가능 (세마포어 획득 성공)
+            False — Circuit Breaker가 OPEN 상태 (호출 차단)
+        """
+        with self._lock:
+            if self._state == "OPEN":
+                elapsed = time.time() - self._open_since
+                if elapsed >= self.HALF_OPEN_COOLDOWN:
+                    self._state = "HALF_OPEN"
+                    logger.info("[GeminiGate] OPEN → HALF_OPEN (쿨다운 완료)")
+                else:
+                    remaining = self.HALF_OPEN_COOLDOWN - elapsed
+                    logger.warning(
+                        f"[GeminiGate] Circuit OPEN — {remaining:.0f}초 후 재시도 가능"
+                    )
+                    return False
+
+        acquired = self._semaphore.acquire(blocking=False)
+        if not acquired:
+            logger.debug("[GeminiGate] 세마포어 포화 — 대기 중 (blocking acquire)")
+            self._semaphore.acquire(blocking=True, timeout=30)
+        return True
+
+    def release(self):
+        """호출 권한 반환 (finally 블록에서 반드시 호출)."""
+        try:
+            self._semaphore.release()
+        except ValueError:
+            pass  # 이미 최대치인 경우 무시
+
+    def record_result(
+        self,
+        success: bool,
+        response_time: float = 0.0,
+        is_429: bool = False,
+        error_message: str = "",
+    ):
+        """
+        API 호출 결과 기록 및 Circuit Breaker 상태 갱신.
+
+        Args:
+            success: 호출 성공 여부
+            response_time: 응답 시간 (초)
+            is_429: 429 Rate Limit 오류 여부
+            error_message: 오류 메시지 (실패 시)
+        """
+        with self._lock:
+            self._total += 1
+
+            if is_429:
+                self._error_429 += 1
+                self._consecutive_429 += 1
+                logger.warning(
+                    f"[GeminiGate] 429 감지 (연속 {self._consecutive_429}회)"
+                )
+                if self._consecutive_429 >= self.OPEN_THRESHOLD_429:
+                    self._state = "OPEN"
+                    self._open_since = time.time()
+                    logger.error(
+                        f"[GeminiGate] Circuit OPEN — 연속 429 {self._consecutive_429}회 초과"
+                    )
+            elif success:
+                self._success += 1
+                self._consecutive_429 = 0
+                self._response_times.append(response_time)
+                if self._state == "HALF_OPEN":
+                    self._state = "CLOSED"
+                    logger.info("[GeminiGate] HALF_OPEN → CLOSED (복구 성공)")
+
+    @property
+    def stats(self) -> dict:
+        """현재 게이트 상태 요약 (로깅용)."""
+        with self._lock:
+            total = max(1, self._total)
+            avg_rt = (
+                sum(self._response_times) / len(self._response_times)
+                if self._response_times
+                else 0.0
+            )
+            return {
+                "concurrency": self._concurrency,
+                "success_rate": self._success / total,
+                "avg_response_time": avg_rt,
+                "state": self._state,
+                "total": self._total,
+                "error_429": self._error_429,
+            }
+
+
+def _field_factory_helper():
+    """deque(maxlen=20) 팩토리 (클래스 body 밖에서 호출용)."""
+    return deque(maxlen=20)
+
+
+# 모듈 레벨 헬퍼 — 클래스 내 기본값으로 쓸 수 없어서 외부 노출
+field_factory = _field_factory_helper
+
+
+# 모듈 레벨 싱글톤
+_gate_instance: Optional[GeminiCallGate] = None
+_gate_lock = threading.Lock()
+
+
+def get_ocr_tuner() -> GeminiCallGate:
+    """
+    GeminiCallGate 싱글톤 반환.
+
+    gemini_parser.py에서 `from ocr_auto_tuner import get_ocr_tuner` 로 임포트.
+    동일한 프로세스에서 항상 같은 인스턴스를 반환 (스레드 안전).
+    """
+    global _gate_instance
+    if _gate_instance is None:
+        with _gate_lock:
+            if _gate_instance is None:
+                _gate_instance = GeminiCallGate()
+                logger.debug("[GeminiGate] 싱글톤 생성 완료")
+    return _gate_instance
+
 if __name__ == '__main__':
     logger.debug("OCR 자동 튜너 v3.0")
     logger.debug("=" * 40)
