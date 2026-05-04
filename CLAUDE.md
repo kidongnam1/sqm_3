@@ -397,135 +397,96 @@ Claude_SQM_v864_3/
 
 ---
 
-## 🔜 다음 세션 인수인계 (2026-05-04 2차 세션 — AI 템플릿 모달 + 샘플 분리 표시 + git 복구)
+## 🔜 다음 세션 인수인계 (2026-05-04 4차 세션 — BUG-001/BUG-003 수정 완료)
 
 > **새 세션 시작 시 이 섹션부터 읽을 것.**
 
-### ✅ 2026-05-04 완료 작업
+### ✅ 2026-05-04 3차 세션 완료 작업
 
-#### ONE/HAPAG 선사 입고 템플릿 DB 추가
-- `data/db/sqm_inventory.db` `inbound_template` 테이블에 4개 행 INSERT
-  - `ONE_LC500` / `ONE_LC1000` — carrier_id=ONE, bl_format='ONEU7'
-  - `HAPAG_LC500` / `HAPAG_LC1000` — carrier_id=HAPAG, bl_format='HLCU7'
-- 실행 스크립트: `scripts/add_one_hapag_templates.py` (1회 실행 완료, 재실행 불필요)
+#### 샘플 행 SP 표기 + 필드 상속
+- `frontend/js/sqm-inline.js` — sampleRow: LOT 번호 뒤에 `(SP)` 표기
+- 샘플 행에 BL, 무게, STATUS, 송장번호, 선적일, 입항일 등 부모 LOT 필드 상속 표시
+- "검사용 재고, 출고 불가" 설명 텍스트 삭제
 
-#### Swagger UI 브라우저 열기 엔드포인트 추가
-- `backend/api/__init__.py` — `GET /api/system/open-docs` 신규
-  ```python
-  @app.get("/api/system/open-docs")
-  def open_docs_in_browser():
-      import webbrowser as _wb
-      _wb.open("http://127.0.0.1:8765/docs")
-      return {"ok": True, "url": "http://127.0.0.1:8765/docs"}
-  ```
-- 용도: EXE 빌드 후 템플릿 추가/수정 시 Swagger UI를 기본 브라우저로 열기
-- 메뉴 연결: `설정/도구 > 📋 입고 템플릿 관리` → `onInboundTemplateManage()` 호출
+#### Product Matrix 단일행 통합
+- `backend/api/dashboard.py` — product_matrix SQL에 `lot_count` (DISTINCT LOT 수) 추가
+  - `COUNT(DISTINCT CASE WHEN status IN ('AVAILABLE','RESERVED','PICKED','RETURN') THEN lot_no END) AS lot_count`
+  - 컬럼 인덱스 이동: weight_mt → row[9] (기존 row[8])
+- `frontend/js/sqm-inline.js` — `renderProductMatrix()`: 일반/샘플 2행 → 단일행
+  - 헬퍼 함수: `cell()`, `cellBold()`, `cellLot()` 추가
+  - "구분" 컬럼 제거
+  - 표시 형식: `160 LOT · 800 (+80LOT/80🔬)` 인라인 통합
 
-#### sqm-inline.js — onInboundTemplateManage() 추가 + KPI 버그 수정
-- `onInboundTemplateManage()`: `/api/system/open-docs` 호출 → 브라우저 열기 + Toast 표시
-- **KPI 필드명 불일치 버그 수정** (lines 843-846):
-  - API 응답 키: `today_inbound_mt`, `today_outbound_mt`, `current_stock_lots`, `unassigned_locations`
-  - 기존 JS: `inbound_today`, `outbound_today`, `stock_lots`, `unassigned_bags` (잘못된 이름)
-  - 수정: fallback chain 적용 — `d.today_inbound_mt !== undefined ? d.today_inbound_mt : (d.inbound_today || '-')`
-  - 결과: KPI 카드가 항상 '-' 표시하던 버그 해결
+#### MXBG 클릭 → 톤백 세부 모달
+- `backend/api/inventory_api.py` — `/api/tonbags` 쿼리에 `COALESCE(t.is_sample, 0) AS is_sample` 추가
+- `frontend/js/sqm-inline.js`:
+  - MXBG 셀 → `<button onclick="window.showTonbagModal(lotKey)">` 클릭 버튼으로 교체
+  - `window.showTonbagModal(lotNo)`: 톤백 세부 모달 (상태 필터, 샘플/일반 구분, 무게 합계)
+  - `window._filterTonbagModal()`: 상태별 필터 헬퍼
+  - API: `GET /api/tonbags?lot_no=XXX&limit=500`
+  - 샘플 행: 노란 배경 + 🔬 구분 표시
 
-#### 🔍 전수 검사 (Full Integrity Check) — 완료
-- **검사 기준:** JS syntax, Python syntax, data-action coverage, null bytes, file truncation
-- **발견된 문제:** workspace 파일 16개가 git 대비 truncated/corrupted 상태
-- **복구 방법:** `cp git_version workspace_version` (git c4c2bf4 기준)
+#### 샘플 정합성 테스트 추가
+- `tests/test_sample_parity.py` 신규 (230줄, 6개 테스트)
+  - `test_db_has_inventory_tonbag_table`
+  - `test_sample_bags_count_matches_db`
+  - `test_sample_weight_matches_db`
+  - `test_sample_weight_not_exceeds_lot_weight`
+  - `test_normal_avail_excludes_sample`
+  - `test_sample_bags_positive_weight`
 
-**복구된 파일 목록 (16개):**
-| # | 파일 | 문제 | 복구 결과 |
-|---|------|------|---------|
-| 1 | `backend/api/inbound.py` | line 1927에서 truncated (`update_dict = {` 미종료) | ✅ 복구 |
-| 2 | `backend/api/actions.py` | truncated | ✅ 복구 |
-| 3 | `backend/api/actions2.py` | truncated | ✅ 복구 |
-| 4 | `backend/api/actions3.py` | truncated | ✅ 복구 |
-| 5 | `backend/api/outbound_api.py` | truncated | ✅ 복구 |
-| 6 | `backend/api/queries.py` | truncated | ✅ 복구 |
-| 7 | `backend/api/queries3.py` | truncated | ✅ 복구 |
-| 8 | `backend/api/scan_api.py` | truncated | ✅ 복구 |
-| 9 | `backend/api/tonbag_api.py` | truncated | ✅ 복구 |
-| 10 | `parsers/document_parser_modular/do_mixin.py` | truncated | ✅ 복구 |
-| 11 | `parsers/document_parser_modular/invoice_mixin.py` | truncated | ✅ 복구 |
-| 12 | `parsers/document_parser_modular/packing_mixin.py` | truncated | ✅ 복구 |
-| 13 | `parsers/document_parser_modular/parser.py` | truncated | ✅ 복구 |
-| 14 | `main_webview.py` | line 348 triple-quoted string 미종료 | ✅ 복구 |
-| 15 | `frontend/js/sqm-inline.js` | 6856줄로 truncated (정상 6860줄) | ✅ 복구 + KPI 재패치 |
-| 16 | `frontend/js/handlers/menubar.js` | null bytes 1,489개 | ✅ 복구 |
+#### Git 커밋
+- `75be2bf` — feat: sample SP표기+필드상속 + product matrix 단일행 + LOT수 + MXBG 클릭 톤백모달
+  - 5 files changed, 428 insertions(+), 79 deletions(-)
 
-- **최종 검증:** PASS 25/25 critical files, JS syntax OK, null bytes 0
+### ✅ 2026-05-04 4차 세션 완료 작업
 
-#### CLAUDE.md 자체도 truncated 상태 확인 → 이번 세션에서 완전체로 재작성
+#### BUG-001: ocr_auto_tuner.py — GeminiCallGate + get_ocr_tuner() 싱글톤 추가
+- **원인:** `gemini_parser.py` line 675 `from ocr_auto_tuner import get_ocr_tuner` → ImportError (함수 미존재)
+  → except ImportError 로 catch → tuner=None → OCR 레이트 리미팅 항상 비활성
+- **수정:** `features/ai/ocr_auto_tuner.py` 에 `GeminiCallGate` 클래스 + `get_ocr_tuner()` 싱글톤 추가
+  - `acquire()`: Circuit Breaker 체크 + Semaphore 획득 (연속 429 ≥ 5회 → OPEN 상태)
+  - `release()`: Semaphore 반환
+  - `record_result(success, response_time, is_429, error_message)`: 통계 기록 + 상태 전이
+  - `stats` property: `{concurrency, success_rate, avg_response_time, state, ...}`
+  - 277줄 → 435줄 (기존 OCRAutoTuner 유지 + GeminiCallGate 추가)
 
-#### Git push 커밋 이력 (2026-05-04)
-- (이번 세션 push 예정) — ONE/HAPAG 템플릿 스크립트 + __init__.py open-docs + sqm-inline.js KPI수정/템플릿핸들러 + CLAUDE.md 완전체
+#### BUG-003: main_webview.py — dialog 먼저 + timeout 60초
+- **원인:** `save_download_url()` 에서 `urlopen(timeout=300)` 이 대화상자 이전에 실행 → 최대 5분 UI 동결
+- **수정:** `main_webview.py` 445줄 — 순서 변경
+  - 구: download(timeout=300) → file dialog → write
+  - 신: file dialog 먼저 → download(timeout=60) → write
+  - 취소 시 불필요한 서버 부하 없음, 타임아웃 300s → 60s
 
-### ✅ 2026-05-04 2차 세션 완료 작업
-
-#### AI 선사 템플릿 자동 생성 (PDF → Gemini → DB)
-- `backend/api/template_ai_api.py` 신규 — `POST /api/inbound/templates/generate-from-docs`
-  - BL PDF + D/O PDF 업로드 → PyMuPDF → PNG → Gemini Vision → JSON 추출 → 템플릿 반환
-- `backend/api/__init__.py` — template_ai_router 등록
-- `backend/api/inbound.py` — `_get_layer1_gemini_hint()` + `_merge_hints()` Layer 1↔2 bridge 추가
-- `frontend/index.html` — AI 템플릿 모달 UI (BL/DO 업로드 존 + 분석 버튼 + 결과 미리보기 + 저장)
-- `frontend/js/sqm-inline.js` — `onInboundTemplateManage()` → 모달 열기, 신규 함수 5개 추가
-
-#### 대시보드 제품별 샘플 분리 표시
-- `backend/api/dashboard.py` — product_matrix SQL GROUP BY `is_sample` 추가
-- `frontend/js/sqm-inline.js` — `renderProductMatrix()` 교체: 📦 정상 / 🔬 샘플 행 분리
-
-#### 재고목록 샘플 포대 별도 행 표시
-- `backend/api/inventory_api.py` — `sample_bags`, `sample_weight_mt` 서브쿼리 추가
-- `frontend/js/sqm-inline.js` — LOT 행 위에 🔬 노란 샘플 행 표시
-
-#### JS onclick 문법 오류 수정
-- 원인: `''+lotKey+''` 단일 인용부호 중첩 오류 (line 1155)
-- 수정: `\''+lotKey+'\''` (5개 버튼 핸들러 일괄 수정)
-- `node --check` PASS, cache bust → `v=20260504d`
-
-#### Git 사고 복구
-- 원인: VM에서 GIT_INDEX_FILE 임시 인덱스로 커밋 → 400개 파일 삭제 커밋 생성
-- 복구: Windows HEAD.lock 삭제 → git reset HEAD~1 → git add 7파일 → git push --force
-- **교훈: git 작업은 반드시 Windows CMD에서 직접 실행. VM git 사용 금지.**
-
-#### Git push 커밋 이력 (2026-05-04 2차)
-- `9c9e4ba` — AI template modal + dashboard sample matrix + inventory sample rows + JS onclick fix
-
-### 🔴 미완료 — 최우선 처리
-1. **중복 템플릿 3개 삭제** — 앱 실행 후: `python scripts\cleanup_dup_templates.py`
-2. **신규 기능 테스트** — AI 템플릿 모달, 대시보드 샘플 분리, 재고목록 샘플 행
-3. **나머지 파일 git commit** — 아래 명령어 참조
-4. **Phase 6 EXE 빌드** — PyInstaller 단일 파일 배포 (최우선)
-
-### 나머지 파일 커밋 명령어 (CMD에서 실행)
+#### Git 커밋 (사장님이 CMD에서 직접 실행)
 ```cmd
-git add features\ai\carrier_templates\one.py features\ai\carrier_templates\hapag.py
-git add backend\api\inventory_adjust_api.py backend\api\refresh_excel_api.py
-git add engine_modules\inventory_modular\adjust_executor.py engine_modules\inventory_modular\adjust_parser.py
-git add scripts\refresh_excel_status.py scripts\cleanup_dup_templates.py scripts\seed_templates_api.py
-git add CLAUDE.md
-git commit -m "chore: carrier templates (one/hapag) + excel refresh + adjust executor + CLAUDE.md"
+git add features/ai/ocr_auto_tuner.py main_webview.py
+git commit -m "fix: BUG-001 ocr_auto_tuner get_ocr_tuner+GeminiCallGate, BUG-003 dialog-first+timeout=60"
 git push origin main
 ```
 
-### 현재 DB 상태 (2026-05-04 기준)
-- **전체 초기화 상태** (2026-05-03 리셋, 실데이터 미입력)
-- inbound_template: MAERSK/MSC/ONE/HAPAG × 500/1000kg = 8개 정비 완료
-- sqm_inventory.db: .gitignore 추가됨 (git 추적 제외)
+### 🔴 미완료 — 최우선 처리
+1. **신규 기능 테스트** — 앱 실행 후:
+   - 재고목록 탭 → MXBG 숫자 버튼 클릭 → 톤백 모달 정상 동작 확인
+   - 샘플 행 SP 표기 + 필드 상속 정상 표시 확인
+   - 대시보드 product matrix 단일행 표시 확인
+2. **중복 템플릿 3개 삭제** — 앱 실행 후: `python scripts\cleanup_dup_templates.py`
+3. **Phase 6 EXE 빌드** — PyInstaller 단일 파일 배포 (최우선)
 
-### 파일 위치 요약
+### 파일 위치 요약 (누적)
 | 용도 | 경로 |
 |------|------|
-| **AI 템플릿 생성 API** | **backend/api/template_ai_api.py** |
-| **통합 Excel** | **SMQ 입,출고 재고관리 파일_int.xlsx** |
-| Excel STATUS 갱신 (스크립트) | scripts/refresh_excel_status.py |
-| Excel STATUS 갱신 (API) | backend/api/refresh_excel_api.py |
+| **MXBG 톤백 모달 JS** | **frontend/js/sqm-inline.js** (line 1287: showTonbagModal) |
+| **샘플 정합성 테스트** | **tests/test_sample_parity.py** |
+| AI 템플릿 생성 API | backend/api/template_ai_api.py |
+| 통합 Excel | SMQ 입,출고 재고관리 파일_int.xlsx |
+| Excel STATUS 갱신 | scripts/refresh_excel_status.py |
+| Excel STATUS API | backend/api/refresh_excel_api.py |
 | Layer 1 ONE 템플릿 | features/ai/carrier_templates/one.py |
 | Layer 1 HAPAG 템플릿 | features/ai/carrier_templates/hapag.py |
 | 재고 수정 실행 | engine_modules/inventory_modular/adjust_executor.py |
 | 메뉴 HTML | frontend/index.html |
-| JS 로직 | frontend/js/sqm-inline.js (7066줄, Python 수정 필수) |
+| JS 로직 | frontend/js/sqm-inline.js (7182줄) |
 | 입고 API | backend/api/inbound.py |
 | 대시보드 API | backend/api/dashboard.py |
 | 재고 API | backend/api/inventory_api.py |
