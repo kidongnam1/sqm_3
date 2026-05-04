@@ -278,10 +278,13 @@ Claude_SQM_v864_3/
 3. **색상 하드코딩** → 항상 `design-tokens.css` 변수 사용
 4. **빈 화면 배포** → 모든 영역에 로딩/에러/빈상태 UI 필수
 5. **테스트 없이 다음 Tier 진입** → 각 Tier 종료 시 사장님 승인 필수
-6. **대용량 JS 파일(100KB↑) Edit 툴 직접 수정 금지** → 반드시 Python 스크립트로 처리
+6. **300줄 이상 모든 파일 — Edit 툴 직접 수정 절대 금지** → 반드시 Python 스크립트로 처리
 
-   > ⚠️ **사고 이력 (2026-04-27):** `sqm-inline.js` (310KB)를 Edit 툴로 수정하다
-   > 파일 말미가 잘려 4KB로 붕괴. sqm_2 백업으로 복구 후 Python 원자적 쓰기로 재적용.
+   > ⚠️ **사고 이력 (2026-04-27 / 2026-05-04):**
+   > - `sqm-inline.js` (310KB) Edit 툴 수정 → 4KB로 붕괴
+   > - 2026-05-04 전수검사에서 16개 파일 truncated 발견 → git 복구
+   > - **근본 원인:** Edit 툴은 파일 전체를 컨텍스트에 담지 못하면 말미가 잘린 채 저장됨
+   > - **적용 범위 확대:** 기존 "100KB↑ JS만" → **300줄 이상 모든 파일**
    >
    > **올바른 절차:**
    > ```python
@@ -347,63 +350,182 @@ Claude_SQM_v864_3/
 |---|---|---|---|
 | (기록 시작) | — | — | — |
 | 2026-05-02 | Rule A 위반 — 메뉴 분리 제안 시 질문 먼저 함 | 추천안 먼저 제시 후 질문 | Rule A 재확인 완료 |
+| 2026-05-04 | [Question]/[Intent]/시간 포맷 누락 (×2) | 매 응답 첫 줄에 시간 + 형식 헤더 필수 | 포맷 위반 재발 방지 — 루비 학습 로그 기록 |
+| 2026-05-04 | GIT_INDEX_FILE 임시 인덱스로 커밋 → 400개 파일 삭제 | git 작업은 반드시 Windows CMD에서 직접 실행 | VM에서 git commit 금지 — Rule 추가 |
 
 ---
 
-## 🔜 다음 세션 인수인계 (2026-05-02 기준 — JS 복원 완료)
+## 🗂️ 이전 세션 기록 (2026-05-03 — Excel 통합 + 재고수정 연동 + Excel 상태 갱신 버튼)
+
+### ✅ 2026-05-03 완료 작업
+
+#### Excel 통합 (3시트 → 단일 INVENTORY 시트)
+- `SMQ 입,출고 재고관리 파일_int.xlsx` 신규 생성 (기존 v867 대체)
+  - IN / UNSOLD / SOLD 3개 시트 → **INVENTORY 단일 시트** (1,862행)
+  - STATUS 컬럼 추가 (26번째 열): AVAILABLE=초록, SOLD=빨강, RESERVED=노란
+  - 헤더 고정(3행), 자동필터, 조건부 색상 서식
+- `_int.xlsx` 명칭 규칙: `_v*` 버전 방식 대신 `_int` (통합본 고정명)
+
+#### adjust_executor.py — 단일시트 방식 교체
+- `EXCEL_SHEETS = ["INVENTORY"]` (기존: `["IN", "UNSOLD"]`)
+- `COL_STATUS = 25` 상수 추가 (26번째 열, 0-based)
+- 재고 조정 시 STATUS 컬럼 자동 보존 로직 추가
+- `find_latest_excel()`: `_int.xlsx` 1순위 자동 탐색 → v* 최신 → fallback 순
+- 백업: `engine_modules/inventory_modular/adjust_executor.py.bak_v868`
+
+#### refresh_excel_status.py 유틸 스크립트 (신규)
+- 위치: `scripts/refresh_excel_status.py`
+- 기능: DB `allocation_plan` 기준으로 `_int.xlsx` STATUS 컬럼 전체 갱신
+- 사용법: `python scripts/refresh_excel_status.py [--dry-run]`
+- ⚠️ 주의: DB 초기화 상태에서 실행 시 SOLD 행이 AVAILABLE로 바뀜
+  → 반드시 실데이터(입고·출고)가 DB에 쌓인 후 실행할 것
+
+#### 🔄 Excel 상태 갱신 버튼 추가 (SQM 재고 메뉴)
+- `backend/api/refresh_excel_api.py` 신규 — `POST /api/inventory/refresh-excel-status`
+- `backend/api/__init__.py` — refresh_excel_router 등록
+- `frontend/index.html` — 재고 메뉴 → **🔄 Excel 상태 갱신** 버튼 추가
+- `frontend/js/sqm-inline.js` — `onRefreshExcelStatus()` 핸들러 추가
+
+#### 메뉴 텍스트 변경
+- "✏️ 재고 조정" → **"✏️ 재고 수정"** (index.html 4곳, sqm-inline.js 3곳)
+
+#### Git push 커밋 이력 (2026-05-03)
+- `3c854c8` — Excel 통합(_int.xlsx) + adjust_executor 교체
+- `3e73576` — refresh_excel_status.py 신규
+- `1022383` — Excel 상태 갱신 버튼 추가
+- `23fcd96` — 재고 수정 텍스트 변경
+
+---
+
+## 🔜 다음 세션 인수인계 (2026-05-04 2차 세션 — AI 템플릿 모달 + 샘플 분리 표시 + git 복구)
 
 > **새 세션 시작 시 이 섹션부터 읽을 것.**
 
-### 완료된 작업 (v8.6.6 + 메뉴 재구조화 + PL 파서 + JS 복원)
-- ✅ ONE BL 파싱 3종 버그 수정 (bl_mixin.py)
-- ✅ Gemini DO hint mrn/msn 4선사 추가 (ai_fallback.py)
-- ✅ parse_alarm.py 신규 (CRITICAL/WARNING/INFO 알람 시스템)
-- ✅ inbound.py parse_alarm 연결 + parse_alarms 응답 키 추가
-- ✅ carrier_rules DB 테이블 생성 + ONE BL ONEY 패턴 등록
-- ✅ Phase 1 Release Hardening 4-에이전트 완료 → CRITICAL 3건 수정
-- ✅ 메뉴 재구조화 10항목 완료 (menu_patch_1+2 scripts 실행, index.html 확정)
-  - 최종 메뉴 순서: 파일 / 입고 / 📋Allocation(NEW) / 출고 / 재고 / 보고서 / 설정/도구 / 도움말
-  - data-action 88개, 중복 0, HTML 문법 OK
-- ✅ Git push 완료 (v8.6.6 + Phase1 + Menu → GitHub main)
-- ✅ Picking List 파서 구현 완료
-  - picking_mixin.py: parse_picking_list_auto() 통합 진입점 (텍스트 → coord parser, 이미지 → Gemini)
-  - ai_fallback.py: parse_picking_ai() 추가 (스캔 PDF → Gemini Vision → PickingListResult)
-  - backend/api/outbound_picking.py: POST /api/outbound/picking 엔드포인트 신규
-  - backend/api/__init__.py: outbound_picking router 등록
-- ✅ **sqm-inline.js 복원 완료** (5817줄 잘린 파일 → 7588줄 완전체)
-  - ENDPOINTS + dispatchAction + bindAll + boot 섹션 복원
-  - showPickingListPdfModal: 엔드포인트 `/api/outbound/picking` 업데이트
-  - onSuccess UI: 파일명 · 유형(텍스트/AI) · LOT수 · MT · 선적메타 · 톤백목록 · 샘플목록 표시
-  - JS syntax OK, null byte 0, data-action 86/88 커버 (theme-dark/light는 bindAll 별도처리)
+### ✅ 2026-05-04 완료 작업
+
+#### ONE/HAPAG 선사 입고 템플릿 DB 추가
+- `data/db/sqm_inventory.db` `inbound_template` 테이블에 4개 행 INSERT
+  - `ONE_LC500` / `ONE_LC1000` — carrier_id=ONE, bl_format='ONEU7'
+  - `HAPAG_LC500` / `HAPAG_LC1000` — carrier_id=HAPAG, bl_format='HLCU7'
+- 실행 스크립트: `scripts/add_one_hapag_templates.py` (1회 실행 완료, 재실행 불필요)
+
+#### Swagger UI 브라우저 열기 엔드포인트 추가
+- `backend/api/__init__.py` — `GET /api/system/open-docs` 신규
+  ```python
+  @app.get("/api/system/open-docs")
+  def open_docs_in_browser():
+      import webbrowser as _wb
+      _wb.open("http://127.0.0.1:8765/docs")
+      return {"ok": True, "url": "http://127.0.0.1:8765/docs"}
+  ```
+- 용도: EXE 빌드 후 템플릿 추가/수정 시 Swagger UI를 기본 브라우저로 열기
+- 메뉴 연결: `설정/도구 > 📋 입고 템플릿 관리` → `onInboundTemplateManage()` 호출
+
+#### sqm-inline.js — onInboundTemplateManage() 추가 + KPI 버그 수정
+- `onInboundTemplateManage()`: `/api/system/open-docs` 호출 → 브라우저 열기 + Toast 표시
+- **KPI 필드명 불일치 버그 수정** (lines 843-846):
+  - API 응답 키: `today_inbound_mt`, `today_outbound_mt`, `current_stock_lots`, `unassigned_locations`
+  - 기존 JS: `inbound_today`, `outbound_today`, `stock_lots`, `unassigned_bags` (잘못된 이름)
+  - 수정: fallback chain 적용 — `d.today_inbound_mt !== undefined ? d.today_inbound_mt : (d.inbound_today || '-')`
+  - 결과: KPI 카드가 항상 '-' 표시하던 버그 해결
+
+#### 🔍 전수 검사 (Full Integrity Check) — 완료
+- **검사 기준:** JS syntax, Python syntax, data-action coverage, null bytes, file truncation
+- **발견된 문제:** workspace 파일 16개가 git 대비 truncated/corrupted 상태
+- **복구 방법:** `cp git_version workspace_version` (git c4c2bf4 기준)
+
+**복구된 파일 목록 (16개):**
+| # | 파일 | 문제 | 복구 결과 |
+|---|------|------|---------|
+| 1 | `backend/api/inbound.py` | line 1927에서 truncated (`update_dict = {` 미종료) | ✅ 복구 |
+| 2 | `backend/api/actions.py` | truncated | ✅ 복구 |
+| 3 | `backend/api/actions2.py` | truncated | ✅ 복구 |
+| 4 | `backend/api/actions3.py` | truncated | ✅ 복구 |
+| 5 | `backend/api/outbound_api.py` | truncated | ✅ 복구 |
+| 6 | `backend/api/queries.py` | truncated | ✅ 복구 |
+| 7 | `backend/api/queries3.py` | truncated | ✅ 복구 |
+| 8 | `backend/api/scan_api.py` | truncated | ✅ 복구 |
+| 9 | `backend/api/tonbag_api.py` | truncated | ✅ 복구 |
+| 10 | `parsers/document_parser_modular/do_mixin.py` | truncated | ✅ 복구 |
+| 11 | `parsers/document_parser_modular/invoice_mixin.py` | truncated | ✅ 복구 |
+| 12 | `parsers/document_parser_modular/packing_mixin.py` | truncated | ✅ 복구 |
+| 13 | `parsers/document_parser_modular/parser.py` | truncated | ✅ 복구 |
+| 14 | `main_webview.py` | line 348 triple-quoted string 미종료 | ✅ 복구 |
+| 15 | `frontend/js/sqm-inline.js` | 6856줄로 truncated (정상 6860줄) | ✅ 복구 + KPI 재패치 |
+| 16 | `frontend/js/handlers/menubar.js` | null bytes 1,489개 | ✅ 복구 |
+
+- **최종 검증:** PASS 25/25 critical files, JS syntax OK, null bytes 0
+
+#### CLAUDE.md 자체도 truncated 상태 확인 → 이번 세션에서 완전체로 재작성
+
+#### Git push 커밋 이력 (2026-05-04)
+- (이번 세션 push 예정) — ONE/HAPAG 템플릿 스크립트 + __init__.py open-docs + sqm-inline.js KPI수정/템플릿핸들러 + CLAUDE.md 완전체
+
+### ✅ 2026-05-04 2차 세션 완료 작업
+
+#### AI 선사 템플릿 자동 생성 (PDF → Gemini → DB)
+- `backend/api/template_ai_api.py` 신규 — `POST /api/inbound/templates/generate-from-docs`
+  - BL PDF + D/O PDF 업로드 → PyMuPDF → PNG → Gemini Vision → JSON 추출 → 템플릿 반환
+- `backend/api/__init__.py` — template_ai_router 등록
+- `backend/api/inbound.py` — `_get_layer1_gemini_hint()` + `_merge_hints()` Layer 1↔2 bridge 추가
+- `frontend/index.html` — AI 템플릿 모달 UI (BL/DO 업로드 존 + 분석 버튼 + 결과 미리보기 + 저장)
+- `frontend/js/sqm-inline.js` — `onInboundTemplateManage()` → 모달 열기, 신규 함수 5개 추가
+
+#### 대시보드 제품별 샘플 분리 표시
+- `backend/api/dashboard.py` — product_matrix SQL GROUP BY `is_sample` 추가
+- `frontend/js/sqm-inline.js` — `renderProductMatrix()` 교체: 📦 정상 / 🔬 샘플 행 분리
+
+#### 재고목록 샘플 포대 별도 행 표시
+- `backend/api/inventory_api.py` — `sample_bags`, `sample_weight_mt` 서브쿼리 추가
+- `frontend/js/sqm-inline.js` — LOT 행 위에 🔬 노란 샘플 행 표시
+
+#### JS onclick 문법 오류 수정
+- 원인: `''+lotKey+''` 단일 인용부호 중첩 오류 (line 1155)
+- 수정: `\''+lotKey+'\''` (5개 버튼 핸들러 일괄 수정)
+- `node --check` PASS, cache bust → `v=20260504d`
+
+#### Git 사고 복구
+- 원인: VM에서 GIT_INDEX_FILE 임시 인덱스로 커밋 → 400개 파일 삭제 커밋 생성
+- 복구: Windows HEAD.lock 삭제 → git reset HEAD~1 → git add 7파일 → git push --force
+- **교훈: git 작업은 반드시 Windows CMD에서 직접 실행. VM git 사용 금지.**
+
+#### Git push 커밋 이력 (2026-05-04 2차)
+- `9c9e4ba` — AI template modal + dashboard sample matrix + inventory sample rows + JS onclick fix
 
 ### 🔴 미완료 — 최우선 처리
-1. **Git push (이번 세션 변경분)**
-   - 변경 파일: `frontend/js/sqm-inline.js`, `backend/api/outbound_picking.py`,
-     `parsers/document_parser_modular/picking_mixin.py`,
-     `parsers/document_parser_modular/ai_fallback.py`
-   - `git_final_push.bat` 실행하거나 수동 커밋
+1. **중복 템플릿 3개 삭제** — 앱 실행 후: `python scripts\cleanup_dup_templates.py`
+2. **신규 기능 테스트** — AI 템플릿 모달, 대시보드 샘플 분리, 재고목록 샘플 행
+3. **나머지 파일 git commit** — 아래 명령어 참조
+4. **Phase 6 EXE 빌드** — PyInstaller 단일 파일 배포 (최우선)
 
-2. **Picking List 파서 실전 테스트**
-   - LBM 텍스트 PDF: `temp/LBM AP - SO 3073 - Picking list1.pdf`
-   - Posco 스캔 이미지 PDF: `temp/박아름/` 폴더 내 Posco 파일들
-   - 앱 기동 후 출고 메뉴 > 📋 Picking List에서 테스트
+### 나머지 파일 커밋 명령어 (CMD에서 실행)
+```cmd
+git add features\ai\carrier_templates\one.py features\ai\carrier_templates\hapag.py
+git add backend\api\inventory_adjust_api.py backend\api\refresh_excel_api.py
+git add engine_modules\inventory_modular\adjust_executor.py engine_modules\inventory_modular\adjust_parser.py
+git add scripts\refresh_excel_status.py scripts\cleanup_dup_templates.py scripts\seed_templates_api.py
+git add CLAUDE.md
+git commit -m "chore: carrier templates (one/hapag) + excel refresh + adjust executor + CLAUDE.md"
+git push origin main
+```
 
-3. **Phase 6 EXE 빌드** — PyInstaller 단일 파일 배포
-
-### 현재 DB 상태
-- carrier_rules 테이블: 코드 자동 마이그레이션 준비됨, 앱 최초 기동 시 생성
-- sqm_inventory.db: .gitignore에 추가됨 (git 추적 제외)
+### 현재 DB 상태 (2026-05-04 기준)
+- **전체 초기화 상태** (2026-05-03 리셋, 실데이터 미입력)
+- inbound_template: MAERSK/MSC/ONE/HAPAG × 500/1000kg = 8개 정비 완료
+- sqm_inventory.db: .gitignore 추가됨 (git 추적 제외)
 
 ### 파일 위치 요약
 | 용도 | 경로 |
 |------|------|
+| **AI 템플릿 생성 API** | **backend/api/template_ai_api.py** |
+| **통합 Excel** | **SMQ 입,출고 재고관리 파일_int.xlsx** |
+| Excel STATUS 갱신 (스크립트) | scripts/refresh_excel_status.py |
+| Excel STATUS 갱신 (API) | backend/api/refresh_excel_api.py |
+| Layer 1 ONE 템플릿 | features/ai/carrier_templates/one.py |
+| Layer 1 HAPAG 템플릿 | features/ai/carrier_templates/hapag.py |
+| 재고 수정 실행 | engine_modules/inventory_modular/adjust_executor.py |
 | 메뉴 HTML | frontend/index.html |
-| JS 로직 | frontend/js/sqm-inline.js (7588줄, Python 수정 필수) |
-| 알람 시스템 | utils/parse_alarm.py |
-| 입고 API | backend/api/inbound.py (1974줄, 정상) |
-| PL 파서 | parsers/document_parser_modular/picking_mixin.py |
-| PL AI 파서 | parsers/document_parser_modular/ai_fallback.py (parse_picking_ai) |
-| PL API | backend/api/outbound_picking.py |
-| PL 샘플 | temp/LBM AP - SO 3073 - Picking list1.pdf |
-| Phase1 보고서 | REPORTS/phase1_summary.md |
-
+| JS 로직 | frontend/js/sqm-inline.js (7066줄, Python 수정 필수) |
+| 입고 API | backend/api/inbound.py |
+| 대시보드 API | backend/api/dashboard.py |
+| 재고 API | backend/api/inventory_api.py |
