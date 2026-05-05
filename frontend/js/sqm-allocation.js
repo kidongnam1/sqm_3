@@ -322,16 +322,20 @@
     }).catch(function(e){ showToast('error', 'LOT 현황 실패: ' + (e.message||e)); });
   };
 
-  /* ── Excel 내보내기 ── */
+  /* ── Excel 내보내기 (exports/ 폴더 저장 + 자동 열기) ── */
   window.allocExportExcel = function() {
-    var url = (typeof window.API !== 'undefined' ? window.API : 'http://localhost:8765') + '/api/allocation/export-excel';
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = '';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    showToast('success', '📊 Excel 다운로드 시작됨');
+    showToast('info', '📊 Allocation Excel 생성 중...');
+    apiGet('/api/allocation/export-excel')
+      .then(function(res) {
+        if (res && res.ok !== false) {
+          var rows = (res.data && res.data.rows) || 0;
+          var fname = (res.data && res.data.filename) || 'ALLOCATION.xlsx';
+          showToast('success', '📊 Excel 저장 완료 — ' + fname + ' (' + rows + '행) exports/ 폴더 확인');
+        } else {
+          showToast('error', 'Excel 생성 실패: ' + (res.message || '알 수 없는 오류'));
+        }
+      })
+      .catch(function(e) { showToast('error', 'Excel 오류: ' + (e.message || e)); });
   };
 
   /* ── 단계 되돌리기 ── */
@@ -391,16 +395,20 @@
     }).catch(function(e){ showToast('error', 'LOT 현황 실패: ' + (e.message||e)); });
   };
 
-  /* ── Excel 내보내기 ── */
+  /* ── Excel 내보내기 (exports/ 폴더 저장 + 자동 열기) ── */
   window.allocExportExcel = function() {
-    var url = (typeof window.API !== 'undefined' ? window.API : 'http://localhost:8765') + '/api/allocation/export-excel';
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = '';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    showToast('success', '📊 Excel 다운로드 시작됨');
+    showToast('info', '📊 Allocation Excel 생성 중...');
+    apiGet('/api/allocation/export-excel')
+      .then(function(res) {
+        if (res && res.ok !== false) {
+          var rows = (res.data && res.data.rows) || 0;
+          var fname = (res.data && res.data.filename) || 'ALLOCATION.xlsx';
+          showToast('success', '📊 Excel 저장 완료 — ' + fname + ' (' + rows + '행) exports/ 폴더 확인');
+        } else {
+          showToast('error', 'Excel 생성 실패: ' + (res.message || '알 수 없는 오류'));
+        }
+      })
+      .catch(function(e) { showToast('error', 'Excel 오류: ' + (e.message || e)); });
   };
 
   /* ── 단계 되돌리기 ── */

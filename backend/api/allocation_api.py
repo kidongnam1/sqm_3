@@ -651,10 +651,9 @@ def revert_allocation_step(data: dict = Body(...)):
 @router.get("/export-excel", summary="📊 Allocation Excel 내보내기")
 def export_allocation_excel():
     """
-    현재 RESERVED/PICKED 상태 배정 전체를 Excel 파일로 반환.
+    현재 RESERVED/PICKED 상태 배정 전체를 Excel 파일로 exports/ 폴더에 저장 후 자동 열기.
+    (PyWebView 환경: StreamingResponse 다운로드 불가 → exports/ 저장 + os.startfile 방식)
     """
-    import io
-    from fastapi.responses import StreamingResponse
     try:
         import openpyxl
         from openpyxl.styles import Font, Alignment, PatternFill
@@ -698,16 +697,20 @@ def export_allocation_excel():
         max_len = max((len(str(cell.value or "")) for cell in col), default=8)
         ws.column_dimensions[col[0].column_letter].width = min(max_len + 4, 32)
 
-    buf = io.BytesIO()
-    wb.save(buf)
-    buf.seek(0)
     from datetime import datetime as _dt
-    fname = f"ALLOCATION_{_dt.now().strftime('%Y%m%d_%H%M')}.xlsx"
-    return StreamingResponse(
-        buf,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
-    )
+    exports = _alloc_exports_dir()
+    fname = f"ALLOCATION_{_dt.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    out_path = os.path.join(exports, fname)
+    wb.save(out_path)
+
+    try:
+        os.startfile(out_path)
+    except Exception as open_err:
+        logger.warning("os.startfile 실패: %s", open_err)
+
+    logger.info("Allocation Excel 저장+열기: %s (%d 행)", fname, len(rows))
+    from backend.common.errors import ok_response
+    return ok_response({"filename": fname, "path": out_path, "rows": len(rows), "opened": True})
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

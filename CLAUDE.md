@@ -268,6 +268,15 @@ sqm-inline.js (391KB, 7133줄) → 6개 IIFE 파일로 분할 완료
 - ONE, HAPAG, MAERSK, MSC, HMM/CMACGM, GENERIC (6개)
 - 위치: `features/ai/carrier_templates/`
 
+### 설계 결정 기록 (2026-05-05 사장님 확정) ← 방지책① 의무 기록
+| 항목 | 결정 | 이유 |
+|------|------|------|
+| `current_weight` 샘플백 포함 | ✅ 포함 | 샘플백(is_sample=1)도 판매 가능 → 재고 정합성 필수 |
+| Excel 내보내기 방식 | `exports/` 폴더 저장 + `os.startfile()` | PyWebView 5에서 StreamingResponse + `<a download>` 비동작 |
+| `crud_mixin.py` 수정 | Rule 1 예외 허용 | 비즈니스 규칙 오류 교정 (샘플 제외가 잘못된 설계였음) |
+| 버전 표기 | `v8.6.6` | 메이저.마이너.패치 표준 시맨틱 버저닝 |
+| DB 경로 | `data/db/sqm_inventory.db` | 루트의 `sqm_inventory.db` 아님 — 주의 |
+
 ---
 
 ## 🔴 현재 미완료 — 최우선 처리 순서
@@ -317,6 +326,9 @@ sqm-inline.js (391KB, 7133줄) → 6개 IIFE 파일로 분할 완료
 4. **300줄↑ 파일 Edit 툴 수정** → Rule 5 참조, Python 스크립트 사용
 5. **VM에서 git commit** → Rule 6 참조, Windows CMD에서만 실행
 6. **세션 종료 전 전수검사 생략** → py_compile + node --check 필수
+7. **설계 결정 이유 미기록** (방지책①) → 수정할 때마다 `왜`를 CLAUDE.md에 함께 기록. "당연하다"도 기록 대상
+8. **코드 읽기 전 수정** (방지책②) → "버그같다" 판단해도 → 관련 코드 주석/원인 먼저 확인 → 이해 후 수정. 추측 금지
+9. **300줄↑ 파일 작은 수정도 Edit 툴 사용** (방지책③) → 예외 없이 Python 스크립트 사용 (Rule 5 재확인)
 
 ---
 
@@ -350,11 +362,13 @@ sqm-inline.js (391KB, 7133줄) → 6개 IIFE 파일로 분할 완료
 | 2026-05-04 | GIT_INDEX_FILE로 커밋 → 400개 파일 삭제 | git은 CMD에서만 | Rule 6 추가 |
 | 2026-05-04 | 전수검사 미실시 → truncated 파일 방치 | 세션 종료 전 전수검사 필수 | Rule 5 강화 |
 | 2026-05-05 | CLAUDE.md에 v865 표기 방치 | 폴더명(v866)과 버전 일치 필수 | 전면 재작성 |
+| 2026-05-05 | 코드 주석 미확인 → 샘플백 포함 여부 flip-flop 3회 | 수정 전 코드+주석 반드시 먼저 읽기 | 방지책② 추가 |
+| 2026-05-05 | StreamingResponse PyWebView 비호환 재발 | exports/+os.startfile() 패턴만 사용 | 설계결정 기록 |
 
 ---
 
 **버전:** v866
-**최종 수정:** 2026-05-05
+**최종 수정:** 2026-05-05 (방지책①②③ + 설계결정 기록 추가)
 **작성자:** Ruby (Senior Software Architect)
 **프로젝트 폴더:** `D:\program\SQM_inventory\SQM_v866_CLEAN`
 **GitHub:** `https://github.com/kidongnam1/sqm_3`
