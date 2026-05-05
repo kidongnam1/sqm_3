@@ -5524,7 +5524,9 @@
     var wOpts = [500, 450, 600, 1000].map(function(w) {
       return '<option value="' + w + '"' + (bw === w ? ' selected' : '') + '>' + w + ' kg</option>';
     }).join('');
-    area.innerHTML = '<div style="background:rgba(30,74,122,0.18);border:1px solid var(--border);border-radius:8px;padding:16px 18px;margin-bottom:14px">'
+    var _banner = t._warnBanner || '';
+    area.innerHTML = _banner
+      + '<div style="background:rgba(30,74,122,0.18);border:1px solid var(--border);border-radius:8px;padding:16px 18px;margin-bottom:14px">'
       + '<div style="font-weight:700;margin-bottom:12px">' + title + '</div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px">'
       + _tplFld('tpl-f-carrier', '선사', t.carrier_id||'', 'text', '예: Maersk, ONE, MSC')
@@ -5614,7 +5616,39 @@
       .then(function(d) {
         if (!d.ok) { showToast('error', 'PDF 추출 실패: ' + escapeHtml(String(d.detail || d.error || ''))); return; }
         var ex = d.extracted || {};
-        showToast('success', 'PDF 추출 완료 — 내용을 확인하고 저장하세요');
+        var warnings = d.parse_warnings || [];
+
+        // ── PARSE_FAILED → 에러 Toast + 상세 모달, 폼 열지 않음
+        var fatal = warnings.filter(function(w){ return w.reason_code === 'PARSE_FAILED'; });
+        if (fatal.length) {
+          showToast('error', '❌ PDF 파싱 실패 — 파일을 확인하세요');
+          var msg = fatal.map(function(w){
+            return '<div style="margin-bottom:10px">' +
+              '<b style="color:var(--danger)">❌ ' + escapeHtml(w.title) + '</b><br>' +
+              '<pre style="white-space:pre-wrap;font-size:.83rem;margin:4px 0 0 0;color:var(--text-muted)">' +
+              escapeHtml(w.message) + '</pre></div>';
+          }).join('');
+          showDataModal('PDF 파싱 실패', msg);
+          return;
+        }
+
+        // ── 경고(PRODUCT_UNKNOWN / CARRIER_UNKNOWN) → Toast + 폼 상단 배너
+        var warnBanner = '';
+        var nonFatal = warnings.filter(function(w){ return w.reason_code !== 'PARSE_FAILED'; });
+        if (nonFatal.length) {
+          nonFatal.forEach(function(w){
+            showToast('warn', '⚠️ ' + w.title + ' — 저장 전 확인 필요');
+          });
+          warnBanner = nonFatal.map(function(w){
+            return '<div style="background:rgba(255,193,7,.1);border:1px solid #ffc107;border-radius:6px;' +
+              'padding:8px 12px;margin-bottom:10px;font-size:.85rem">' +
+              '<b style="color:#ffc107">⚠️ ' + escapeHtml(w.title) + '</b><br>' +
+              '<pre style="white-space:pre-wrap;font-size:.81rem;margin:4px 0 0 0;color:var(--text-muted)">' +
+              escapeHtml(w.message) + '</pre></div>';
+          }).join('');
+        }
+
+        showToast('success', warnings.length ? 'PDF 추출 완료 — 경고 항목을 확인하세요' : 'PDF 추출 완료 — 내용을 확인하고 저장하세요');
         window._tplShowForm({
           template_id:         null,
           carrier_id:          ex.carrier_id    || '',
@@ -5627,6 +5661,7 @@
           lot_sqm: ex.lot_sqm || '',
           mxbg_pallet: ex.mxbg_pallet || 0,
           sap_no: ex.sap_no || '',
+          _warnBanner: warnBanner,
         });
       })
       .catch(function(e) { showToast('error', 'PDF 오류: ' + String(e)); });

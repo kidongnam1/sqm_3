@@ -1760,8 +1760,59 @@ async def template_from_pdf(file: UploadFile = File(...)):
         product_label = extracted["product_hint"][:20] if extracted["product_hint"] else "제품"
         extracted["suggested_name"] = f"{carrier_label} {product_label} {extracted['bag_weight_kg']}kg"
 
-        return {"ok": True, "extracted": extracted,
-                "message": f"파싱 완료: {file.filename} → 아래 내용을 확인 후 저장하세요"}
+        # ── 3가지 파싱 경고 감지 ──────────────────────────────
+        parse_warnings = []
+
+        # 1) PARSE_FAILED: PL·BL 둘 다 실패
+        if pl is None and bl is None:
+            parse_warnings.append({
+                "reason_code": "PARSE_FAILED",
+                "severity": "error",
+                "title": "파싱 실패",
+                "message": (
+                    "B/L과 Packing List 모두 읽지 못했습니다.\n"
+                    "• PDF가 이미지 스캔본인지 확인하세요.\n"
+                    "• 텍스트 레이어가 있는 PDF인지 확인하세요.\n"
+                    "• 파일이 손상되지 않았는지 확인하세요."
+                ),
+            })
+
+        # 2) PRODUCT_UNKNOWN: 제품 코드 미감지
+        _PRODUCT_KW = ["mic9000", "cry9000", "lht-b", "hydroxide",
+                       "micronized", "crystal", "lithium carbonate", "lithium hydroxide"]
+        hint_low = extracted["product_hint"].lower()
+        product_detected = any(kw in hint_low for kw in _PRODUCT_KW)
+        if not product_detected:
+            parse_warnings.append({
+                "reason_code": "PRODUCT_UNKNOWN",
+                "severity": "warning",
+                "title": "품목 코드 확인 필요",
+                "message": (
+                    "MIC9000 / CRY9000 / LHT-B/450 중 어느 품목인지 확정하지 못했습니다.\n"
+                    "• B/L 또는 Packing List에서 품목 코드를 직접 확인하세요.\n"
+                    "• 저장 전 아래 '제품 힌트' 항목을 수동으로 입력해 주세요."
+                ),
+            })
+
+        # 3) CARRIER_UNKNOWN: 선사 미판별
+        if not extracted["carrier_id"]:
+            parse_warnings.append({
+                "reason_code": "CARRIER_UNKNOWN",
+                "severity": "warning",
+                "title": "선사 판별 불가",
+                "message": (
+                    "ONE / HAPAG / MAERSK / MSC / HMM 중 선사를 판별하지 못했습니다.\n"
+                    "• 파일명에 선사명을 포함시키거나 (예: ONE_BL_123.pdf)\n"
+                    "• 아래 '선사 ID' 항목을 수동으로 입력해 주세요."
+                ),
+            })
+
+        return {
+            "ok": True,
+            "extracted": extracted,
+            "parse_warnings": parse_warnings,
+            "message": f"파싱 완료: {file.filename} → 아래 내용을 확인 후 저장하세요",
+        }
     finally:
         try:
             os.unlink(tf.name)
