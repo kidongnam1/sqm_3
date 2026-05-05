@@ -34,6 +34,8 @@
       var sumOb = 0;
       var sumUnsold = 0;
       var sumSold = 0;
+      var sumAvailMt = 0;
+      var sumRsvMt = 0;
       rows.forEach(function(r){
         if (r.balance != null && !isNaN(Number(r.balance))) {
           var bal = Number(r.balance);
@@ -45,6 +47,8 @@
         if (r.net != null && !isNaN(Number(r.net))) sumNet += Number(r.net);
         if (r.initial_weight != null && !isNaN(Number(r.initial_weight))) sumIni += Number(r.initial_weight);
         if (r.outbound_weight != null && !isNaN(Number(r.outbound_weight))) sumOb += Number(r.outbound_weight);
+        if (r.avail_mt != null && !isNaN(Number(r.avail_mt))) sumAvailMt += Number(r.avail_mt);
+        if (r.reserved_mt != null && !isNaN(Number(r.reserved_mt))) sumRsvMt += Number(r.reserved_mt);
       });
       var html = '<section class="page" data-page="inventory">' +
         '<div style="display:flex;align-items:center;gap:12px;padding:4px 0 10px">' +
@@ -71,7 +75,7 @@
         '목록 합계 · NET(MT): <b style="color:var(--accent)">'+fmtN(sumNet)+'</b> · Balance(MT): <b>'+fmtN(sumBal)+'</b> · 미판매(MT): <b style="color:#22c55e">'+fmtN(sumUnsold)+'</b> · 판매완료(MT): <b style="color:#ef4444;font-weight:700">'+fmtN(sumSold)+'</b> · 차이(순−현, 샘플 등): <b style="color:#f59e0b">'+fmtN(sumNet - sumBal)+'</b>' +
         '</p>' +
         '<div style="overflow-x:auto"><table class="data-table"><thead><tr>' +
-        '<th>#</th><th style="text-align:left !important">LOT</th><th>SAP</th><th>BL</th><th>Product</th>' +
+        '<th>#</th><th style="text-align:center !important">LOT</th><th style="width:32px;text-align:center">+</th><th>SAP</th><th>BL</th><th>Product</th>' +
         '<th>Status</th><th>Balance(MT)</th><th>Avail/Rsv(MT)</th><th>NET(MT)</th><th>Container</th>' +
         '<th>MXBG</th><th>Avail</th><th>Invoice</th>' +
         '<th>Ship</th><th>Arrival</th><th>Con Return</th><th>Free</th>' +
@@ -129,6 +133,7 @@
           '<tr style="'+(hasSample ? 'border-left:3px solid #3b82f6' : '')+'">' +
           '<td class="mono-cell" style="color:var(--text-muted)">'+(i+1)+'</td>' +
           '<td class="mono-cell cell-left" style="color:var(--accent);font-weight:600;padding:6px 10px;line-height:1.2">'+lotKey+'</td>' +
+          '<td style="text-align:center;padding:3px 4px;width:32px">'+'<button class="btn btn-ghost btn-xs" data-lot="'+lotKey+'" onclick="window.showInvActionMenu(this)"'+'  style="font-size:15px;padding:0 4px;letter-spacing:1px;line-height:1.2" title="추가기능">⋯</button>'+'</td>' +
           '<td class="mono-cell">'+escapeHtml(r.sap||'')+'</td>' +
           '<td class="mono-cell">'+escapeHtml(r.bl||'')+'</td>' +
           '<td><span class="tag">'+escapeHtml(r.product||'')+'</span></td>' +
@@ -159,21 +164,14 @@
           '<td class="mono-cell" style="text-align:right">'+(r.initial_weight!=null?fmtN(r.initial_weight):'-')+'</td>' +
           '<td class="mono-cell" style="text-align:right">'+(r.outbound_weight!=null?fmtN(r.outbound_weight):'-')+'</td>' +
           '<td><span class="tag">'+escapeHtml(r.location||'-')+'</span></td>' +
-          '<td style="white-space:nowrap;padding:6px 10px;line-height:1.2">' +
-          '<button class="btn btn-ghost btn-xs" onclick="window.showLotDetail(\''+lotKey+'\')" title="LOT 상세" style="padding:0 3px;line-height:1.1;min-height:18px">📋</button> ' +
-          '<button class="btn btn-ghost btn-xs" onclick="window.invCopyLot(\''+lotKey+'\')" title="LOT 번호 복사" style="padding:0 3px;line-height:1.1;min-height:18px">📄</button> ' +
-          '<button class="btn btn-ghost btn-xs" onclick="window.invCopyRow(this)" title="행 전체 복사" style="padding:0 3px;line-height:1.1;min-height:18px">📑</button> ' +
-          '<button class="btn btn-ghost btn-xs" onclick="window.invQuickOutbound(\''+lotKey+'\')" title="즉시 출고 진입" style="color:#42a5f5;padding:0 3px;line-height:1.1;min-height:18px">🚀</button> ' +
-          '<button class="btn btn-ghost btn-xs" onclick="window.invQuickReturn(\''+lotKey+'\')" title="반품 진입" style="color:#ef5350;padding:0 3px;line-height:1.1;min-height:18px">🔄</button> ' +
-          '<button class="btn btn-ghost btn-xs" onclick="window.invShowLotHistory(\''+lotKey+'\')" title="LOT 이력" style="color:#66bb6a;padding:0 3px;line-height:1.1;min-height:18px">📊</button>' +
-          '</td>' +
+'<td></td>' +
           '</tr>';
         return sampleRow + mainRow;
       }).join('');
       html += '</tbody><tfoot><tr style="background:var(--panel);font-weight:700">';
-      html += '<td colspan="6" style="text-align:right;padding:8px 10px">합계 ('+rows.length+' LOT) · 미판매 '+fmtN(sumUnsold)+' / <span style="color:#ef4444;font-weight:700">판매완료 '+fmtN(sumSold)+'</span></td>';
+      html += '<td colspan="7" style="text-align:right;padding:8px 10px">합계 ('+rows.length+' LOT) · 미판매 '+fmtN(sumUnsold)+' / <span style="color:#ef4444;font-weight:700">판매완료 '+fmtN(sumSold)+'</span></td>';
       html += '<td class="mono-cell" style="text-align:right">'+fmtN(sumBal)+'</td>';
-      html += '<td></td>'; // Avail/Rsv MT (합계 미계산)
+      html += '<td class="mono-cell" style="text-align:right">' + '<span style="color:#22c55e;font-weight:700">'+fmtN(sumAvailMt)+'</span>' + '<span style="color:#94a3b8;font-size:11px"> / </span>' + '<span style="color:#3b82f6">'+fmtN(sumRsvMt)+'</span>' + '</td>';
       html += '<td class="mono-cell" style="text-align:right">'+fmtN(sumNet)+'</td>';
       html += '<td colspan="10"></td>';
       html += '<td class="mono-cell" style="text-align:right">'+fmtN(sumIni)+'</td>';
@@ -233,6 +231,20 @@
     if (statusEl) statusEl.value = '';
     if (searchEl) searchEl.value = '';
     window.invApplyFilter();
+  };
+
+  /* ─── 추가기능 드롭다운 (공용 _openContextMenu 사용) ──────────────── */
+  window.showInvActionMenu = function(btn) {
+    var lot = btn.dataset.lot || '';
+    window._openContextMenu(btn, [
+      { icon:'📋', label:'LOT 상세 보기',  kbd:'Enter',   fn:function(){ window.showLotDetail(lot); } },
+      { icon:'📄', label:'LOT 번호 복사',  kbd:'Ctrl+C',  fn:function(){ window.invCopyLot(lot); } },
+      { icon:'📑', label:'행 전체 복사',   kbd:'Ctrl+Shift+C', fn:function(){ window.invCopyLot(lot); } },
+      '-',
+      { icon:'🚀', label:'즉시 출고 진입', kbd:'O',       color:'#42a5f5', fn:function(){ window.invQuickOutbound(lot); } },
+      { icon:'🔄', label:'반품 진입',      kbd:'R',       color:'#ef5350', fn:function(){ window.invQuickReturn(lot); } },
+      { icon:'📊', label:'LOT 이력 보기', kbd:'H',       color:'#66bb6a', fn:function(){ window.invShowLotHistory(lot); } },
+    ]);
   };
 
   window.invCopyLot = function(lot) {
@@ -416,7 +428,7 @@
         + '<button class="btn btn-ghost" style="font-size:12px;margin-left:auto" onclick="window.loadAvailablePage()">🔄 새로고침</button>'
         + '</div>'
         + '<div style="overflow-x:auto"><table class="data-table"><thead><tr>'
-        + '<th>#</th><th>LOT</th><th>SAP</th><th>BL</th><th>Product</th>'
+        + '<th>#</th><th style="text-align:center">LOT</th><th style="width:32px;text-align:center">+</th><th>SAP</th><th>BL</th><th>Product</th>'
         + '<th>Status</th><th>Balance(MT)</th><th>Avail/Rsv(MT)</th><th>NET(MT)</th><th>Container</th>'
         + '<th>MXBG</th><th>Avail</th><th>Invoice</th>'
         + '<th>Ship</th><th>Arrival</th><th>WH</th><th>Customs</th>'
@@ -476,10 +488,7 @@
           + '<td class="mono-cell">' + escapeHtml(r.customs||'') + '</td>'
           + '<td class="mono-cell" style="text-align:right">' + (r.initial_weight!=null?fmtN(r.initial_weight):'-') + '</td>'
           + '<td><span class="tag">' + escapeHtml(r.location||'-') + '</span></td>'
-          + '<td style="white-space:nowrap;padding:6px 10px">'
-          + '<td style="white-space:nowrap;padding:6px 10px">'
-            + '<button class="btn btn-ghost btn-xs" data-lot="' + lotKey + '" onclick="window.showLotDetail(this.dataset.lot)" title="LOT 상세" style="padding:0 3px">📋</button> '
-            + '<button class="btn btn-ghost btn-xs" data-lot="' + lotKey + '" onclick="window.invCopyLot(this.dataset.lot)" title="복사" style="padding:0 3px">📄</button>'
+          + '<td></td>'
           + '</tr>';
         return mainRow + sampleRow;
       }).join('');

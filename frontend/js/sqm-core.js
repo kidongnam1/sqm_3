@@ -891,21 +891,74 @@
   /* v9.5: 사이드바 배지 (개수·MT) 주기적 갱신 */
   var _sidebarBadgeTimer = null;
   function loadSidebarBadges() {
+    // submenu 배지(개수·MT)는 표시 안 함 — 사장님 지시 2026-05-05
+    // 상단 Inventory 총계 배지만 유지
     apiGet('/api/dashboard/sidebar-counts').then(function(res){
       var d = (res && res.data) ? res.data : {};
-      function setBadge(id, info) {
+      // 서브메뉴 배지 숨김 처리
+      ['badge-available','badge-allocation','badge-picked','badge-return'].forEach(function(id){
         var el = document.getElementById(id);
-        if (!el || !info) return;
-        el.textContent = info.bags + '개\n' + info.mt.toFixed(1) + 'MT';
-      }
-      setBadge('badge-available',  d.available);
-      setBadge('badge-allocation', d.reserved);
-      setBadge('badge-picked',     d.picked);
-      setBadge('badge-return',     d.return);
+        if (el) el.textContent = '';
+      });
+      // 상단 Inventory 버튼 총계는 유지
       var tot = document.getElementById('badge-inv-total');
       if (tot && d.total) tot.textContent = d.total.bags + '개 · ' + d.total.mt.toFixed(1) + 'MT';
     }).catch(function(){});
   }
+
+  /* ── 공용 컨텍스트 드롭다운 엔진 (모든 탭 공유) ────────────────── */
+  var _ctxMenuEl = null;
+  function _closeCtxMenu() {
+    if (_ctxMenuEl) { _ctxMenuEl.remove(); _ctxMenuEl = null; }
+  }
+  document.addEventListener('click', function(e) {
+    if (_ctxMenuEl && !_ctxMenuEl.contains(e.target)) _closeCtxMenu();
+  });
+  window._openContextMenu = function(btn, items) {
+    _closeCtxMenu();
+    var rect = btn.getBoundingClientRect();
+    var menu = document.createElement('div');
+    menu.style.cssText = [
+      'position:fixed','z-index:9999',
+      'background:var(--panel)',
+      'border:1px solid var(--panel-border)',
+      'border-radius:8px',
+      'box-shadow:0 4px 20px rgba(0,0,0,0.45)',
+      'min-width:200px','padding:5px 0','font-size:13px'
+    ].join(';');
+    var spaceBelow = window.innerHeight - rect.bottom;
+    if (spaceBelow < 250) {
+      menu.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+    } else {
+      menu.style.top = (rect.bottom + 4) + 'px';
+    }
+    menu.style.left = Math.max(4, rect.left - 130) + 'px';
+    items.forEach(function(item) {
+      if (item === '-') {
+        var sep = document.createElement('div');
+        sep.style.cssText = 'border-top:1px solid var(--panel-border);margin:3px 0';
+        menu.appendChild(sep); return;
+      }
+      var li = document.createElement('button');
+      li.style.cssText = 'display:flex;align-items:center;gap:10px;width:100%;padding:7px 14px;'
+        + 'background:none;border:none;cursor:pointer;color:'+(item.color||'var(--fg)')
+        + ';text-align:left;font-size:13px;white-space:nowrap';
+      li.innerHTML = '<span style="font-size:15px;width:20px;text-align:center">'
+        + item.icon+'</span>'
+        + '<span style="flex:1">' + item.label + '</span>'
+        + (item.kbd ? '<span style="font-size:10px;color:var(--text-muted);margin-left:8px;'
+          + 'background:rgba(128,128,128,0.15);padding:1px 5px;border-radius:3px">'
+          + item.kbd + '</span>' : '');
+      li.onmouseenter=function(){this.style.background='rgba(255,255,255,0.07)';};
+      li.onmouseleave=function(){this.style.background='none';};
+      li.onclick=function(e){e.stopPropagation();_closeCtxMenu();item.fn&&item.fn();};
+      menu.appendChild(li);
+    });
+    _ctxMenuEl = menu;
+    document.body.appendChild(menu);
+  };
+  window._closeCtxMenu = _closeCtxMenu;
+
   window.loadSidebarBadges = loadSidebarBadges;
 
   function loadDashboardTables() {

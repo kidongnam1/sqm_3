@@ -190,13 +190,28 @@
     /* Footer 합계 (v864-2 TreeviewTotalFooter 매칭) */
     tfoot.innerHTML =
       '<tr style="background:var(--panel);font-weight:700">' +
-      '<td colspan="5" style="text-align:right">합계:</td>' +
+      '<td colspan="6" style="text-align:right">합계:</td>' +
       '<td class="mono-cell" style="text-align:right">' + totalMt.toFixed(4) + ' MT</td>' +
       '<td colspan="5"></td>' +
       '</tr>';
   }
 
   /* ── 버튼 핸들러 ─────────────────────────────────────────────────── */
+  window.showAllocActionMenu = function(btn) {
+    var lot = btn.dataset.lot || '';
+    window._openContextMenu(btn, [
+      { icon:'📋', label:'LOT 상세 보기',  kbd:'Enter',  fn:function(){ if(window.showLotDetail) window.showLotDetail(lot); } },
+      { icon:'📄', label:'LOT 번호 복사',  kbd:'Ctrl+C', fn:function(){ navigator.clipboard&&navigator.clipboard.writeText(lot); showToast('info','LOT 복사: '+lot); } },
+      '-',
+      { icon:'▶',  label:'배분 상세 열기', kbd:'Space',  color:'#3b82f6', fn:function(){ window.toggleAllocDetail(lot); } },
+      { icon:'❌', label:'배분 취소',       kbd:'Del',    color:'#ef5350', fn:function(){
+          if(!confirm(lot+' 배분을 취소하시겠습니까?')) return;
+          window._allocState && window._allocState.selectedLots.add(lot);
+          window.allocCancelSelected && window.allocCancelSelected();
+        }
+      },
+    ]);
+  };
   window.allocUploadExcel = function() {
     if (typeof showAllocationUploadModal === 'function') { showAllocationUploadModal(); }
     else { showToast('error', 'Upload modal 미초기화'); }

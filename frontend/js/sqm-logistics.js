@@ -144,15 +144,156 @@
   /* ===================================================
      7d. PAGE: Outbound/Sold — 2단 구조 (LOT 요약 + 톤백 상세)
      =================================================== */
+  /* ═══════════════════════════════════════════════════════════════
+     📋 Picking List PDF 업로드 모달
+     POST /api/outbound/picking-list-pdf → 파싱+DB반영 원스텝
+     ═══════════════════════════════════════════════════════════════ */
+  window.showOutboundPickingModal = function() {
+    var html = [
+      '<div style="max-width:560px">',
+      '<h2 style="margin:0 0 4px 0">📋 Picking List PDF 업로드</h2>',
+      '<p style="color:var(--text-muted);font-size:.85rem;margin:0 0 16px 0">',
+      '  PDF를 업로드하면 자동 파싱 후 <b>RESERVED → PICKED</b> 상태로 반영합니다.',
+      '</p>',
+
+      '<!-- 업로드 존 -->',
+      '<div id="pkl-dropzone" style="border:2px dashed var(--panel-border);border-radius:10px;',
+      '  padding:32px;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:16px"',
+      '  onclick="document.getElementById(\'pkl-file-input\').click()"',
+      '  ondragover="event.preventDefault();this.style.borderColor=\'var(--accent)\'"',
+      '  ondragleave="this.style.borderColor=\'var(--panel-border)\'"',
+      '  ondrop="event.preventDefault();this.style.borderColor=\'var(--panel-border)\';window._pklHandleFile(event.dataTransfer.files[0])">',
+      '  <div style="font-size:2rem;margin-bottom:8px">📄</div>',
+      '  <div style="font-weight:600;margin-bottom:4px">클릭 또는 드래그 앤 드롭</div>',
+      '  <div style="font-size:.8rem;color:var(--text-muted)">Picking List PDF 파일 (.pdf)</div>',
+      '</div>',
+      '<input type="file" id="pkl-file-input" accept=".pdf" style="display:none"',
+      '  onchange="window._pklHandleFile(this.files[0])">',
+
+      '<!-- 진행/결과 영역 -->',
+      '<div id="pkl-status" style="display:none;padding:12px;border-radius:8px;',
+      '  background:var(--panel);border:1px solid var(--panel-border);margin-bottom:12px;font-size:.9rem"></div>',
+
+      '<!-- 버튼 -->',
+      '<div style="display:flex;justify-content:flex-end;gap:8px">',
+      '  <button class="btn btn-ghost" onclick="window._closeDataModal()">닫기</button>',
+      '</div>',
+      '</div>'
+    ].join('');
+
+    if (window.showDataModal) showDataModal('', html);
+    else {
+      var m = document.getElementById('sqm-modal');
+      if (m) { m.querySelector('.modal-body, .modal-content, div').innerHTML = html; m.style.display='flex'; }
+    }
+  };
+
+  /* 파일 선택/드롭 핸들러 */
+  window._pklHandleFile = function(file) {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      showToast('error', 'PDF 파일만 업로드 가능합니다');
+      return;
+    }
+    var status = document.getElementById('pkl-status');
+    var dropzone = document.getElementById('pkl-dropzone');
+    if (!status) return;
+
+    // 로딩 표시
+    status.style.display = 'block';
+    status.style.borderLeft = '4px solid var(--accent)';
+    status.innerHTML = '<div style="display:flex;align-items:center;gap:10px">'
+      + '<span style="font-size:1.2rem">⏳</span>'
+      + '<div><b>' + escapeHtml(file.name) + '</b><br>'
+      + '<span style="color:var(--text-muted);font-size:.8rem">파싱 중... (텍스트 PDF: 빠름 / 스캔 PDF: Gemini OCR 사용)</span>'
+      + '</div></div>';
+    if (dropzone) dropzone.style.opacity = '0.5';
+
+    var fd = new FormData();
+    fd.append('file', file);
+
+    fetch('/api/outbound/picking-list-pdf', { method: 'POST', body: fd })
+      .then(function(r){ return r.json(); })
+      .then(function(res) {
+        if (dropzone) dropzone.style.opacity = '1';
+        var d = res.data || {};
+        var ok = res.ok === true;
+        var color = ok ? '#22c55e' : '#ef4444';
+        var icon  = ok ? '✅' : '❌';
+
+        var warnHtml = '';
+        if (d.warnings && d.warnings.length) {
+          warnHtml = '<details style="margin-top:8px"><summary style="cursor:pointer;color:#f59e0b;font-size:.8rem">⚠️ 경고 '
+            + d.warnings.length + '건 (클릭하여 펼치기)</summary>'
+            + '<pre style="white-space:pre-wrap;font-size:.75rem;margin-top:6px;color:var(--text-muted)">'
+            + escapeHtml((d.warnings||[]).join('\n')) + '</pre></details>';
+        }
+
+        var detailHtml = '';
+        if (ok && d.details && d.details.length) {
+          var rows = d.details.slice(0,20).map(function(dt){
+            return '<tr><td class="mono-cell">' + escapeHtml(dt.lot_no||'') + '</td>'
+              + '<td style="text-align:right">' + (dt.picked||0) + '</td>'
+              + '<td style="color:#f59e0b">' + (dt.partial ? '부분' : '') + '</td></tr>';
+          }).join('');
+          detailHtml = '<details style="margin-top:8px"><summary style="cursor:pointer;font-size:.8rem">📦 LOT별 반영 결과</summary>'
+            + '<table class="data-table" style="margin-top:6px;font-size:.8rem">'
+            + '<thead><tr><th style="text-align:left">LOT No</th><th>PICKED</th><th>비고</th></tr></thead>'
+            + '<tbody>' + rows + '</tbody></table></details>';
+        }
+
+        status.style.borderLeft = '4px solid ' + color;
+        status.innerHTML = '<div style="display:flex;align-items:flex-start;gap:10px">'
+          + '<span style="font-size:1.4rem">' + icon + '</span>'
+          + '<div style="flex:1">'
+          + '<div style="font-weight:700;margin-bottom:2px">' + escapeHtml(res.message || (ok ? '완료' : '실패')) + '</div>'
+          + (ok ? '<div style="font-size:.85rem;color:var(--text-muted)">'
+            + '파일: <b>' + escapeHtml(d.filename||file.name) + '</b>'
+            + ' · LOT <b>' + (d.total_lots||0) + '개</b>'
+            + ' · 일반 <b style="color:#22c55e">' + (d.total_normal_mt||0) + ' MT</b>'
+            + ' · 샘플 <b style="color:#f59e0b">' + (d.total_sample_kg||0) + ' KG</b>'
+            + ' · 반영 <b style="color:var(--accent)">' + (d.applied||0) + '건</b>'
+            + '</div>' : '<div style="color:#ef4444;font-size:.85rem">' + escapeHtml(res.error||'오류') + '</div>')
+          + warnHtml + detailHtml
+          + '</div></div>';
+
+        if (ok) {
+          showToast('success', 'Picking List 반영 완료 — ' + (d.applied||0) + '건');
+          // 현재 페이지 갱신
+          setTimeout(function(){
+            if (window.getCurrentRoute() === 'outbound') renderPage('outbound');
+            if (typeof window.loadSidebarBadges === 'function') window.loadSidebarBadges();
+          }, 600);
+        } else {
+          showToast('error', res.message || 'Picking List 반영 실패');
+        }
+      })
+      .catch(function(e) {
+        if (dropzone) dropzone.style.opacity = '1';
+        status.style.borderLeft = '4px solid #ef4444';
+        status.innerHTML = '<div style="color:#ef4444">❌ 네트워크 오류: ' + escapeHtml(e.message||String(e)) + '</div>';
+        showToast('error', '업로드 실패: ' + (e.message||String(e)));
+      });
+  };
+
+  /* 모달 닫기 헬퍼 */
+  window._closeDataModal = function() {
+    var m = document.getElementById('sqm-modal');
+    if (m) m.style.display = 'none';
+  };
+
   function loadOutboundPage() {
     var route = window.getCurrentRoute();
     var c = document.getElementById('page-container');
     if (!c) return;
     c.innerHTML = [
       '<section class="page" data-page="outbound">',
-      '<div style="display:flex;align-items:center;gap:12px;padding:8px 0 12px">',
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0 12px">',
       '  <h2 style="margin:0">📤 출고 완료 (Sold / Outbound)</h2>',
-      '  <button class="btn btn-secondary" onclick="renderPage(\'outbound\')" style="margin-left:auto">🔁 새로고침</button>',
+      '  <div style="margin-left:auto;display:flex;gap:8px">',
+      '    <button class="btn btn-primary" onclick="window.showOutboundPickingModal()" style="font-weight:600">📋 Picking List 업로드</button>',
+      '    <button class="btn btn-secondary" onclick="renderPage(\'outbound\')">🔁 새로고침</button>',
+      '  </div>',
       '</div>',
       '<div id="outbound-loading" style="padding:40px;text-align:center;color:var(--text-muted)">⏳ 데이터 로딩 중...</div>',
       '<div style="overflow-x:auto">',
@@ -278,7 +419,7 @@
       + '<button class="btn btn-ghost" style="font-size:12px;margin-left:auto" onclick="window.loadReturnPage()">🔄 새로고침</button>'
       + '</div>'
       + '<div style="overflow-x:auto"><table class="data-table"><thead><tr>'
-      + '<th>#</th><th style="text-align:left!important">LOT</th><th>SAP</th><th>BL</th><th>Product</th>'
+      + '<th>#</th><th style="text-align:center!important">LOT</th><th style="width:32px;text-align:center">+</th><th>SAP</th><th>BL</th><th>Product</th>'
       + '<th>Balance(MT)</th><th>NET(MT)</th><th>Container</th><th>Invoice</th>'
       + '<th>Ship</th><th>Arrival</th><th>WH</th><th>Inbound(MT)</th><th>Location</th><th>검사완료</th>'
       + '</tr></thead><tbody>';
@@ -303,6 +444,7 @@
         '<tr style="border-left:3px solid #a855f7">'
         + '<td class="mono-cell" style="color:var(--text-muted)">' + (i+1) + '</td>'
         + '<td class="mono-cell cell-left" style="color:#a855f7;font-weight:600;padding:6px 10px">' + lotKey + '</td>'
+        + '<td style="text-align:center;padding:3px 4px;width:32px">'+'<button class="btn btn-ghost btn-xs" data-lot="'+lotKey+'" onclick="window.showReturnActionMenu(this)" style="font-size:15px;padding:0 4px;letter-spacing:1px" title="추가기능">⋯</button></td>'
         + '<td class="mono-cell">' + escapeHtml(r.sap||'') + '</td>'
         + '<td class="mono-cell">' + escapeHtml(r.bl||'') + '</td>'
         + '<td><span class="tag" style="background:rgba(168,85,247,0.12);color:#a855f7">' + escapeHtml(r.product||'') + '</span></td>'
@@ -327,6 +469,19 @@
   }
 
   /* 반품 검사완료 → AVAILABLE 전환 */
+  window.showReturnActionMenu = function(btn) {
+    var lot = btn.dataset.lot || '';
+    window._openContextMenu(btn, [
+      { icon:'📋', label:'LOT 상세 보기',     kbd:'Enter',  fn:function(){ if(window.showLotDetail) window.showLotDetail(lot); } },
+      { icon:'📄', label:'LOT 번호 복사',     kbd:'Ctrl+C', fn:function(){ navigator.clipboard&&navigator.clipboard.writeText(lot); showToast('info','LOT 복사: '+lot); } },
+      '-',
+      { icon:'✅', label:'검사완료 → AVAILABLE', kbd:'A', color:'#22c55e', fn:function(){
+          if(!confirm('['+lot+'] 검사 완료 — AVAILABLE로 전환하시겠습니까?')) return;
+          window.returnToAvailable(lot);
+        }
+      },
+    ]);
+  };
   window.returnToAvailable = function(lotNo) {
     if (!confirm('LOT ' + lotNo + ' 검사완료 처리합니다.\nAVAILABLE로 전환하시겠습니까?')) return;
     apiPost('/api/inventory/adjust', { lot_no: lotNo, action: 'return_to_available' })
@@ -413,8 +568,19 @@
       '<option value="1000">Last 1000</option>',
       '</select></div>',
       '<div id="log-loading" style="padding:40px;text-align:center">Loading...</div>',
-      '<table class="data-table" id="log-table" style="display:none">',
-      '<thead><tr><th>Time</th><th>Type</th><th>LOT</th><th>Detail</th></tr></thead>',
+      '<table class="data-table" id="log-table" style="display:none;table-layout:fixed;width:100%">',
+      '<colgroup>',
+      '<col style="width:148px">',
+      '<col style="width:170px">',
+      '<col style="width:130px">',
+      '<col>',
+      '</colgroup>',
+      '<thead><tr>',
+      '<th style="text-align:left;padding:5px 8px;white-space:nowrap">Time</th>',
+      '<th style="text-align:left;padding:5px 8px">Type</th>',
+      '<th style="text-align:left;padding:5px 8px">LOT</th>',
+      '<th style="text-align:left;padding:5px 8px">Detail</th>',
+      '</tr></thead>',
       '<tbody id="log-tbody"></tbody></table>',
       '<div class="empty" id="log-empty" style="display:none">No logs</div>',
       '</section>'
@@ -428,11 +594,34 @@
       if (!rows.length) { document.getElementById('log-empty').style.display='block'; return; }
       var tbody = document.getElementById('log-tbody');
       if (tbody) tbody.innerHTML = rows.map(function(r){
-        return '<tr>' +
-          '<td class="mono-cell">'+escapeHtml(r.created_at||r.time||r.timestamp||'')+'</td>' +
-          '<td>'+escapeHtml(r.event_type||r.type||r.action||'')+'</td>' +
-          '<td class="mono-cell">'+escapeHtml(r.lot_no||r.lot||r.tonbag_id||'')+'</td>' +
-          '<td>'+escapeHtml(r.event_data||r.user_note||r.note||r.memo||r.detail||'')+'</td></tr>';
+        var rawDetail = r.event_data||r.user_note||r.note||r.memo||r.detail||'';
+        var fmtDetail = rawDetail;
+        if (rawDetail && rawDetail.trim().startsWith('{')) {
+          try {
+            var parsed = JSON.parse(rawDetail);
+            var parts = [];
+            Object.keys(parsed).forEach(function(k){
+              var v = parsed[k];
+              if (v === null || v === undefined || v === '') return;
+              parts.push('<b>' + escapeHtml(String(k)) + '</b>:' + escapeHtml(String(v)));
+            });
+            fmtDetail = parts.join('  ');
+          } catch(e) { fmtDetail = escapeHtml(rawDetail); }
+        } else {
+          fmtDetail = escapeHtml(rawDetail);
+        }
+        var evtType = r.event_type||r.type||r.action||'';
+        var evtColor = evtType.indexOf('ALLOC')>=0 ? '#7b1fa2'
+          : evtType.indexOf('OUTBOUND')>=0 ? '#388e3c'
+          : evtType.indexOf('INBOUND')>=0 ? '#1976d2'
+          : evtType.indexOf('RETURN')>=0 ? '#c62828'
+          : evtType.indexOf('ADJUST')>=0 ? '#f57c00'
+          : 'inherit';
+        return '<tr style="font-size:12px">' +
+          '<td class="mono-cell" style="padding:4px 8px;white-space:nowrap;text-align:left;font-size:11px;color:var(--text-muted)">'+escapeHtml(r.created_at||r.time||r.timestamp||'')+'</td>' +
+          '<td style="padding:4px 8px;text-align:left;white-space:nowrap;font-weight:600;color:'+evtColor+'">'+escapeHtml(evtType)+'</td>' +
+          '<td class="mono-cell" style="padding:4px 8px;text-align:left;font-size:11px;color:var(--accent)">'+escapeHtml(r.lot_no||r.lot||r.tonbag_id||'')+'</td>' +
+          '<td style="padding:4px 8px;text-align:left;word-break:break-all;line-height:1.4;font-size:11px">'+fmtDetail+'</td></tr>';
       }).join('');
       document.getElementById('log-table').style.display = '';
     }).catch(function(e){

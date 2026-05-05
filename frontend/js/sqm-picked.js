@@ -42,7 +42,7 @@
       '<div id="picked-loading" style="padding:40px;text-align:center;color:var(--text-muted)">⏳ 데이터 로딩 중...</div>',
       '<div style="overflow-x:auto">',
       '  <table class="data-table" id="picked-table" style="display:none">',
-      '  <thead><tr><th></th><th>LOT No</th><th>피킹No</th><th>고객사</th><th>톤백수</th><th>중량(kg)</th><th>피킹일</th></tr></thead>',
+      '  <thead><tr><th></th><th style="text-align:center">LOT No</th><th style="width:32px;text-align:center">+</th><th>피킹No</th><th>고객사</th><th>톤백수</th><th>중량(kg)</th><th>피킹일</th></tr></thead>',
       '  <tbody id="picked-tbody"></tbody>',
       '  </table>',
       '</div>',
@@ -65,7 +65,8 @@
         return '<tr class="picked-summary-row" data-lot="'+lot+'" style="cursor:pointer" onclick="window.togglePickedDetail(\''+lot+'\')">' +
           '<td style="width:24px;text-align:center"><span class="picked-expand-icon">▶</span></td>' +
           '<td class="mono-cell cell-left" style="color:var(--accent);font-weight:600">'+lot+'</td>' +
-          '<td class="mono-cell">'+escapeHtml(r.picking_no||'')+'</td>' +
+          '<td style="text-align:center;padding:3px 4px;width:32px">'+'<button class="btn btn-ghost btn-xs" data-lot="'+lot+'" onclick="event.stopPropagation();window.showPickedActionMenu(this)" style="font-size:15px;padding:0 4px;letter-spacing:1px" title="추가기능">⋯</button>'+'</td>' +
+          '<td class="mono-cell"'+escapeHtml(r.picking_no||'')+'</td>' +
           '<td>'+escapeHtml(r.customer||r.picked_to||'')+'</td>' +
           '<td class="mono-cell" style="text-align:right">'+(r.tonbag_count||0)+'</td>' +
           '<td class="mono-cell" style="text-align:right">'+(r.total_kg!=null?fmtN(r.total_kg):'-')+'</td>' +
@@ -134,5 +135,14 @@
      =================================================== */
   /* _inboundAllRows: 전체 행 캐시 (필터용) */
 
+  window.showPickedActionMenu = function(btn) {
+    var lot = btn.dataset.lot || '';
+    window._openContextMenu(btn, [
+      { icon:'📋', label:'LOT 상세 보기',  kbd:'Enter',  fn:function(){ if(window.showLotDetail) window.showLotDetail(lot); } },
+      { icon:'📄', label:'LOT 번호 복사',  kbd:'Ctrl+C', fn:function(){ navigator.clipboard&&navigator.clipboard.writeText(lot); showToast('info','LOT 복사: '+lot); } },
+      '-',
+      { icon:'▶',  label:'피킹 상세 열기', kbd:'Space',  color:'#f59e0b', fn:function(){ window.togglePickedDetail(lot); } },
+    ]);
+  };
   window.loadPickedPage = loadPickedPage;
 })();
