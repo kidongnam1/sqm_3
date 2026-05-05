@@ -751,7 +751,8 @@ def _find_header_row(filepath: _Path):
 @router.post("/template-upload", summary="📥 Allocation 양식 가져오기 (xlsx → json+xlsx 저장)")
 async def template_upload(
     file: UploadFile = File(...),
-    label: str = ""
+    label: str = "",
+    action: str = "check"
 ):
     """
     고객사 Allocation xlsx 파일을 업로드하면:
@@ -801,6 +802,34 @@ async def template_upload(
         dst_json = base / f'{file_id}.json'
         dst_xlsx = base / f'{file_id}.xlsx'
         overwritten = dst_json.exists() or dst_xlsx.exists()
+
+        # action=check → 분석만, 저장 안 함
+        if action == "check":
+            return {
+                "ok": True,
+                "id": file_id,
+                "tab_label": mapping['tab_label'],
+                "columns": columns,
+                "sheet": sheet,
+                "header_row": header_row,
+                "duplicate": overwritten,
+                "message": "분석 완료 (미저장)"
+            }
+
+        # action=keep_both → ID 중복 시 _2, _3 ... 접미사
+        if action == "keep_both" and overwritten:
+            for i in range(2, 99):
+                new_id = f"{file_id}_{i}"
+                if not (base / f"{new_id}.json").exists():
+                    file_id = new_id
+                    mapping['id'] = file_id
+                    mapping['tab_label'] = mapping['tab_label'] + f" ({i})"
+                    dst_json = base / f"{file_id}.json"
+                    dst_xlsx = base / f"{file_id}.xlsx"
+                    overwritten = False
+                    break
+
+        # action=overwrite 또는 keep_both(새 ID) → 저장
         dst_json.write_text(
             _json.dumps(mapping, ensure_ascii=False, indent=2),
             encoding='utf-8'
@@ -829,3 +858,42 @@ async def template_upload(
             _os.unlink(tmp.name)
         except Exception:
             pass
+
+
+# ── Allocation 양식 목록 조회 ──────────────────────────────────
+@router.get("/template-list", summary="📋 등록된 Allocation 양식 목록")
+async def template_list():
+    """resources/templates/allocation/ 의 .json 파일 목록 반환."""
+    base = _alloc_template_dir()
+    templates = []
+    for jf in sorted(base.glob("*.json")):
+        try:
+            data = _json.loads(jf.read_text(encoding='utf-8'))
+            templates.append({
+                "id":         data.get("id", jf.stem),
+                "tab_label":  data.get("tab_label", jf.stem),
+                "columns":    data.get("columns", []),
+                "sheet":      data.get("sheet", ""),
+                "header_row": data.get("header_row", 1),
+            })
+        except Exception:
+            pass
+    return {"ok": True, "templates": templates}
+
+
+# ── Allocation 양식 삭제 ───────────────────────────────────────
+@router.delete("/template/{template_id}", summary="🗑️ Allocation 양식 삭제")
+async def template_delete(template_id: str):
+    """지정한 ID의 .json + .xlsx 파일 삭제."""
+    safe_id = _safe_template_id(template_id)
+    base = _alloc_template_dir()
+    deleted = []
+    for ext in ('.json', '.xlsx'):
+        f = base / f"{safe_id}{ext}"
+        if f.exists():
+            f.unlink()
+            deleted.append(f.name)
+    if not deleted:
+        raise HTTPException(404, f"양식을 찾을 수 없습니다: {safe_id}")
+    logger.info("[template-delete] 삭제: %s", safe_id)
+    return {"ok": True, "id": safe_id, "deleted": deleted}

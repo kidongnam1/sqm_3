@@ -622,53 +622,116 @@
 
 
   /* ===================================================
-     Allocation 양식 가져오기 모달 (v864.2 _on_import_template 이식)
-     POST /api/allocation/template-upload
+     Allocation 양식 가져오기 모달 v2
+     - 모달 열 때 기존 양식 목록 표시 + 삭제
+     - 파일 분석(check) → 중복 여부에 따라 확인 UI
+     - 비중복: "추가하시겠습니까?" / 중복: 3가지 선택
      =================================================== */
   function showImportAllocationTemplateModal() {
+    var _pendingFile = null;   // 분석 완료된 파일 보관
+    var _pendingFd   = null;   // 재사용할 FormData (label 포함)
+    var _pendingRes  = null;   // check 결과 보관
+
     var html = [
-      '<div style="max-width:520px">',
-      '  <h2 style="margin:0 0 12px 0">📥 Allocation 양식 가져오기</h2>',
-      '  <p style="color:var(--text-muted);font-size:.87rem;margin:0 0 14px 0">',
-      '    고객사 Excel 양식(.xlsx)을 업로드하면 컬럼을 자동 분석하여<br>',
-      '    <b>resources/templates/allocation/</b> 폴더에 등록합니다.',
-      '  </p>',
-      '  <div style="margin-bottom:10px">',
-      '    <label style="display:block;font-size:.85rem;color:var(--text-muted);margin-bottom:4px">양식 이름 (탭에 표시할 이름)</label>',
-      '    <input type="text" id="alloc-tpl-label" placeholder="예: Song_LGES 11컬럼"',
-      '      style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg-hover);color:var(--text-primary);font-size:.9rem">',
+      '<div style="max-width:560px">',
+      '<h2 style="margin:0 0 14px 0">📥 Allocation 양식 관리</h2>',
+
+      // ── 기존 양식 목록 ──────────────────────────────────
+      '<div style="margin-bottom:16px">',
+      '  <div style="font-size:.85rem;font-weight:600;color:var(--text-muted);margin-bottom:6px">📋 현재 등록된 양식</div>',
+      '  <div id="atpl-list" style="background:var(--bg-hover);border:1px solid var(--border);border-radius:6px;min-height:40px;max-height:160px;overflow-y:auto;padding:4px 0">',
+      '    <div style="padding:10px 12px;color:var(--text-muted);font-size:.85rem">⏳ 목록 불러오는 중...</div>',
       '  </div>',
-      '  <div id="alloc-tpl-drop" style="border:2px dashed var(--border);border-radius:8px;padding:28px 16px;text-align:center;background:var(--bg-hover);cursor:pointer;margin-bottom:14px;transition:border-color .2s">',
-      '    <div style="font-size:2.2rem;margin-bottom:6px">📁</div>',
-      '    <div id="alloc-tpl-fname" style="color:var(--text-muted);font-size:.9rem">클릭 또는 파일을 여기에 드롭하세요 (.xlsx)</div>',
-      '  </div>',
-      '  <input type="file" id="alloc-tpl-input" accept=".xlsx,.xls" style="display:none">',
-      '  <div id="alloc-tpl-result" style="margin-bottom:12px;font-size:.88rem"></div>',
-      '  <div style="display:flex;gap:8px;justify-content:flex-end">',
-      '    <button type="button" class="btn btn-primary" id="alloc-tpl-submit" disabled>📥 가져오기</button>',
-      '    <button type="button" class="btn btn-ghost" onclick="document.getElementById(\'sqm-modal\').style.display=\'none\'">닫기</button>',
-      '  </div>',
+      '</div>',
+
+      '<hr style="border:none;border-top:1px solid var(--border);margin:0 0 14px 0">',
+
+      // ── 새 양식 업로드 ──────────────────────────────────
+      '<div style="margin-bottom:10px">',
+      '  <label style="display:block;font-size:.85rem;color:var(--text-muted);margin-bottom:4px">양식 이름 (탭에 표시할 이름)</label>',
+      '  <input type="text" id="atpl-label" placeholder="예: Song_LGES 11컬럼"',
+      '    style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text-primary);font-size:.9rem">',
+      '</div>',
+      '<div id="atpl-drop" style="border:2px dashed var(--border);border-radius:8px;padding:24px 16px;text-align:center;background:var(--bg-hover);cursor:pointer;margin-bottom:10px;transition:border-color .2s">',
+      '  <div style="font-size:2rem;margin-bottom:4px">📁</div>',
+      '  <div id="atpl-fname" style="color:var(--text-muted);font-size:.88rem">클릭 또는 파일을 여기에 드롭하세요 (.xlsx)</div>',
+      '</div>',
+      '<input type="file" id="atpl-input" accept=".xlsx,.xls" style="display:none">',
+
+      // ── 분석 결과 / 확인 UI ──────────────────────────────
+      '<div id="atpl-result" style="margin-bottom:12px;font-size:.88rem"></div>',
+
+      // ── 하단 버튼 ────────────────────────────────────────
+      '<div style="display:flex;gap:8px;justify-content:flex-end">',
+      '  <button type="button" class="btn btn-primary" id="atpl-submit" disabled>🔍 분석</button>',
+      '  <button type="button" class="btn btn-ghost" id="atpl-close">닫기</button>',
+      '</div>',
       '</div>'
-    ].join('\n');
+    ].join('');
     showDataModal('', html);
 
-    var dropZone  = document.getElementById('alloc-tpl-drop');
-    var fileInput = document.getElementById('alloc-tpl-input');
-    var submitBtn = document.getElementById('alloc-tpl-submit');
-    var resultDiv = document.getElementById('alloc-tpl-result');
-    var selectedFile = null;
+    var dropZone  = document.getElementById('atpl-drop');
+    var fileInput = document.getElementById('atpl-input');
+    var submitBtn = document.getElementById('atpl-submit');
+    var resultDiv = document.getElementById('atpl-result');
+    var listDiv   = document.getElementById('atpl-list');
 
+    document.getElementById('atpl-close').onclick = function(){
+      document.getElementById('sqm-modal').style.display = 'none';
+    };
+
+    // ── 기존 양식 목록 로드 ────────────────────────────────
+    function loadList() {
+      fetch(window.API + '/api/allocation/template-list')
+        .then(function(r){ return r.json(); })
+        .then(function(res){
+          if (!res.ok || !res.templates || res.templates.length === 0) {
+            listDiv.innerHTML = '<div style="padding:10px 12px;color:var(--text-muted);font-size:.85rem">등록된 양식이 없습니다.</div>';
+            return;
+          }
+          var rows = res.templates.map(function(t){
+            var cols = (t.columns || []).length;
+            return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px;border-bottom:1px solid var(--border)">' +
+              '<div style="font-size:.87rem">' +
+                '<span style="font-weight:600">' + escapeHtml(t.tab_label) + '</span>' +
+                '<span style="color:var(--text-muted);margin-left:8px;font-size:.8rem">[' + cols + '컬럼]</span>' +
+              '</div>' +
+              '<button type="button" onclick="window._atplDelete(' + JSON.stringify(t.id) + ')" ' +
+                'style="background:none;border:1px solid var(--danger);color:var(--danger);border-radius:4px;padding:2px 8px;font-size:.78rem;cursor:pointer">🗑️ 삭제</button>' +
+            '</div>';
+          });
+          listDiv.innerHTML = rows.join('');
+        })
+        .catch(function(){ listDiv.innerHTML = '<div style="padding:10px 12px;color:var(--danger);font-size:.85rem">목록 불러오기 실패</div>'; });
+    }
+
+    window._atplDelete = function(id) {
+      if (!confirm('양식 [' + id + '] 을(를) 삭제하시겠습니까?')) return;
+      fetch(window.API + '/api/allocation/template/' + encodeURIComponent(id), { method:'DELETE' })
+        .then(function(r){ return r.json(); })
+        .then(function(res){
+          if (res.ok) { showToast('success', '삭제 완료: ' + id); loadList(); }
+          else showToast('error', res.detail || '삭제 실패');
+        })
+        .catch(function(){ showToast('error', '통신 오류'); });
+    };
+
+    loadList();
+
+    // ── 파일 선택 ──────────────────────────────────────────
     function setFile(f) {
       if (!f) return;
       if (!f.name.match(/\.xlsx?$/i)) {
         resultDiv.innerHTML = '<span style="color:var(--danger)">⚠️ xlsx 또는 xls 파일만 가능합니다.</span>';
         return;
       }
-      selectedFile = f;
-      document.getElementById('alloc-tpl-fname').textContent = f.name + ' (' + (f.size/1024).toFixed(1) + ' KB)';
+      _pendingFile = f;
+      _pendingFd = null; _pendingRes = null;
+      document.getElementById('atpl-fname').textContent = f.name + ' (' + (f.size/1024).toFixed(1) + ' KB)';
       dropZone.style.borderColor = 'var(--accent)';
-      resultDiv.innerHTML = '<span style="color:var(--text-muted)">파일 선택됨. 이름을 입력 후 [가져오기]를 클릭하세요.</span>';
+      resultDiv.innerHTML = '<span style="color:var(--text-muted)">파일 선택됨. [분석] 버튼을 클릭하세요.</span>';
       submitBtn.disabled = false;
+      submitBtn.textContent = '🔍 분석';
     }
 
     dropZone.addEventListener('click', function(){ fileInput.click(); });
@@ -676,52 +739,117 @@
     dropZone.addEventListener('dragover',  function(e){ e.preventDefault(); dropZone.style.borderColor='var(--accent)'; });
     dropZone.addEventListener('dragleave', function(){ dropZone.style.borderColor='var(--border)'; });
     dropZone.addEventListener('drop', function(e){
-      e.preventDefault();
-      dropZone.style.borderColor='var(--border)';
+      e.preventDefault(); dropZone.style.borderColor='var(--border)';
       var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
       if (f) setFile(f);
     });
 
+    // ── 분석 버튼 클릭 → action=check ─────────────────────
     submitBtn.addEventListener('click', function(){
-      if (!selectedFile) return;
-      var label = (document.getElementById('alloc-tpl-label').value || '').trim();
+      if (!_pendingFile) return;
+      var label = (document.getElementById('atpl-label').value || '').trim();
       submitBtn.disabled = true;
       submitBtn.textContent = '⏳ 분석 중...';
       resultDiv.innerHTML = '<span style="color:var(--text-muted)">헤더 분석 중...</span>';
 
       var fd = new FormData();
-      fd.append('file', selectedFile);
+      fd.append('file', _pendingFile);
       if (label) fd.append('label', label);
+      fd.append('action', 'check');
+      _pendingFd = fd;
 
       fetch(window.API + '/api/allocation/template-upload', { method:'POST', body:fd })
         .then(function(r){ return r.json(); })
         .then(function(res){
+          if (!res.ok) {
+            resultDiv.innerHTML = '<span style="color:var(--danger)">❌ ' + escapeHtml(res.detail || '분석 실패') + '</span>';
+            submitBtn.disabled = false; submitBtn.textContent = '🔍 분석';
+            return;
+          }
+          _pendingRes = res;
+          showAnalysisResult(res);
+        })
+        .catch(function(e){
+          resultDiv.innerHTML = '<span style="color:var(--danger)">❌ 통신 오류: ' + escapeHtml(e.message||String(e)) + '</span>';
+          submitBtn.disabled = false; submitBtn.textContent = '🔍 분석';
+        });
+    });
+
+    // ── 분석 결과 표시 + 확인 UI ───────────────────────────
+    function showAnalysisResult(res) {
+      var cols = (res.columns || []).join(', ');
+      var preview = '<div style="background:var(--bg-hover);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:10px">' +
+        '<div style="font-size:.83rem;color:var(--text-muted)">' +
+        '<b>ID:</b> ' + escapeHtml(res.id) + ' &nbsp;|&nbsp; ' +
+        '<b>시트:</b> ' + escapeHtml(res.sheet) + ' &nbsp;|&nbsp; ' +
+        '<b>헤더행:</b> ' + res.header_row + '행<br>' +
+        '<b>감지 컬럼 (' + (res.columns||[]).length + '개):</b> ' + escapeHtml(cols) +
+        '</div></div>';
+
+      if (!res.duplicate) {
+        // 비중복 → 추가 확인
+        resultDiv.innerHTML = preview +
+          '<div style="background:rgba(var(--success-rgb,40,167,69),.08);border:1px solid var(--success);border-radius:6px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between">' +
+          '<span style="color:var(--success);font-weight:600">✅ 새 양식입니다. 목록에 추가하시겠습니까?</span>' +
+          '<div style="display:flex;gap:6px">' +
+          '<button type="button" class="btn btn-primary" onclick="window._atplDoSave(\'overwrite\')">➕ 추가</button>' +
+          '<button type="button" class="btn btn-ghost" onclick="window._atplCancelSave()">취소</button>' +
+          '</div></div>';
+        submitBtn.style.display = 'none';
+      } else {
+        // 중복 → 3가지 선택
+        resultDiv.innerHTML = preview +
+          '<div style="background:rgba(255,193,7,.08);border:1px solid #ffc107;border-radius:6px;padding:10px 14px">' +
+          '<div style="color:#ffc107;font-weight:600;margin-bottom:8px">⚠️ 이미 같은 이름의 양식이 존재합니다. 어떻게 할까요?</div>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
+          '<button type="button" class="btn btn-ghost" onclick="window._atplCancelSave()">🔒 기존 유지</button>' +
+          '<button type="button" style="background:var(--danger);color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer" onclick="window._atplDoSave(\'overwrite\')">🔄 대체</button>' +
+          '<button type="button" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer" onclick="window._atplDoSave(\'keep_both\')">📋 둘 다 등록</button>' +
+          '</div></div>';
+        submitBtn.style.display = 'none';
+      }
+    }
+
+    // ── 실제 저장 (action=overwrite|keep_both) ────────────
+    window._atplDoSave = function(action) {
+      if (!_pendingFile || !_pendingRes) return;
+      var label = (document.getElementById('atpl-label').value || '').trim();
+      var fd = new FormData();
+      fd.append('file', _pendingFile);
+      if (label) fd.append('label', label);
+      fd.append('action', action);
+
+      resultDiv.innerHTML = '<span style="color:var(--text-muted)">⏳ 저장 중...</span>';
+      fetch(window.API + '/api/allocation/template-upload', { method:'POST', body:fd })
+        .then(function(r){ return r.json(); })
+        .then(function(res){
           if (res.ok) {
-            var cols = (res.columns || []).join(', ');
-            resultDiv.innerHTML = [
-              '<div style="background:var(--bg-hover);border-radius:6px;padding:10px 12px;border:1px solid var(--border)">',
-              '  <div style="color:var(--success);font-weight:600;margin-bottom:6px">✅ ' + escapeHtml(res.message) + '</div>',
-              '  <div style="font-size:.83rem;color:var(--text-muted)">',
-              '    <b>ID:</b> ' + escapeHtml(res.id) + ' &nbsp;|&nbsp; ',
-              '    <b>시트:</b> ' + escapeHtml(res.sheet) + ' &nbsp;|&nbsp; ',
-              '    <b>헤더행:</b> ' + res.header_row + '행<br>',
-              '    <b>감지 컬럼:</b> ' + escapeHtml(cols),
-              '  </div>',
-              '</div>'
-            ].join('');
+            resultDiv.innerHTML = '<div style="color:var(--success);font-weight:600;padding:8px 0">✅ ' + escapeHtml(res.message) + '</div>';
             showToast('success', (res.overwritten ? '덮어쓰기' : '신규 등록') + ': ' + escapeHtml(res.tab_label));
+            submitBtn.style.display = '';
+            submitBtn.disabled = true; submitBtn.textContent = '🔍 분석';
+            _pendingFile = null; _pendingFd = null; _pendingRes = null;
+            document.getElementById('atpl-fname').textContent = '클릭 또는 파일을 여기에 드롭하세요 (.xlsx)';
+            dropZone.style.borderColor = 'var(--border)';
+            loadList();
           } else {
-            resultDiv.innerHTML = '<span style="color:var(--danger)">❌ ' + escapeHtml(res.detail || '오류') + '</span>';
-            submitBtn.disabled = false;
-            submitBtn.textContent = '📥 가져오기';
+            resultDiv.innerHTML = '<span style="color:var(--danger)">❌ ' + escapeHtml(res.detail || '저장 실패') + '</span>';
+            submitBtn.style.display = '';
+            submitBtn.disabled = false; submitBtn.textContent = '🔍 분석';
           }
         })
         .catch(function(e){
           resultDiv.innerHTML = '<span style="color:var(--danger)">❌ 통신 오류: ' + escapeHtml(e.message||String(e)) + '</span>';
-          submitBtn.disabled = false;
-          submitBtn.textContent = '📥 가져오기';
+          submitBtn.style.display = '';
+          submitBtn.disabled = false; submitBtn.textContent = '🔍 분석';
         });
-    });
+    };
+
+    window._atplCancelSave = function() {
+      resultDiv.innerHTML = '<span style="color:var(--text-muted)">취소됨. 다른 파일을 선택하거나 닫으세요.</span>';
+      submitBtn.style.display = '';
+      submitBtn.disabled = false; submitBtn.textContent = '🔍 분석';
+    };
   }
   window.showImportAllocationTemplateModal = showImportAllocationTemplateModal;
 
