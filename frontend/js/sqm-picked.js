@@ -37,12 +37,15 @@
       '<section class="page" data-page="picked">',
       '<div style="display:flex;align-items:center;gap:12px;padding:8px 0 12px">',
       '  <h2 style="margin:0">🚛 Picked - 피킹 완료 (화물 결정)</h2>',
-      '  <button class="btn btn-secondary" onclick="renderPage(\'picked\')" style="margin-left:auto">🔁 새로고침</button>',
+      '  <div style="margin-left:auto;display:flex;gap:8px;align-items:center">',
+      '    <button class="btn" onclick="window.allocRevertStep(\'PICKED\')" style="font-size:12px" title="PICKED 상태를 RESERVED로 되돌립니다">↩ PICKED &rarr; RESERVED</button>',
+      '    <button class="btn btn-secondary" onclick="renderPage(\'picked\')">🔁 새로고침</button>',
+      '  </div>',
       '</div>',
       '<div id="picked-loading" style="padding:40px;text-align:center;color:var(--text-muted)">⏳ 데이터 로딩 중...</div>',
       '<div style="overflow-x:auto">',
       '  <table class="data-table" id="picked-table" style="display:none">',
-      '  <thead><tr><th></th><th style="text-align:center">LOT No</th><th style="width:32px;text-align:center">+</th><th>피킹No</th><th>고객사</th><th>톤백수</th><th>중량(kg)</th><th>피킹일</th></tr></thead>',
+      '  <thead><tr><th></th><th style="text-align:center">LOT No</th><th style="width:32px;text-align:center">+</th><th>피킹No</th><th>고객사</th><th>톤백수</th><th>중량(kg)</th><th>MXBG</th><th>Available</th><th>Reserved</th><th>Packed</th><th>Total Bags</th><th>Remain Bags</th><th>AV</th><th>VR</th><th>AR</th><th>피킹일</th></tr></thead>',
       '  <tbody id="picked-tbody"></tbody>',
       '  </table>',
       '</div>',
@@ -62,14 +65,31 @@
       var tbody = document.getElementById('picked-tbody');
       if (tbody) tbody.innerHTML = rows.map(function(r){
         var lot = escapeHtml(r.lot_no||'');
+        var availBags = Number(r.tb_available || 0) || 0;
+        var reservedBags = Number(r.tb_reserved || 0) || 0;
+        var packedBags = Number(r.tb_picked || 0) || 0;
+        var totalBags = Number(r.total_bags != null ? r.total_bags : (r.mxbg_pallet || 0)) || 0;
+        var remainBags = Math.max(totalBags - availBags - reservedBags - packedBags, 0);
+        var availMt = Number(r.avail_mt || 0) || 0;
+        var reservedMt = Number(r.reserved_mt || 0) || 0;
+        var pickedMt = Number(r.picked_mt || 0) || 0;
         return '<tr class="picked-summary-row" data-lot="'+lot+'" style="cursor:pointer" onclick="window.togglePickedDetail(\''+lot+'\')">' +
           '<td style="width:24px;text-align:center"><span class="picked-expand-icon">▶</span></td>' +
           '<td class="mono-cell cell-left" style="color:var(--accent);font-weight:600">'+lot+'</td>' +
           '<td style="text-align:center;padding:3px 4px;width:32px">'+'<button class="btn btn-ghost btn-xs" data-lot="'+lot+'" onclick="event.stopPropagation();window.showPickedActionMenu(this)" style="font-size:15px;padding:0 4px;letter-spacing:1px" title="추가기능">⋯</button>'+'</td>' +
-          '<td class="mono-cell"'+escapeHtml(r.picking_no||'')+'</td>' +
+          '<td class="mono-cell">'+escapeHtml(r.picking_no||'')+'</td>' +
           '<td>'+escapeHtml(r.customer||r.picked_to||'')+'</td>' +
           '<td class="mono-cell" style="text-align:right">'+(r.tonbag_count||0)+'</td>' +
           '<td class="mono-cell" style="text-align:right">'+(r.total_kg!=null?fmtN(r.total_kg):'-')+'</td>' +
+          '<td class="mono-cell" style="text-align:center">'+(r.mxbg_pallet!=null?r.mxbg_pallet:'-')+'</td>' +
+          '<td class="mono-cell" style="text-align:center;color:#22c55e;font-weight:700">'+availBags+'</td>' +
+          '<td class="mono-cell" style="text-align:center;color:#3b82f6;font-weight:700">'+reservedBags+'</td>' +
+          '<td class="mono-cell" style="text-align:center;color:#f59e0b;font-weight:700">'+packedBags+'</td>' +
+          '<td class="mono-cell" style="text-align:center">'+totalBags+'</td>' +
+          '<td class="mono-cell" style="text-align:center;font-weight:700">'+remainBags+'</td>' +
+          '<td class="mono-cell" style="text-align:right;color:#22c55e;font-weight:700">'+(availMt ? availMt.toFixed(3) : '0')+'</td>' +
+          '<td class="mono-cell" style="text-align:right;color:#3b82f6;font-weight:700">'+(reservedMt ? reservedMt.toFixed(3) : '0')+'</td>' +
+          '<td class="mono-cell" style="text-align:right;color:#f59e0b;font-weight:700">'+(pickedMt ? pickedMt.toFixed(3) : '0')+'</td>' +
           '<td class="mono-cell">'+escapeHtml(r.picking_date||'')+'</td>' +
           '</tr>';
       }).join('');

@@ -36,7 +36,23 @@
       var sumSold = 0;
       var sumAvailMt = 0;
       var sumRsvMt = 0;
+      var sumPickedMt = 0;
+      var sumAvailBags = 0;
+      var sumReservedBags = 0;
+      var sumPackedBags = 0;
+      var sumTotalBags = 0;
+      var sumRemainBags = 0;
       rows.forEach(function(r){
+        var availBags = Number(r.tb_avail != null ? r.tb_avail : (r.avail_bags || 0)) || 0;
+        var reservedBags = Number(r.tb_reserved || 0) || 0;
+        var packedBags = Number(r.tb_picked || 0) || 0;
+        var totalBags = Number(r.total_bags != null ? r.total_bags : (r.mxbg_pallet || 0)) || 0;
+        var remainBags = Math.max(totalBags - availBags - reservedBags - packedBags, 0);
+        sumAvailBags += availBags;
+        sumReservedBags += reservedBags;
+        sumPackedBags += packedBags;
+        sumTotalBags += totalBags;
+        sumRemainBags += remainBags;
         if (r.balance != null && !isNaN(Number(r.balance))) {
           var bal = Number(r.balance);
           sumBal += bal;
@@ -49,6 +65,7 @@
         if (r.outbound_weight != null && !isNaN(Number(r.outbound_weight))) sumOb += Number(r.outbound_weight);
         if (r.avail_mt != null && !isNaN(Number(r.avail_mt))) sumAvailMt += Number(r.avail_mt);
         if (r.reserved_mt != null && !isNaN(Number(r.reserved_mt))) sumRsvMt += Number(r.reserved_mt);
+        if (r.picked_mt != null && !isNaN(Number(r.picked_mt))) sumPickedMt += Number(r.picked_mt);
       });
       var html = '<section class="page" data-page="inventory">' +
         '<div style="display:flex;align-items:center;gap:12px;padding:4px 0 10px">' +
@@ -76,8 +93,8 @@
         '</p>' +
         '<div style="overflow-x:auto"><table class="data-table"><thead><tr>' +
         '<th>#</th><th style="text-align:center !important">LOT</th><th style="width:32px;text-align:center">+</th><th>SAP</th><th>BL</th><th>Product</th>' +
-        '<th>Status</th><th>Balance(MT)</th><th>Avail/Rsv(MT)</th><th>NET(MT)</th><th>Container</th>' +
-        '<th>MXBG</th><th>Avail</th><th>Invoice</th>' +
+        '<th>Status</th><th>Balance(MT)</th><th>NET(MT)</th><th>Container</th>' +
+        '<th>MXBG</th><th>Available</th><th>Reserved</th><th>Packed</th><th>Total Bags</th><th>Remain Bags</th><th>AV</th><th>VR</th><th>AR</th><th>Invoice</th>' +
         '<th>Ship</th><th>Arrival</th><th>Con Return</th><th>Free</th>' +
         '<th>WH</th><th>Customs</th><th>Inbound(MT)</th><th>Outbound(MT)</th><th>Location</th><th></th>' +
         '</tr></thead><tbody>';
@@ -85,22 +102,34 @@
         var lotKey = escapeHtml(r.lot||'');
         var parentContainer = escapeHtml(r.parent_container || r.container || '-');
         var hasSample = (r.sample_bags > 0);
+        var availBags = Number(r.tb_avail != null ? r.tb_avail : (r.avail_bags || 0)) || 0;
+        var reservedBags = Number(r.tb_reserved || 0) || 0;
+        var packedBags = Number(r.tb_picked || 0) || 0;
+        var totalBags = Number(r.total_bags != null ? r.total_bags : (r.mxbg_pallet || 0)) || 0;
+        var remainBags = Math.max(totalBags - availBags - reservedBags - packedBags, 0);
         var sampleRow = '';
         if (hasSample) {
           sampleRow =
             '<tr style="background:rgba(234,179,8,0.08);border-left:3px solid #eab308">' +
             '<td class="mono-cell" style="color:#eab308;font-size:15px;text-align:center;padding:6px 10px;line-height:1.2">🔬</td>' +
             '<td class="mono-cell" style="color:#eab308;font-size:15px;font-weight:700;text-align:left;padding:6px 10px;line-height:1.2">'+lotKey+'(SP)</td>' +
+            '<td class="mono-cell" style="color:#555">—</td>' +
             '<td class="mono-cell" style="color:#94a3b8;font-size:15px;padding:6px 10px;line-height:1.2">'+escapeHtml(r.sap||'')+'</td>' +
             '<td class="mono-cell" style="color:#94a3b8;font-size:15px;padding:6px 10px;line-height:1.2">'+escapeHtml(r.bl||'')+'</td>' +
             '<td><span class="tag" style="background:rgba(234,179,8,0.2);color:#eab308">'+escapeHtml(r.product||'')+'</span></td>' +
             '<td style="font-size:15px;color:#eab308;font-weight:600;padding:6px 10px;line-height:1.2">SAMPLE</td>' +
             '<td class="mono-cell" style="text-align:right;color:#eab308;font-weight:600;padding:6px 10px;line-height:1.2">'+fmtN(r.sample_weight_mt||0)+'</td>' +
             '<td class="mono-cell" style="text-align:right;color:#eab308;padding:6px 10px;line-height:1.2">'+fmtN(r.sample_weight_mt||0)+'</td>' +
-            '<td class="mono-cell" style="text-align:right;color:#eab308;padding:6px 10px;line-height:1.2">'+fmtN(r.sample_weight_mt||0)+'</td>' +
             '<td class="mono-cell" style="font-size:15px;color:#94a3b8;padding:6px 10px;line-height:1.2">'+parentContainer+'</td>' +
             '<td class="mono-cell" style="text-align:center;color:#eab308;font-weight:700;padding:6px 10px;line-height:1.2">'+r.sample_bags+'</td>' +
             '<td class="mono-cell" style="text-align:center;color:#eab308;font-weight:700;padding:6px 10px;line-height:1.2">'+r.sample_bags+'</td>' +
+            '<td class="mono-cell" style="text-align:center;color:#555">0</td>' +
+            '<td class="mono-cell" style="text-align:center;color:#555">0</td>' +
+            '<td class="mono-cell" style="text-align:center;color:#eab308;font-weight:700">'+r.sample_bags+'</td>' +
+            '<td class="mono-cell" style="text-align:center;color:#555">0</td>' +
+            '<td class="mono-cell" style="text-align:right;color:#eab308">'+fmtN(r.sample_weight_mt||0)+'</td>' +
+            '<td class="mono-cell" style="text-align:right;color:#555">0</td>' +
+            '<td class="mono-cell" style="text-align:right;color:#555">0</td>' +
             '<td class="mono-cell" style="font-size:15px;color:#94a3b8;padding:6px 10px;line-height:1.2">'+escapeHtml(r.invoice_no||'')+'</td>' +
             '<td class="mono-cell" style="font-size:15px;color:#94a3b8;padding:6px 10px;line-height:1.2">'+escapeHtml((r.ship_date||'').slice(0,10))+'</td>' +
             '<td class="mono-cell" style="font-size:15px;color:#94a3b8;padding:6px 10px;line-height:1.2">'+escapeHtml((r.arrival_date||'').slice(0,10))+'</td>' +
@@ -139,11 +168,6 @@
           '<td><span class="tag">'+escapeHtml(r.product||'')+'</span></td>' +
           '<td><span class="tag" style="background:'+statusBadgeBg+';color:'+statusBadgeColor+';font-weight:700">'+escapeHtml(statusLabel)+'</span></td>' +
           '<td class="mono-cell" style="text-align:right">'+(r.balance!=null?fmtN(r.balance):'-')+'</td>' +
-          '<td class="mono-cell" style="text-align:right">'
-            + '<span style="color:#22c55e;font-weight:700">'+(r.avail_mt!=null?fmtN(r.avail_mt):'-')+'</span>'
-            + '<span style="color:#94a3b8;font-size:11px"> / </span>'
-            + '<span style="color:#3b82f6">'+(r.reserved_mt!=null&&r.reserved_mt>0?'▲'+fmtN(r.reserved_mt):'0')+'</span>'
-          + '</td>' +
           '<td class="mono-cell" style="text-align:right">'+(r.net!=null?fmtN(r.net):'-')+'</td>' +
           '<td class="mono-cell">'+parentContainer+'</td>' +
           '<td class="mono-cell" style="text-align:center;padding:6px 10px;line-height:1.2">' +
@@ -153,7 +177,14 @@
             + r.mxbg_pallet + '</button>'
             : '-') +
           '</td>' +
-          '<td class="mono-cell" style="text-align:center">'+(r.avail_bags!=null?r.avail_bags:'-')+'</td>' +
+          '<td class="mono-cell" style="text-align:center;color:#22c55e;font-weight:700">'+availBags+'</td>' +
+          '<td class="mono-cell" style="text-align:center;color:#3b82f6;font-weight:700">'+reservedBags+'</td>' +
+          '<td class="mono-cell" style="text-align:center;color:#f59e0b;font-weight:700">'+packedBags+'</td>' +
+          '<td class="mono-cell" style="text-align:center">'+totalBags+'</td>' +
+          '<td class="mono-cell" style="text-align:center;font-weight:700">'+remainBags+'</td>' +
+          '<td class="mono-cell" style="text-align:right;color:#22c55e;font-weight:700">'+(r.avail_mt!=null?fmtN(r.avail_mt):'-')+'</td>' +
+          '<td class="mono-cell" style="text-align:right;color:#3b82f6;font-weight:700">'+(r.reserved_mt!=null?fmtN(r.reserved_mt):'-')+'</td>' +
+          '<td class="mono-cell" style="text-align:right;color:#f59e0b;font-weight:700">'+(r.picked_mt!=null?fmtN(r.picked_mt):'-')+'</td>' +
           '<td class="mono-cell">'+escapeHtml(r.invoice_no||'')+'</td>' +
           '<td class="mono-cell">'+escapeHtml((r.ship_date||'').slice(0,10))+'</td>' +
           '<td class="mono-cell">'+escapeHtml((r.arrival_date||'').slice(0,10))+'</td>' +
@@ -171,9 +202,17 @@
       html += '</tbody><tfoot><tr style="background:var(--panel);font-weight:700">';
       html += '<td colspan="7" style="text-align:right;padding:8px 10px">합계 ('+rows.length+' LOT) · 미판매 '+fmtN(sumUnsold)+' / <span style="color:#ef4444;font-weight:700">판매완료 '+fmtN(sumSold)+'</span></td>';
       html += '<td class="mono-cell" style="text-align:right">'+fmtN(sumBal)+'</td>';
-      html += '<td class="mono-cell" style="text-align:right">' + '<span style="color:#22c55e;font-weight:700">'+fmtN(sumAvailMt)+'</span>' + '<span style="color:#94a3b8;font-size:11px"> / </span>' + '<span style="color:#3b82f6">'+fmtN(sumRsvMt)+'</span>' + '</td>';
       html += '<td class="mono-cell" style="text-align:right">'+fmtN(sumNet)+'</td>';
-      html += '<td colspan="10"></td>';
+      html += '<td colspan="2"></td>';
+      html += '<td class="mono-cell" style="text-align:center;color:#22c55e">'+sumAvailBags+'</td>';
+      html += '<td class="mono-cell" style="text-align:center;color:#3b82f6">'+sumReservedBags+'</td>';
+      html += '<td class="mono-cell" style="text-align:center;color:#f59e0b">'+sumPackedBags+'</td>';
+      html += '<td class="mono-cell" style="text-align:center">'+sumTotalBags+'</td>';
+      html += '<td class="mono-cell" style="text-align:center">'+sumRemainBags+'</td>';
+      html += '<td class="mono-cell" style="text-align:right;color:#22c55e">'+fmtN(sumAvailMt)+'</td>';
+      html += '<td class="mono-cell" style="text-align:right;color:#3b82f6">'+fmtN(sumRsvMt)+'</td>';
+      html += '<td class="mono-cell" style="text-align:right;color:#f59e0b">'+fmtN(sumPickedMt)+'</td>';
+      html += '<td colspan="7"></td>';
       html += '<td class="mono-cell" style="text-align:right">'+fmtN(sumIni)+'</td>';
       html += '<td class="mono-cell" style="text-align:right">'+fmtN(sumOb)+'</td>';
       html += '<td colspan="2"></td>';
@@ -204,10 +243,10 @@
       var cells = tr.querySelectorAll('td');
       if (!cells.length) return;
       var lot    = (cells[1] ? cells[1].textContent : '').toLowerCase();
-      var sap    = (cells[2] ? cells[2].textContent : '').toLowerCase();
-      var bl     = (cells[3] ? cells[3].textContent : '').toLowerCase();
-      var prod   = (cells[4] ? cells[4].textContent : '').toLowerCase();
-      var status = (cells[5] ? cells[5].textContent.trim() : '').toUpperCase();
+      var sap    = (cells[3] ? cells[3].textContent : '').toLowerCase();
+      var bl     = (cells[4] ? cells[4].textContent : '').toLowerCase();
+      var prod   = (cells[5] ? cells[5].textContent : '').toLowerCase();
+      var status = (cells[6] ? cells[6].textContent.trim() : '').toUpperCase();
 
       var matchStatus = !statusVal || status === statusVal;
       var matchSearch = !searchVal ||
@@ -415,11 +454,26 @@
       }
       // 헤더 (색상 강조 — Available 전용)
       var sumBal = 0, sumNet = 0, sumIni = 0, sumOb = 0;
+      var sumAvailMt = 0, sumRsvMt = 0, sumPickedMt = 0;
+      var sumAvailBags = 0, sumReservedBags = 0, sumPackedBags = 0, sumTotalBags = 0, sumRemainBags = 0;
       rows.forEach(function(r) {
+        var availBags = Number(r.tb_avail != null ? r.tb_avail : (r.avail_bags || 0)) || 0;
+        var reservedBags = Number(r.tb_reserved || 0) || 0;
+        var packedBags = Number(r.tb_picked || 0) || 0;
+        var totalBags = Number(r.total_bags != null ? r.total_bags : (r.mxbg_pallet || 0)) || 0;
+        var remainBags = Math.max(totalBags - availBags - reservedBags - packedBags, 0);
+        sumAvailBags += availBags;
+        sumReservedBags += reservedBags;
+        sumPackedBags += packedBags;
+        sumTotalBags += totalBags;
+        sumRemainBags += remainBags;
         if (r.balance != null && !isNaN(Number(r.balance))) sumBal += Number(r.balance);
         if (r.net     != null && !isNaN(Number(r.net)))     sumNet += Number(r.net);
         if (r.initial_weight != null) sumIni += Number(r.initial_weight);
         if (r.outbound_weight != null) sumOb  += Number(r.outbound_weight);
+        if (r.avail_mt != null && !isNaN(Number(r.avail_mt))) sumAvailMt += Number(r.avail_mt);
+        if (r.reserved_mt != null && !isNaN(Number(r.reserved_mt))) sumRsvMt += Number(r.reserved_mt);
+        if (r.picked_mt != null && !isNaN(Number(r.picked_mt))) sumPickedMt += Number(r.picked_mt);
       });
       var html = '<section style="padding:12px 16px">'
         + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">'
@@ -429,8 +483,8 @@
         + '</div>'
         + '<div style="overflow-x:auto"><table class="data-table"><thead><tr>'
         + '<th>#</th><th style="text-align:center">LOT</th><th style="width:32px;text-align:center">+</th><th>SAP</th><th>BL</th><th>Product</th>'
-        + '<th>Status</th><th>Balance(MT)</th><th>Avail/Rsv(MT)</th><th>NET(MT)</th><th>Container</th>'
-        + '<th>MXBG</th><th>Avail</th><th>Invoice</th>'
+        + '<th>Status</th><th>Balance(MT)</th><th>NET(MT)</th><th>Container</th>'
+        + '<th>MXBG</th><th>Available</th><th>Reserved</th><th>Packed</th><th>Total Bags</th><th>Remain Bags</th><th>AV</th><th>VR</th><th>AR</th><th>Invoice</th>'
         + '<th>Ship</th><th>Arrival</th><th>WH</th><th>Customs</th>'
         + '<th>Inbound(MT)</th><th>Location</th><th></th>'
         + '</tr></thead><tbody>';
@@ -438,40 +492,47 @@
         var lotKey = escapeHtml(r.lot||'');
         var hasSample = (r.sample_bags > 0);
         var parentContainer = escapeHtml(r.container || '-');
+        var availBags = Number(r.tb_avail != null ? r.tb_avail : (r.avail_bags || 0)) || 0;
+        var reservedBags = Number(r.tb_reserved || 0) || 0;
+        var packedBags = Number(r.tb_picked || 0) || 0;
+        var totalBags = Number(r.total_bags != null ? r.total_bags : (r.mxbg_pallet || 0)) || 0;
+        var remainBags = Math.max(totalBags - availBags - reservedBags - packedBags, 0);
         var sampleRow = '';
         if (hasSample) {
           sampleRow =
             '<tr style="background:rgba(234,179,8,0.08);border-left:3px solid #eab308">' +
             '<td class="mono-cell" style="color:#eab308;text-align:center;padding:6px 10px">🔬</td>' +
             '<td class="mono-cell cell-left" style="color:#eab308;font-weight:700;padding:6px 10px">' + lotKey + '(SP)</td>' +
+            '<td class="mono-cell" style="color:#555">—</td>' +
             '<td class="mono-cell" style="color:#94a3b8">' + escapeHtml(r.sap||'') + '</td>' +
             '<td class="mono-cell" style="color:#94a3b8">' + escapeHtml(r.bl||'') + '</td>' +
             '<td><span class="tag" style="background:rgba(234,179,8,0.2);color:#eab308">' + escapeHtml(r.product||'') + '</span></td>' +
             '<td style="color:#eab308;font-weight:600">SAMPLE</td>' +
             '<td class="mono-cell" style="text-align:right;color:#eab308;font-weight:600">' + fmtN(r.sample_weight_mt||0) + '</td>' +
             '<td class="mono-cell" style="text-align:right;color:#eab308">' + fmtN(r.sample_weight_mt||0) + '</td>' +
-            '<td class="mono-cell" style="text-align:right;color:#eab308">' + fmtN(r.sample_weight_mt||0) + '</td>' +
             '<td class="mono-cell" style="color:#94a3b8">' + parentContainer + '</td>' +
             '<td class="mono-cell" style="text-align:center;color:#eab308;font-weight:700">' + r.sample_bags + '</td>' +
             '<td class="mono-cell" style="text-align:center;color:#eab308;font-weight:700">' + r.sample_bags + '</td>' +
-            '<td colspan="7" style="color:#555">—</td>' +
-            '<td></td><td></td>' +
+            '<td class="mono-cell" style="text-align:center;color:#555">0</td>' +
+            '<td class="mono-cell" style="text-align:center;color:#555">0</td>' +
+            '<td class="mono-cell" style="text-align:center;color:#eab308;font-weight:700">' + r.sample_bags + '</td>' +
+            '<td class="mono-cell" style="text-align:center;color:#555">0</td>' +
+            '<td class="mono-cell" style="text-align:right;color:#eab308">' + fmtN(r.sample_weight_mt||0) + '</td>' +
+            '<td class="mono-cell" style="text-align:right;color:#555">0</td>' +
+            '<td class="mono-cell" style="text-align:right;color:#555">0</td>' +
+            '<td colspan="8" style="color:#555">—</td>' +
             '</tr>';
         }
         var mainRow =
           '<tr style="' + (hasSample ? 'border-left:3px solid #22c55e' : '') + '">'
           + '<td class="mono-cell" style="color:var(--text-muted)">' + (i+1) + '</td>'
           + '<td class="mono-cell cell-left" style="color:var(--accent);font-weight:600;padding:6px 10px">' + lotKey + '</td>'
+          + '<td style="text-align:center;padding:3px 4px;width:32px"><button class="btn btn-ghost btn-xs" data-lot="' + lotKey + '" onclick="window.showInvActionMenu(this)" style="font-size:15px;padding:0 4px;letter-spacing:1px" title="추가기능">⋯</button></td>'
           + '<td class="mono-cell">' + escapeHtml(r.sap||'') + '</td>'
           + '<td class="mono-cell">' + escapeHtml(r.bl||'') + '</td>'
           + '<td><span class="tag">' + escapeHtml(r.product||'') + '</span></td>'
           + '<td><span class="tag" style="background:rgba(34,197,94,0.15);color:#22c55e">✅ AVAILABLE</span></td>'
           + '<td class="mono-cell" style="text-align:right">' + (r.balance!=null?fmtN(r.balance):'-') + '</td>'
-          + '<td class="mono-cell" style="text-align:right">'
-            + '<span style="color:#22c55e;font-weight:700">' + (r.avail_mt!=null?fmtN(r.avail_mt):'-') + '</span>'
-            + '<span style="color:#94a3b8;font-size:11px"> / </span>'
-            + '<span style="color:#3b82f6">' + (r.reserved_mt!=null&&r.reserved_mt>0?'▲'+fmtN(r.reserved_mt):'0') + '</span>'
-          + '</td>'
           + '<td class="mono-cell" style="text-align:right">' + (r.net!=null?fmtN(r.net):'-') + '</td>'
           + '<td class="mono-cell">' + escapeHtml(r.container||'') + '</td>'
           + '<td class="mono-cell" style="text-align:center">'
@@ -480,7 +541,14 @@
                 + 'data-lot="' + lotKey + '" onclick="window.showTonbagModal(this.dataset.lot)">' + r.mxbg_pallet + '</button>'
               : '-')
           + '</td>'
-          + '<td class="mono-cell" style="text-align:center">' + (r.avail_bags!=null?r.avail_bags:'-') + '</td>'
+          + '<td class="mono-cell" style="text-align:center;color:#22c55e;font-weight:700">' + availBags + '</td>'
+          + '<td class="mono-cell" style="text-align:center;color:#3b82f6;font-weight:700">' + reservedBags + '</td>'
+          + '<td class="mono-cell" style="text-align:center;color:#f59e0b;font-weight:700">' + packedBags + '</td>'
+          + '<td class="mono-cell" style="text-align:center">' + totalBags + '</td>'
+          + '<td class="mono-cell" style="text-align:center;font-weight:700">' + remainBags + '</td>'
+          + '<td class="mono-cell" style="text-align:right;color:#22c55e;font-weight:700">' + (r.avail_mt!=null?fmtN(r.avail_mt):'-') + '</td>'
+          + '<td class="mono-cell" style="text-align:right;color:#3b82f6;font-weight:700">' + (r.reserved_mt!=null?fmtN(r.reserved_mt):'-') + '</td>'
+          + '<td class="mono-cell" style="text-align:right;color:#f59e0b;font-weight:700">' + (r.picked_mt!=null?fmtN(r.picked_mt):'-') + '</td>'
           + '<td class="mono-cell">' + escapeHtml(r.invoice_no||'') + '</td>'
           + '<td class="mono-cell">' + escapeHtml((r.ship_date||'').slice(0,10)) + '</td>'
           + '<td class="mono-cell">' + escapeHtml((r.arrival_date||'').slice(0,10)) + '</td>'
@@ -495,9 +563,17 @@
       html += '</tbody><tfoot><tr style="background:var(--panel);font-weight:700">';
       html += '<td colspan="6" style="text-align:right;padding:8px 10px">합계 (' + rows.length + ' LOT)</td>';
       html += '<td class="mono-cell" style="text-align:right">' + fmtN(sumBal) + '</td>';
-      html += '<td></td>';
       html += '<td class="mono-cell" style="text-align:right">' + fmtN(sumNet) + '</td>';
-      html += '<td colspan="8"></td>';
+      html += '<td colspan="2"></td>';
+      html += '<td class="mono-cell" style="text-align:center;color:#22c55e">' + sumAvailBags + '</td>';
+      html += '<td class="mono-cell" style="text-align:center;color:#3b82f6">' + sumReservedBags + '</td>';
+      html += '<td class="mono-cell" style="text-align:center;color:#f59e0b">' + sumPackedBags + '</td>';
+      html += '<td class="mono-cell" style="text-align:center">' + sumTotalBags + '</td>';
+      html += '<td class="mono-cell" style="text-align:center">' + sumRemainBags + '</td>';
+      html += '<td class="mono-cell" style="text-align:right;color:#22c55e">' + fmtN(sumAvailMt) + '</td>';
+      html += '<td class="mono-cell" style="text-align:right;color:#3b82f6">' + fmtN(sumRsvMt) + '</td>';
+      html += '<td class="mono-cell" style="text-align:right;color:#f59e0b">' + fmtN(sumPickedMt) + '</td>';
+      html += '<td colspan="5"></td>';
       html += '<td class="mono-cell" style="text-align:right">' + fmtN(sumIni) + '</td>';
       html += '<td colspan="2"></td>';
       html += '</tr></tfoot></table></div></section>';

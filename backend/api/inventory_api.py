@@ -91,6 +91,9 @@ def get_inventory(
                  WHERE t.lot_no = i.lot_no AND t.status = 'PICKED' AND t.is_sample = 0
                 ) AS tb_picked,
                 (SELECT COUNT(*) FROM inventory_tonbag t
+                 WHERE t.lot_no = i.lot_no AND t.is_sample = 0
+                ) AS total_bags,
+                (SELECT COUNT(*) FROM inventory_tonbag t
                  WHERE t.lot_no = i.lot_no AND t.status IN ('SOLD','OUTBOUND','CONFIRMED','SHIPPED') AND t.is_sample = 0
                 ) AS tb_sold,
                 (SELECT COUNT(*) FROM inventory_tonbag t

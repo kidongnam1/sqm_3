@@ -410,16 +410,33 @@ def get_picked_list(limit: int = 500):
         con = _db()
         rows = con.execute("""
             SELECT
-                lot_no,
-                customer,
-                picking_no,
+                p.lot_no,
+                p.customer,
+                p.picking_no,
                 COUNT(*)                       AS tonbag_count,
-                SUM(COALESCE(qty_kg, 0))       AS total_kg,
-                MIN(picking_date)              AS picking_date
-            FROM picking_table
-            WHERE status = 'ACTIVE'
-            GROUP BY lot_no, picking_no
-            ORDER BY picking_date DESC, lot_no
+                SUM(COALESCE(p.qty_kg, 0))     AS total_kg,
+                MIN(p.picking_date)            AS picking_date,
+                i.product,
+                i.mxbg_pallet,
+                (SELECT COUNT(*) FROM inventory_tonbag t
+                 WHERE t.lot_no = p.lot_no AND COALESCE(t.is_sample, 0) = 0) AS total_bags,
+                (SELECT COUNT(*) FROM inventory_tonbag t
+                 WHERE t.lot_no = p.lot_no AND t.status = 'AVAILABLE' AND COALESCE(t.is_sample, 0) = 0) AS tb_available,
+                (SELECT COUNT(*) FROM inventory_tonbag t
+                 WHERE t.lot_no = p.lot_no AND t.status = 'RESERVED' AND COALESCE(t.is_sample, 0) = 0) AS tb_reserved,
+                (SELECT COUNT(*) FROM inventory_tonbag t
+                 WHERE t.lot_no = p.lot_no AND t.status = 'PICKED' AND COALESCE(t.is_sample, 0) = 0) AS tb_picked,
+                ROUND((SELECT COALESCE(SUM(t.weight), 0) FROM inventory_tonbag t
+                 WHERE t.lot_no = p.lot_no AND t.status = 'AVAILABLE' AND COALESCE(t.is_sample, 0) = 0) / 1000.0, 3) AS avail_mt,
+                ROUND((SELECT COALESCE(SUM(t.weight), 0) FROM inventory_tonbag t
+                 WHERE t.lot_no = p.lot_no AND t.status = 'RESERVED' AND COALESCE(t.is_sample, 0) = 0) / 1000.0, 3) AS reserved_mt,
+                ROUND((SELECT COALESCE(SUM(t.weight), 0) FROM inventory_tonbag t
+                 WHERE t.lot_no = p.lot_no AND t.status = 'PICKED' AND COALESCE(t.is_sample, 0) = 0) / 1000.0, 3) AS picked_mt
+            FROM picking_table p
+            LEFT JOIN inventory i ON i.lot_no = p.lot_no
+            WHERE p.status = 'ACTIVE'
+            GROUP BY p.lot_no, p.picking_no, i.product, i.mxbg_pallet
+            ORDER BY picking_date DESC, p.lot_no
             LIMIT ?
         """, (limit,)).fetchall()
         con.close()
@@ -427,7 +444,9 @@ def get_picked_list(limit: int = 500):
             "items": _rows_to_list(rows),
             "total": len(rows),
             "columns": ["lot_no", "customer", "picking_no",
-                        "tonbag_count", "total_kg", "picking_date"]
+                        "tonbag_count", "total_kg", "picking_date",
+                        "product", "mxbg_pallet", "total_bags", "tb_available",
+                        "tb_reserved", "tb_picked", "avail_mt", "reserved_mt", "picked_mt"]
         })
     except Exception as e:
         logger.error("picked-list error: %s", e)
@@ -539,19 +558,35 @@ def get_allocation_summary():
                    MAX(ap.status)                                    AS status,
                    i.sap_no,
                    i.product,
-                   COALESCE(i.warehouse, 'GY')                      AS warehouse
+                   COALESCE(i.warehouse, 'GY')                      AS warehouse,
+                   i.mxbg_pallet,
+                   (SELECT COUNT(*) FROM inventory_tonbag t
+                    WHERE t.lot_no = ap.lot_no AND COALESCE(t.is_sample, 0) = 0) AS total_bags,
+                   (SELECT COUNT(*) FROM inventory_tonbag t
+                    WHERE t.lot_no = ap.lot_no AND t.status = 'AVAILABLE' AND COALESCE(t.is_sample, 0) = 0) AS tb_available,
+                   (SELECT COUNT(*) FROM inventory_tonbag t
+                    WHERE t.lot_no = ap.lot_no AND t.status = 'RESERVED' AND COALESCE(t.is_sample, 0) = 0) AS tb_reserved,
+                   (SELECT COUNT(*) FROM inventory_tonbag t
+                    WHERE t.lot_no = ap.lot_no AND t.status = 'PICKED' AND COALESCE(t.is_sample, 0) = 0) AS tb_picked,
+                   ROUND((SELECT COALESCE(SUM(t.weight), 0) FROM inventory_tonbag t
+                    WHERE t.lot_no = ap.lot_no AND t.status = 'AVAILABLE' AND COALESCE(t.is_sample, 0) = 0) / 1000.0, 3) AS avail_mt,
+                   ROUND((SELECT COALESCE(SUM(t.weight), 0) FROM inventory_tonbag t
+                    WHERE t.lot_no = ap.lot_no AND t.status = 'RESERVED' AND COALESCE(t.is_sample, 0) = 0) / 1000.0, 3) AS reserved_mt,
+                   ROUND((SELECT COALESCE(SUM(t.weight), 0) FROM inventory_tonbag t
+                    WHERE t.lot_no = ap.lot_no AND t.status = 'PICKED' AND COALESCE(t.is_sample, 0) = 0) / 1000.0, 3) AS picked_mt
             FROM allocation_plan ap
             LEFT JOIN inventory i ON ap.lot_no = i.lot_no
             WHERE ap.status NOT IN ('CANCELLED')
             GROUP BY ap.lot_no, COALESCE(date(ap.outbound_date), '0000-00-00'),
-                     i.sap_no, i.product, i.warehouse
+                     i.sap_no, i.product, i.warehouse, i.mxbg_pallet
             ORDER BY ap.status, ap.lot_no, plan_date
         """).fetchall()
         con.close()
         return ok_response(data={
             "items": _rows_to_list(rows),
             "total": len(rows),
-            "columns": ["lot_no", "customer", "total_mt", "tonbag_count", "plan_date", "sale_ref", "outbound_date", "status", "sap_no", "product", "warehouse"]
+            "columns": ["lot_no", "customer", "total_mt", "tonbag_count", "plan_date", "sale_ref", "outbound_date", "status", "sap_no", "product", "warehouse",
+                        "mxbg_pallet", "total_bags", "tb_available", "tb_reserved", "tb_picked", "avail_mt", "reserved_mt", "picked_mt"]
         })
     except Exception as e:
         logger.error("allocation-summary error: %s", e)
@@ -638,7 +673,7 @@ def get_tonbag_detail(lot_no: str = ""):
                        t.tonbag_uid, t.inbound_date, t.picked_to, t.picked_date
                 FROM inventory_tonbag t
                 WHERE t.lot_no = ?
-                ORDER BY t.sub_lt
+               ORDER BY t.sub_lt
             """, (lot_no,)).fetchall()
         else:
             rows = []

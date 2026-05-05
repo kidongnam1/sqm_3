@@ -67,8 +67,6 @@
       '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;background:var(--panel);border:1px solid var(--panel-border);border-radius:6px;margin-bottom:8px">',
       '  <span style="font-size:12px;font-weight:600;white-space:nowrap">&#x21A9; 단계 되돌리기:</span>',
       '  <button class="btn" onclick="window.allocRevertStep(\'RESERVED\')" style="font-size:12px">RESERVED &rarr; AVAILABLE</button>',
-      '  <button class="btn" onclick="window.allocRevertStep(\'PICKED\')" style="font-size:12px">PICKED &rarr; RESERVED</button>',
-      '  <button class="btn" onclick="window.allocRevertStep(\'OUTBOUND\')" style="font-size:12px">OUTBOUND &rarr; PICKED</button>',
       '</div>',
       /* ── 상태 필터 ── */
       '<div class="alloc-filter" style="display:flex;gap:4px;margin-bottom:8px">',
@@ -90,6 +88,15 @@
       '    <th>SAP NO</th>',
       '    <th>PRODUCT</th>',
       '    <th style="text-align:right">QTY (MT)</th>',
+      '    <th>MXBG</th>',
+      '    <th>Available</th>',
+      '    <th>Reserved</th>',
+      '    <th>Packed</th>',
+      '    <th>Total Bags</th>',
+      '    <th>Remain Bags</th>',
+      '    <th>AV</th>',
+      '    <th>VR</th>',
+      '    <th>AR</th>',
       '    <th>CUSTOMER</th>',
       '    <th>SALE REF</th>',
       '    <th>OUTBOUND DATE</th>',
@@ -153,11 +160,29 @@
     if (lbl) lbl.textContent = '(' + rows.length + '/' + _allocState.rows.length + '건)';
 
     var totalMt = 0;
+    var sumAvailBags = 0, sumReservedBags = 0, sumPackedBags = 0, sumTotalBags = 0, sumRemainBags = 0;
+    var sumAvailMt = 0, sumReservedMt = 0, sumPickedMt = 0;
     /* [Sprint 1-1-D] 편집 가능 셀에 data-lot/data-field + ondblclick + oncontextmenu */
     tbody.innerHTML = rows.map(function(r, i){
       var lot = escapeHtml(r.lot_no || '');
       var qtyMt = (r.total_mt != null) ? Number(r.total_mt) : (r.qty_mt != null ? Number(r.qty_mt) : 0);
       if (!isNaN(qtyMt)) totalMt += qtyMt;
+      var availBags = Number(r.tb_available || 0) || 0;
+      var reservedBags = Number(r.tb_reserved || 0) || 0;
+      var packedBags = Number(r.tb_picked || 0) || 0;
+      var totalBags = Number(r.total_bags != null ? r.total_bags : (r.mxbg_pallet || 0)) || 0;
+      var remainBags = Math.max(totalBags - availBags - reservedBags - packedBags, 0);
+      var availMt = Number(r.avail_mt || 0) || 0;
+      var reservedMt = Number(r.reserved_mt || 0) || 0;
+      var pickedMt = Number(r.picked_mt || 0) || 0;
+      sumAvailBags += availBags;
+      sumReservedBags += reservedBags;
+      sumPackedBags += packedBags;
+      sumTotalBags += totalBags;
+      sumRemainBags += remainBags;
+      sumAvailMt += availMt;
+      sumReservedMt += reservedMt;
+      sumPickedMt += pickedMt;
       var status = (r.status || 'RESERVED').toUpperCase();
       var pal = allocStatusPalette(status);
       var checked = _allocState.selectedLots.has(lot) ? 'checked' : '';
@@ -179,6 +204,15 @@
         '<td class="mono-cell">' + escapeHtml(r.sap_no || '-') + '</td>' +
         '<td>' + escapeHtml(r.product || '-') + '</td>' +
         editTd('qty_mt', (qtyMt ? qtyMt.toFixed(4) : '-'), 'mono-cell', 'text-align:right') +
+        '<td class="mono-cell" style="text-align:center">' + (r.mxbg_pallet != null ? r.mxbg_pallet : '-') + '</td>' +
+        '<td class="mono-cell" style="text-align:center;color:#22c55e;font-weight:700">' + availBags + '</td>' +
+        '<td class="mono-cell" style="text-align:center;color:#3b82f6;font-weight:700">' + reservedBags + '</td>' +
+        '<td class="mono-cell" style="text-align:center;color:#f59e0b;font-weight:700">' + packedBags + '</td>' +
+        '<td class="mono-cell" style="text-align:center">' + totalBags + '</td>' +
+        '<td class="mono-cell" style="text-align:center;font-weight:700">' + remainBags + '</td>' +
+        '<td class="mono-cell" style="text-align:right;color:#22c55e;font-weight:700">' + (availMt ? availMt.toFixed(3) : '0') + '</td>' +
+        '<td class="mono-cell" style="text-align:right;color:#3b82f6;font-weight:700">' + (reservedMt ? reservedMt.toFixed(3) : '0') + '</td>' +
+        '<td class="mono-cell" style="text-align:right;color:#f59e0b;font-weight:700">' + (pickedMt ? pickedMt.toFixed(3) : '0') + '</td>' +
         editTd('customer', escapeHtml(r.customer || r.sold_to || '-'), '', '') +
         editTd('sale_ref', escapeHtml(r.sale_ref || '-'), 'mono-cell', '') +
         editTd('outbound_date', escapeHtml(r.outbound_date || r.ship_date || '-'), 'mono-cell', '') +
@@ -190,8 +224,17 @@
     /* Footer 합계 (v864-2 TreeviewTotalFooter 매칭) */
     tfoot.innerHTML =
       '<tr style="background:var(--panel);font-weight:700">' +
-      '<td colspan="6" style="text-align:right">합계:</td>' +
+      '<td colspan="5" style="text-align:right">합계:</td>' +
       '<td class="mono-cell" style="text-align:right">' + totalMt.toFixed(4) + ' MT</td>' +
+      '<td></td>' +
+      '<td class="mono-cell" style="text-align:center;color:#22c55e">' + sumAvailBags + '</td>' +
+      '<td class="mono-cell" style="text-align:center;color:#3b82f6">' + sumReservedBags + '</td>' +
+      '<td class="mono-cell" style="text-align:center;color:#f59e0b">' + sumPackedBags + '</td>' +
+      '<td class="mono-cell" style="text-align:center">' + sumTotalBags + '</td>' +
+      '<td class="mono-cell" style="text-align:center">' + sumRemainBags + '</td>' +
+      '<td class="mono-cell" style="text-align:right;color:#22c55e">' + sumAvailMt.toFixed(3) + '</td>' +
+      '<td class="mono-cell" style="text-align:right;color:#3b82f6">' + sumReservedMt.toFixed(3) + '</td>' +
+      '<td class="mono-cell" style="text-align:right;color:#f59e0b">' + sumPickedMt.toFixed(3) + '</td>' +
       '<td colspan="5"></td>' +
       '</tr>';
   }

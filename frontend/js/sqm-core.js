@@ -600,6 +600,116 @@
     });
   }
 
+  function _tableExportFileName(table) {
+    var section = table.closest('section,[data-page],#sqm-modal-content,.sqm-float-modal');
+    var titleEl = section && section.querySelector('h1,h2,h3');
+    var title = titleEl ? titleEl.textContent : (_currentRoute || 'table');
+    title = String(title || 'table')
+      .replace(/[\\/:*?"<>|]/g, '_')
+      .replace(/\s+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .slice(0, 60) || 'table';
+    var now = new Date();
+    var stamp = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+      '_',
+      String(now.getHours()).padStart(2, '0'),
+      String(now.getMinutes()).padStart(2, '0'),
+      String(now.getSeconds()).padStart(2, '0')
+    ].join('');
+    return title + '_' + stamp + '.xls';
+  }
+
+  function _cellText(cell) {
+    return String(cell ? cell.textContent : '')
+      .replace(/\s+/g, ' ')
+      .replace(/^\s+|\s+$/g, '');
+  }
+
+  function exportTableToExcel(table, filename) {
+    if (!table) return;
+    var rows = Array.from(table.querySelectorAll('tr')).filter(function(tr) {
+      return getComputedStyle(tr).display !== 'none';
+    });
+    if (!rows.length) {
+      showToast('warning', '내보낼 표 데이터가 없습니다');
+      return;
+    }
+    var htmlRows = rows.map(function(tr) {
+      var cells = Array.from(tr.children).filter(function(cell) {
+        return /^(TD|TH)$/.test(cell.tagName) && getComputedStyle(cell).display !== 'none';
+      });
+      return '<tr>' + cells.map(function(cell) {
+        var tag = cell.tagName === 'TH' ? 'th' : 'td';
+        var align = cell.style && cell.style.textAlign ? cell.style.textAlign : '';
+        var style = align ? ' style="text-align:' + escapeHtml(align) + '"' : '';
+        return '<' + tag + style + '>' + escapeHtml(_cellText(cell)) + '</' + tag + '>';
+      }).join('') + '</tr>';
+    }).join('');
+    var doc =
+      '<html><head><meta charset="utf-8">' +
+      '<style>table{border-collapse:collapse}th,td{border:1px solid #999;padding:4px 8px;white-space:nowrap}th{background:#e9eef5;font-weight:bold}</style>' +
+      '</head><body><table>' + htmlRows + '</table></body></html>';
+    var blob = new Blob(['\ufeff', doc], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename || _tableExportFileName(table);
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() {
+      URL.revokeObjectURL(url);
+      if (a.parentNode) a.parentNode.removeChild(a);
+    }, 0);
+    showToast('success', 'Excel 내보내기 완료: ' + a.download);
+  }
+
+  function enhanceDataTables(root) {
+    var scope = root && root.querySelectorAll ? root : document;
+    scope.querySelectorAll('table.data-table').forEach(function(table) {
+      if (table.dataset.sqmExcelReady === '1') return;
+      table.dataset.sqmExcelReady = '1';
+      var parent = table.parentElement;
+      if (parent && !parent.classList.contains('sqm-table-scroll') && parent.children.length === 1) {
+        parent.classList.add('sqm-table-scroll');
+      }
+      var host = document.createElement('div');
+      host.className = 'sqm-table-export-bar';
+      host.innerHTML =
+        '<button type="button" class="btn btn-ghost btn-xs sqm-table-export-btn" data-sqm-tip="현재 표를 Excel 파일로 내보냅니다">Excel 내보내기</button>';
+      var btn = host.querySelector('button');
+      btn.addEventListener('click', function(ev) {
+        ev.preventDefault();
+        ev.stopPropagation();
+        exportTableToExcel(table);
+      });
+      if (parent && parent.classList.contains('sqm-table-scroll')) {
+        parent.parentNode.insertBefore(host, parent);
+      } else {
+        table.parentNode.insertBefore(host, table);
+      }
+    });
+  }
+
+  function initGlobalTableTools() {
+    enhanceDataTables(document);
+    var observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(m) {
+        m.addedNodes.forEach(function(node) {
+          if (node.nodeType !== 1) return;
+          if (node.matches && node.matches('table.data-table')) {
+            enhanceDataTables(node.parentNode || document);
+          } else {
+            enhanceDataTables(node);
+          }
+        });
+      });
+    });
+    observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
+  }
+
   function ensureToastContainer() {
     var c = document.getElementById('toast-container');
     if (!c) {
@@ -825,6 +935,8 @@
       case 'tonbag':     window.loadTonbagPage();     break;
       default:           loadStubPage(route);  break;
     }
+    setTimeout(function(){ enhanceDataTables(document); }, 0);
+    setTimeout(function(){ enhanceDataTables(document); }, 400);
   }
 
   function loadStubPage(route) {
@@ -837,6 +949,8 @@
   window.closeAllMenus   = closeAllMenus;
   window.getStore        = getStore;
   window.escapeHtml        = escapeHtml;
+  window.exportTableToExcel = exportTableToExcel;
+  window.enhanceDataTables  = enhanceDataTables;
   window.getCurrentRoute   = function() { return _currentRoute; };
   window.dbgLog            = dbgLog;
   window._dbgBuild              = _dbgBuild;
@@ -850,6 +964,12 @@
   window.sqmDownloadFileUrl     = sqmDownloadFileUrl;
   window.sqmShouldOpenXlsxAfterSave = sqmShouldOpenXlsxAfterSave;
   window.API                        = API;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initGlobalTableTools);
+  } else {
+    initGlobalTableTools();
+  }
 
   /* ===================================================
      6. DASHBOARD
@@ -902,7 +1022,7 @@
       });
       // 상단 Inventory 버튼 총계는 유지
       var tot = document.getElementById('badge-inv-total');
-      if (tot && d.total) tot.textContent = d.total.bags + '개 · ' + d.total.mt.toFixed(1) + 'MT';
+      if (tot && d.total) tot.textContent = d.total.bags + '개 · ' + d.total.mt.toFixed(3) + 'MT';
     }).catch(function(){});
   }
 
@@ -976,7 +1096,7 @@
 
   function fmtN(v) {
     if (typeof v !== 'number') return (v == null ? '-' : v);
-    return v.toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1});
+    return v.toLocaleString('ko-KR',{minimumFractionDigits:3,maximumFractionDigits:3});
   }
   function fmtW(kg) {
     if (typeof kg !== 'number') return '-';

@@ -3079,6 +3079,12 @@ class OutboundMixin(InventoryBaseMixin):
                 for tb in tonbags:
                     self._co_insert_sold_row(tb, now)
                     self._co_insert_outbound_movement(tb, now)
+                    # allocation_plan → OUTBOUND 상태 동기화
+                    self.db.execute(
+                        "UPDATE allocation_plan SET status='OUTBOUND', executed_at=? "
+                        "WHERE lot_no=? AND tonbag_id=? AND status IN ('PICKED','EXECUTED')",
+                        (now, tb.get('lot_no'), tb['id'])
+                    )
                     result['confirmed'] += 1
                     if tb.get('lot_no'):
                         touched_lots.add(tb['lot_no'])

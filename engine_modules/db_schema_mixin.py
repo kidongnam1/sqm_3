@@ -618,6 +618,8 @@ class DatabaseSchemaMixin:
                 actor TEXT,
                 details_json TEXT,
                 remarks TEXT,
+                from_status TEXT DEFAULT NULL,
+                to_status TEXT DEFAULT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (lot_no) REFERENCES inventory(lot_no)
             )
