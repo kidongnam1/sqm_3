@@ -708,3 +708,124 @@ def get_allocation_lot_overview():
     except Exception as e:
         logger.exception(f"[lot-overview] error: {e}")
         raise HTTPException(500, str(e))
+
+
+# ──────────────────────────────────────────────────────────────
+# Allocation 양식 가져오기 (v864.2 _mapping_from_excel 포팅)
+# POST /api/allocation/template-upload
+# ──────────────────────────────────────────────────────────────
+import json as _json
+import shutil as _shutil
+import re as _re
+from pathlib import Path as _Path
+
+def _alloc_template_dir() -> _Path:
+    """resources/templates/allocation/ 절대경로 반환."""
+    root = _Path(__file__).resolve().parents[2]
+    d = root / 'resources' / 'templates' / 'allocation'
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+def _safe_template_id(value: str) -> str:
+    base = _re.sub(r'[^A-Za-z0-9_.-]+', '_', str(value or '').strip()).strip('._')
+    return (base or 'allocation_template')[:80]
+
+def _find_header_row(filepath: _Path):
+    """openpyxl로 PRODUCT+LOT 기준 헤더 행 탐색. (sheet, header_row_1based, columns) 반환."""
+    import openpyxl
+    wb = openpyxl.load_workbook(filepath, data_only=True, read_only=True)
+    best = (wb.sheetnames[0], 1, [])
+    for ws in wb.worksheets:
+        for r in range(1, min(ws.max_row, 12) + 1):
+            vals = [ws.cell(r, c).value for c in range(1, ws.max_column + 1)]
+            norm = [str(v).strip() for v in vals if v is not None and str(v).strip()]
+            upper = ' '.join(norm).upper()
+            if 'PRODUCT' in upper and 'LOT' in upper:
+                wb.close()
+                return ws.title, r, norm
+            if 'LOT' in upper and ('QTY' in upper or 'SAP' in upper):
+                best = (ws.title, r, norm)
+    wb.close()
+    return best
+
+@router.post("/template-upload", summary="📥 Allocation 양식 가져오기 (xlsx → json+xlsx 저장)")
+async def template_upload(
+    file: UploadFile = File(...),
+    label: str = ""
+):
+    """
+    고객사 Allocation xlsx 파일을 업로드하면:
+    1. 헤더 행 자동 탐지 (PRODUCT + LOT 기준)
+    2. 매핑 JSON 생성 → resources/templates/allocation/<id>.json 저장
+    3. xlsx 원본 → resources/templates/allocation/<id>.xlsx 저장
+    반환: {ok, id, tab_label, columns, sheet, header_row, overwritten}
+    """
+    if not file.filename or not file.filename.lower().endswith(('.xlsx', '.xls')):
+        raise HTTPException(400, "xlsx 또는 xls 파일만 업로드 가능합니다.")
+
+    # 임시 파일에 저장
+    import tempfile
+    suffix = _Path(file.filename).suffix
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+    try:
+        contents = await file.read()
+        tmp.write(contents)
+        tmp.close()
+        tmp_path = _Path(tmp.name)
+
+        # 헤더 탐지 + 매핑 생성
+        sheet, header_row, columns = _find_header_row(tmp_path)
+        stem = label.strip() or _Path(file.filename).stem
+        file_id = _safe_template_id(stem)
+        mapping = {
+            'id': file_id,
+            'tab_label': f'📄 {stem}',
+            'template_file': f'{file_id}.xlsx',
+            'sheet': sheet,
+            'header_row': header_row,
+            'data_start_row': header_row + 1,
+            'description': (
+                f'외부 Allocation 양식 │ 시트: {sheet} │ '
+                f'헤더: {header_row}행 │ 컬럼: {" / ".join(columns)}'
+            ),
+            'columns': columns,
+            'sample_rule': {
+                'field': 'Product',
+                'contains': 'sample',
+                'qty_mt_max': 0.01,
+            },
+        }
+
+        # 저장
+        base = _alloc_template_dir()
+        dst_json = base / f'{file_id}.json'
+        dst_xlsx = base / f'{file_id}.xlsx'
+        overwritten = dst_json.exists() or dst_xlsx.exists()
+        dst_json.write_text(
+            _json.dumps(mapping, ensure_ascii=False, indent=2),
+            encoding='utf-8'
+        )
+        _shutil.copy2(str(tmp_path), str(dst_xlsx))
+
+        logger.info("[template-upload] 저장 완료: %s (헤더=%d행, 컬럼=%d개)", file_id, header_row, len(columns))
+        return {
+            "ok": True,
+            "id": file_id,
+            "tab_label": mapping['tab_label'],
+            "columns": columns,
+            "sheet": sheet,
+            "header_row": header_row,
+            "overwritten": overwritten,
+            "message": f"양식 {'덮어쓰기' if overwritten else '저장'} 완료: {file_id}"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("[template-upload] error: %s", e)
+        raise HTTPException(500, f"양식 분석 실패: {e}")
+    finally:
+        try:
+            import os as _os
+            _os.unlink(tmp.name)
+        except Exception:
+            pass

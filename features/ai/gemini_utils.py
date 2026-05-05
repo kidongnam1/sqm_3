@@ -230,6 +230,25 @@ PRODUCT_MAPPING = {
     "질산나트륨": "SODIUM NITRATE",
     "sodium nitrate": "SODIUM NITRATE",
     "sn": "SODIUM NITRATE",
+
+    # 리튬카보네이트 크리스탈 (CRY9000)
+    "리튬카보네이트 크리스탈": "LITHIUM CARBONATE - BATTERY GRADE - CRYSTAL",
+    "리튬 카보네이트 크리스탈": "LITHIUM CARBONATE - BATTERY GRADE - CRYSTAL",
+    "탄산리튬 크리스탈": "LITHIUM CARBONATE - BATTERY GRADE - CRYSTAL",
+    "lithium carbonate crystal": "LITHIUM CARBONATE - BATTERY GRADE - CRYSTAL",
+    "lithium carbonate battery grade crystal": "LITHIUM CARBONATE - BATTERY GRADE - CRYSTAL",
+    "cry9000": "LITHIUM CARBONATE - BATTERY GRADE - CRYSTAL",
+    "lc crystal": "LITHIUM CARBONATE - BATTERY GRADE - CRYSTAL",
+
+    # 리튬하이드록사이드 배터리 그레이드 (LHT-B/450)
+    "리튬하이드록사이드 배터리": "LITHIUM HYDROXIDE MONOHYDRATE - BATTERY GRADE",
+    "리튬 하이드록사이드 배터리": "LITHIUM HYDROXIDE MONOHYDRATE - BATTERY GRADE",
+    "수산화리튬 배터리": "LITHIUM HYDROXIDE MONOHYDRATE - BATTERY GRADE",
+    "lithium hydroxide monohydrate": "LITHIUM HYDROXIDE MONOHYDRATE - BATTERY GRADE",
+    "lithium hydroxide battery grade": "LITHIUM HYDROXIDE MONOHYDRATE - BATTERY GRADE",
+    "lht-b": "LITHIUM HYDROXIDE MONOHYDRATE - BATTERY GRADE",
+    "lht-b/450": "LITHIUM HYDROXIDE MONOHYDRATE - BATTERY GRADE",
+    "lhb": "LITHIUM HYDROXIDE MONOHYDRATE - BATTERY GRADE",
 }
 
 

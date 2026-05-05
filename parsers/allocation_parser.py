@@ -311,7 +311,7 @@ class AllocationParser:
             header.destination = f"CIF {cif_match.group(1)}"
 
         # 제품명 추출
-        product_patterns = ['MIC9000', 'MIC7100', 'LCA', 'NSH', 'LITHIUM']
+        product_patterns = ['MIC9000', 'CRY9000', 'MIC7100', 'LHT-B', 'LHT', 'LCA', 'NSH', 'LITHIUM']
         for p in product_patterns:
             if p in title:
                 header.product = p

@@ -1,530 +1,351 @@
-# SQM Inventory v865 — PyWebView Migration Project
+# SQM Inventory v866 — PyWebView 마이그레이션 프로젝트
 
-> **이 파일은 Claude Code가 프로젝트를 작업할 때 자동으로 읽는 영구 메모리입니다.**
-> 세션이 바뀌어도 이 내용은 기억됩니다. 수정 시 신중하게.
+> **이 파일은 Claude / Cowork 가 세션 시작 시 자동으로 읽는 영구 메모리입니다.**
+> 세션이 바뀌어도 이 내용은 유지됩니다. 수정 시 신중하게.
 
 ---
 
-## 🧠 프로젝트 전용 메모리 규칙 (v865 한정) — 최우선
+## 🧠 프로젝트 전용 메모리 규칙 — 최우선
 
-> **등록일:** 2026-04-21 12:13 KST
-> **수정일:** 2026-04-28 KST (주 작업 폴더 변경: Claude_SQM_v865 → SQM_v865_CLEAN / GitHub sqm_3 초기 커밋 완료)
-> **등록자:** Nam Ki-dong (사장님)
-> **승인자:** Ruby (Senior Software Architect)
+> **최초 등록:** 2026-04-21 | **최종 수정:** 2026-05-05
+> **등록자:** Nam Ki-dong (사장님) | **승인자:** Ruby (Senior Software Architect)
 
-> ⚠️ **계층 안내:** 범용(모든 프로그램 공통) 규칙은 **상위 `F:\program\CLAUDE.md`** 에 있음. 이 파일은 **v865 프로젝트 전용** 규칙만 담음.
-> Claude Code는 작업 폴더에서 부모 방향으로 올라가며 모든 CLAUDE.md를 자동으로 합쳐 읽으므로, 두 파일은 자동 상속됨.
+> ⚠️ **계층 안내:** 범용(모든 프로그램 공통) 규칙은 **상위 `F:\program\CLAUDE.md`** 에 있음.
+> 이 파일은 **v866 프로젝트 전용** 규칙만 담음. 두 파일은 자동 상속됨.
 
-> 🗂️ **주 작업 폴더 변경 (2026-04-28):** `Claude_SQM_v865\` → **`SQM_v865_CLEAN\`** (현재 폴더)
-> GitHub: `https://github.com/kidongnam1/sqm_3` (main 브랜치, 초기 커밋 완료)
-> `Claude_SQM_v865\`는 참조용으로만 유지. 앞으로 모든 개발은 이 폴더에서 진행.
+> 🗂️ **주 작업 폴더:** `D:\program\SQM_inventory\SQM_v866_CLEAN`
+> **GitHub:** `https://github.com/kidongnam1/sqm_3` (main 브랜치)
 
-**v865 프로젝트 작업 시 반드시 "이 프로젝트 폴더(현재 폴더 = `SQM_v865_CLEAN\`)"의 내용을 전부 참조·반영한다. 절대경로 하드코딩 금지.**
+**v866 프로젝트 작업 시 반드시 이 폴더(= `SQM_v866_CLEAN\`)의 내용을 전부 참조·반영한다. 절대경로 하드코딩 금지.**
 
-구체적으로:
+### 작업 시작 전 필수 확인
+1. `./CLAUDE.md` — 이 파일 (v866 규칙/아키텍처/현황)
+2. `./docs/handoff/v864_2_structure.json` — UI 구조 (메뉴 5개, 탭 9개, 툴바 7개)
+3. `./docs/handoff/feature_matrix.json` — **85개 기능 완전 매핑표**
+4. `./docs/handoff/design_tokens.json` — 디자인 토큰 (156색상, 17테마)
 
-1. **작업 시작 전 필수 확인 (이 프로젝트 한정):**
-   - `./CLAUDE.md` (이 파일 — v865 규칙/아키텍처)
-   - `./docs/handoff/v864_2_structure.json` (UI 구조)
-   - `./docs/handoff/feature_matrix.json` (85개 기능 매핑)
-   - `./docs/handoff/design_tokens.json` (디자인 토큰)
-   - `./TIER1_PLAN.md` (현재 Tier 실행 지시서 — 있을 경우)
+### 코드 작성 시 필수 규칙
+- 색상/폰트/간격 → `design_tokens.json` 값만 사용 (하드코딩 금지)
+- 기능 → `feature_matrix.json`의 엔드포인트/핸들러 이름과 일치
+- 비즈니스 로직 → `./engine_modules/`, `./features/`, `./parsers/`, `./utils/` 재활용
 
-2. **코드 작성 시 필수 일치:**
-   - 색상/폰트/간격 → `design_tokens.json` 값만 사용 (하드코딩 금지)
-   - 기능 → `feature_matrix.json`의 엔드포인트/핸들러 이름과 일치
-   - 비즈니스 로직 → `./engine_modules/`, `./features/`, `./parsers/`, `./utils/` 재활용
+### 새 파일/기능 추가 시 필수 검증
+- 이 폴더에 이미 존재하는지 `Glob`/`Grep`로 먼저 확인 (중복 생성 금지)
+- 파일 위치는 아래 "디렉토리 구조" 섹션을 따름
+- 폴더 내용과 사장님 지시가 충돌하면 → 즉시 질문 (가정 금지)
 
-3. **새 파일/기능 추가 시 필수 검증:**
-   - 이 폴더에 이미 존재하는지 `Glob`/`Grep`로 먼저 확인
-   - 중복 생성 금지 (Dead code 방지)
-   - 파일 위치는 "디렉토리 구조 (목표 상태)" 섹션을 따름
-
-4. **모호한 경우 처리:**
-   - 폴더 내용과 사장님 지시가 충돌하면 → 즉시 질문 (가정 금지)
-   - 폴더에 정보가 없으면 → "없음"이라고 명확히 보고
-
-5. **다른 프로젝트와의 격리:**
-   - 이 프로젝트 외부 폴더(예: 다른 v8xx, LPG 자동화 등)에서 작업할 때는 **이 파일의 규칙을 적용하지 말 것**
-   - v865 핸드오프 JSON 3종은 **이 프로젝트 안에서만** 의미 있음
-
-**위반 시 결과:** 규칙 위반 코드는 그 자리에서 롤백. 예외 없음.
+**위반 시:** 규칙 위반 코드는 그 자리에서 롤백. 예외 없음.
 
 ---
 
 ## 🎯 프로젝트 목표
 
-Tkinter + ttkbootstrap로 만들어진 **SQM Inventory v864.2** (광양 GY Logis 물류창고 재고관리 시스템)를 **PyWebView + HTML/CSS/JS + FastAPI** 기반 **v865**으로 마이그레이션.
+Tkinter + ttkbootstrap 기반 **SQM Inventory v864.2** (광양 GY Logis 물류창고 재고관리 시스템)를
+**PyWebView 5 + HTML/CSS/JS + FastAPI** 기반 **v866**으로 완전 마이그레이션.
 
-**핵심 원칙:** 겉모습(UI)과 기능(Behavior) **둘 다 v864.2와 100% 동일**해야 함. 껍데기만 HTML로 바뀔 뿐, 사용자 경험은 변하지 않아야 함.
+**핵심 원칙:** UI와 기능(Behavior) 둘 다 v864.2와 100% 동일. 껍데기만 HTML로 바뀔 뿐, 사용자 경험은 변하지 않아야 함.
 
 ---
 
-## 📦 핵심 산출물 (DO NOT DELETE)
+## 📦 핵심 산출물 (절대 삭제 금지)
 
-`docs/handoff/` 폴더에 3개의 핵심 JSON 파일이 있습니다. 이것은 Cowork 모드에서 Sub-Agent 3명이 2026-04-21에 추출한 **프로젝트의 설계도**입니다.
+`docs/handoff/` 폴더의 3개 JSON — Cowork Sub-Agent 3인이 2026-04-21 추출한 **프로젝트 설계도**
 
-| 파일 | 용도 | 절대 삭제 금지 |
-|---|---|---|
-| `docs/handoff/v864_2_structure.json` | v864.2 메인창 UI 구조 (메뉴 5개, 탭 9개, 툴바 7개, Mixin 18개) | ✅ |
-| `docs/handoff/feature_matrix.json` | **85개 기능 완전 매핑표** (Tkinter callback → FastAPI endpoint → JS handler) | ✅ |
-| `docs/handoff/design_tokens.json` | 디자인 토큰 (156개 색상, 17개 테마, 폰트, 간격) | ✅ |
-
-**작업 시작 전 반드시 이 3개 파일을 먼저 읽을 것.**
+| 파일 | 용도 |
+|------|------|
+| `docs/handoff/v864_2_structure.json` | v864.2 UI 구조 (메뉴/탭/툴바/Mixin) |
+| `docs/handoff/feature_matrix.json` | 85개 기능 매핑 (Tkinter → FastAPI → JS) |
+| `docs/handoff/design_tokens.json` | 디자인 토큰 (색상/폰트/간격) |
 
 ---
 
 ## 🏗️ 아키텍처 규칙 (절대 원칙)
 
-### Rule 1: v864.2 비즈니스 로직은 그대로 재활용
-- `engine_modules/`, `features/`, `parsers/`, `utils/`의 코드는 **수정 금지**
+### Rule 1: v864.2 비즈니스 로직 재활용 (수정 금지)
+- `engine_modules/`, `features/`, `parsers/`, `utils/` 코드 **수정 금지**
 - FastAPI는 기존 handler 함수를 **HTTP로 감싸는 얇은 wrapper**만 담당
-- 이유: v864.2는 이미 실사용 중인 검증된 코드. 리팩토링 = 버그 양산
+- 이유: v864.2는 실사용 검증된 코드. 리팩토링 = 버그 양산
 
-### Rule 2: UI/Logic Decoupling
+### Rule 2: UI/Logic 완전 분리
 - `backend/` = FastAPI + 기존 로직 재활용
-- `frontend/` = HTML/CSS/JS (순수 UI만)
-- `frontend/`에 비즈니스 로직 금지 (단, 간단한 표시/숨김 상태는 허용)
+- `frontend/` = HTML/CSS/JS (순수 UI만, 비즈니스 로직 금지)
 
 ### Rule 3: Feature Parity 100%
-- `feature_matrix.json`의 85개 기능 중 **단 하나도 누락 금지**
-- optional 11개는 "준비 중" 메시지라도 UI상 표시할 것
+- `feature_matrix.json`의 85개 기능 중 단 하나도 누락 금지
+- optional 11개는 "준비 중" 메시지라도 UI상 표시
 
 ### Rule 4: 에러 처리 의무
-- 모든 FastAPI 엔드포인트는 try/except + HTTPException
-- 모든 JS fetch는 try/catch + 사용자 Toast 알림
+- 모든 FastAPI 엔드포인트: try/except + HTTPException
+- 모든 JS fetch: try/catch + 사용자 Toast 알림
 - 빈 화면(blank screen) 절대 금지
 
----
+### Rule 5: 300줄 이상 파일 — Edit 툴 직접 수정 절대 금지
+> ⚠️ **사고 이력:** sqm-inline.js Edit 툴 수정 → 4KB로 붕괴 (2026-04-27)
+> 5차 세션 전수검사에서 49개 파일 truncated 발견 → git 복구 (2026-05-04)
 
-## 🚦 마이그레이션 전략: 3-Tier Progressive
-
-**큰 바위를 한 번에 움직이지 말고, 작은 돌로 쪼개서 옮긴다.**
-
-### 🛡️ Tier 1 (Day 1~2): Safe Zone 구축
-- PyWebView 창 + FastAPI skeleton + DB 연결만
-- 메뉴/사이드바는 HTML/CSS로 그려놓고 클릭 시 "준비 중" 메시지
-- **EXE 빌드 성공**이 Tier 1의 Definition of Done
-- 상세: `TIER1_PLAN.md` 참조
-
-### 🎯 Tier 2 (Day 3~5): Top 10 기능 이전
-- 사장님(Nam Ki-dong) 실사용 상위 10개 기능만
-- 각 기능마다 v864.2와 결과 비교 검증 필수
-- 문제 발생 시 해당 기능만 git revert (전체 롤백 아님)
-
-### 🏁 Tier 3 (Day 6~10): 나머지 75개 배치 이전
-- 25개씩 3배치로 나눔
-- 각 배치 완료 후 사장님 검수 → 다음 배치 진입
-- optional 11개는 마지막 배치에 포함
-
----
-
-## 📁 디렉토리 구조 (목표 상태)
-
+**올바른 절차 (반드시 Python 스크립트 사용):**
+```python
+with open(SRC, 'r', encoding='utf-8') as f: c = f.read()
+c = c.replace(OLD, NEW, 1)
+raw = c.encode('utf-8').replace(bytes([0x5c,0x21]), bytes([0x21]))  # \! 오염 방지
+with open(DEST, 'w', encoding='utf-8', newline='\n') as f: f.write(raw.decode('utf-8'))
+# JS 파일은 반드시: node --check <파일>
+# Python 파일은 반드시: python -m py_compile <파일>
 ```
-Claude_SQM_v864_3/
-├── CLAUDE.md                        ← 이 파일 (프로젝트 영구 메모리)
-├── TIER1_PLAN.md                    ← Tier 1 실행 지시서
-├── docs/
-│   └── handoff/                     ← Cowork 산출물 (수정 금지)
-│       ├── v864_2_structure.json
-│       ├── feature_matrix.json
-│       └── design_tokens.json
-├── .claude/
-│   ├── settings.local.json
-│   └── commands/                    ← 커스텀 slash commands
-│       ├── tier1-start.md
-│       ├── tier2-implement.md
-│       ├── verify-parity.md
-│       └── feature-status.md
-├── backend/                         ← FastAPI 앱
-│   ├── main.py
-│   ├── api/                         ← 엔드포인트 (얇은 wrapper)
-│   ├── legacy/                      ← v864.2 handlers 그대로 복사
-│   └── requirements.txt
-├── frontend/                        ← HTML/CSS/JS
-│   ├── index.html
-│   ├── design-tokens.css            ← design_tokens.json에서 변환
-│   ├── components/                  ← 메뉴바, 사이드바 등
-│   ├── pages/                       ← 탭별 페이지
-│   └── js/
-│       ├── handlers/                ← onclick 핸들러 (85개)
-│       ├── router.js
-│       ├── api-client.js
-│       └── state.js
-├── engine_modules/                  ← v864.2 원본 (수정 금지)
-├── features/                        ← v864.2 원본 (수정 금지)
-├── parsers/                         ← v864.2 원본 (수정 금지)
-└── utils/                           ← v864.2 원본 (수정 금지)
-```
+
+### Rule 6: git 작업은 반드시 Windows CMD에서 직접 실행
+- VM(Linux 쉘)에서 git commit/push 금지 — GIT_INDEX_FILE 사고 재발 방지
+- 항상 사장님이 CMD에서 직접 실행
 
 ---
 
 ## 🛠️ 기술 스택
 
-| 계층 | 기술 | 이유 |
-|---|---|---|
-| Desktop Shell | **PyWebView 5.1.0** | Python 생태계 유지, exe 빌드 용이 |
-| Backend | **FastAPI 0.104.1** + Uvicorn 0.24.0 | 비동기 지원, 타입 안정성 |
-| Frontend | **Vanilla HTML/CSS/JS** | 프레임워크 없이 — 빌드 스텝 최소화, 학습 곡선 제거 |
-| Data | **pandas 2.1.3 + openpyxl 3.1.2 + SQLite** | v864.2와 동일 |
-| Packaging | **PyInstaller 6.2.0** | exe 단일 파일 배포 |
+| 계층 | 기술 |
+|------|------|
+| Desktop Shell | **PyWebView 5.1.0** |
+| Backend | **FastAPI 0.104.1** + Uvicorn 0.24.0 |
+| Frontend | **Vanilla HTML/CSS/JS** (프레임워크 없음) |
+| Data | **pandas 2.1.3 + openpyxl 3.1.2 + SQLite** |
+| AI | **Google Gemini** (PDF 파싱 / OCR) |
+| Packaging | **PyInstaller 6.2.0** (EXE 단일 파일) |
 
-### ❌ 쓰지 말 것 (의도적 선택)
-- React/Vue/Svelte — 복잡도 증가, 빌드 스텝 필요
-- TypeScript — Python 개발자 학습 비용
-- Tailwind CSS — design_tokens.json으로 자체 디자인 시스템 보유
-- Docker — Windows 데스크톱 단일 사용자 환경에 과함
+**❌ 쓰지 말 것:** React/Vue/Svelte, TypeScript, Tailwind CSS, Docker
 
 ---
 
 ## 🎨 디자인 규칙
 
-- **기본 테마:** `darkly` (Dark) — v864.2와 동일
-- **토글:** Dark/Light 둘 다 지원 필수 (우상단 버튼)
+- **기본 테마:** Dark (darkly) — v864.2와 동일, localStorage `sqm_theme` 우선
+- **토글:** Dark/Light 둘 다 지원 (우상단 버튼)
 - **폰트:** Malgun Gothic (맑은 고딕) + Segoe UI fallback
-- **아이콘:** 이모지 기반 (예: 📦 📥 📤 📊) — 별도 아이콘 라이브러리 의존 없음
-- **색상:** `design_tokens.json`의 값만 사용. 하드코딩 금지. `design-tokens.css`의 CSS 변수로 참조
+- **아이콘:** 이모지 기반 (📦 📥 📤 📊) — 별도 라이브러리 의존 없음
+- **색상:** `design-tokens.css` CSS 변수만 사용, 하드코딩 금지
 
 ---
 
-## 🗺️ 전체 Phase 로드맵 (v865 종단 지도)
+## 📁 실제 디렉토리 구조 (2026-05-05 현재)
 
-| Phase | 이름 | 상태 |
-|---|---|---|
+```
+SQM_v866_CLEAN/
+├── CLAUDE.md                    ← 이 파일 (영구 메모리)
+├── main_webview.py              ← PyWebView 앱 진입점
+├── 실행.bat                     ← Windows 실행 스크립트
+├── sqm_inventory.db             ← SQLite DB (실데이터)
+├── SMQ 입,출고 재고관리 파일_int.xlsx  ← 통합 Excel (INVENTORY 단일시트)
+│
+├── docs/handoff/                ← 설계도 3종 (수정 금지)
+│   ├── v864_2_structure.json
+│   ├── feature_matrix.json
+│   └── design_tokens.json
+│
+├── backend/
+│   ├── main.py                  ← FastAPI 앱
+│   ├── requirements.txt
+│   └── api/                     ← 엔드포인트 28개 파일
+│       ├── __init__.py          ← 17개 라우터 등록
+│       ├── actions.py           ← /api/action/* (LOT Excel, integrity 등)
+│       ├── actions2.py          ← /api/action2/* (톤백 Excel, outbound 등)
+│       ├── actions3.py          ← /api/action3/* (Invoice Excel 등)
+│       ├── allocation_api.py    ← /api/allocation/*
+│       ├── dashboard.py         ← /api/dashboard/stats, alerts
+│       ├── inbound.py           ← /api/inbound/pdf (PDF 입고)
+│       ├── inventory_api.py     ← /api/inventory, /api/tonbags
+│       ├── inventory_adjust_api.py ← /api/inventory/adjust
+│       ├── refresh_excel_api.py ← /api/inventory/refresh-excel-status
+│       ├── template_ai_api.py   ← /api/inbound/templates/generate-from-docs
+│       └── (기타 19개)
+│
+├── frontend/
+│   ├── index.html               ← 단일 페이지 앱 (SPA)
+│   ├── design-tokens.css        ← CSS 변수 (색상/폰트/간격)
+│   └── js/
+│       ├── sqm-core.js          ← ENDPOINTS 67개, renderPage, Toast, API
+│       ├── sqm-inventory.js     ← 재고목록 탭 + MXBG 톤백모달
+│       ├── sqm-allocation.js    ← 배분(Allocation) 탭
+│       ├── sqm-picked.js        ← 픽업(Picked) 탭
+│       ├── sqm-logistics.js     ← 물류 6탭 (입고/출고/반품/이동/로그/스캔)
+│       ├── sqm-tonbag.js        ← 톤백 탭 (대형, 4551줄)
+│       ├── sqm-onestop-inbound.js ← OneStop 입고 wizard
+│       └── sqm-inline.js.bak_presplit  ← 분할 전 원본 백업
+│
+├── features/ai/
+│   ├── gemini_parser.py         ← Invoice/BL/DO PDF 파싱
+│   ├── gemini_utils.py          ← PRODUCT_MAPPING (MIC/CRY/LHT)
+│   ├── ocr_auto_tuner.py        ← GeminiCallGate (Circuit Breaker)
+│   └── carrier_templates/       ← 선사별 BL 템플릿 (Layer 1)
+│       ├── one.py, hapag.py, mersk.py, msc.py, hmm_cmacgm.py, generic.py
+│
+├── parsers/
+│   ├── allocation_parser.py     ← Allocation Excel 파싱
+│   └── document_parser_modular/
+│       └── invoice_mixin.py     ← Invoice 파싱 (_detect_product_code 동적 감지)
+│
+├── engine_modules/              ← v864.2 원본 (수정 금지)
+├── utils/                       ← v864.2 원본 (수정 금지)
+│
+├── resources/templates/
+│   └── allocation/              ← 고객사 Allocation 양식 (3개)
+│       ├── jakarta_9col.json + .xlsx    (Jakarta 계열, 9컬럼)
+│       ├── song_aaa_10col.json + .xlsx  (Song/LGES + AAA/CATL, 10컬럼)
+│       └── woo_ptlbm_13col.json + .xlsx (Woo/PTLBM, 13컬럼)
+│
+├── tests/
+│   ├── test_phase5_parity.py    ← 44개 패리티 회귀 테스트
+│   ├── test_sample_parity.py    ← 6개 샘플 정합성 테스트
+│   └── (기타 8개)
+│
+└── scripts/
+    └── refresh_excel_status.py  ← DB → _int.xlsx STATUS 컬럼 일괄 갱신
+```
+
+---
+
+## 🗺️ Phase 로드맵 (v866 전체)
+
+| Phase | 내용 | 상태 |
+|-------|------|------|
 | Phase 0 | Safety Net 구축 (pytest, smoke test) | ✅ 완료 |
 | Phase 1 | UI Manifest + 85 기능 매핑 | ✅ 완료 |
 | Phase 1c | UI 요소 복구 (메뉴/툴바/사이드바) | ✅ 완료 |
-| Phase 2 | TOP 3 엔드포인트 + 런타임 검증 (Step 1~3) | ✅ 완료 |
+| Phase 2 | TOP 3 엔드포인트 + 런타임 검증 | ✅ 완료 |
 | Phase 3 | Dashboard KPI 실데이터 + 건강성 가시화 | ✅ 완료 |
-| **Phase 4** | **사이드바 9탭 + 메뉴 60개 + PDF 입고 배선** | ✅ **완료** |
-| **Phase 5** | **회귀 테스트 자동화 (v864.2 ↔ v865 비교)** | ✅ **완료** |
+| Phase 4 | 사이드바 9탭 + 메뉴 60개 + PDF 입고 배선 | ✅ 완료 |
+| Phase 5 | 회귀 테스트 자동화 (v864.2 ↔ v866 비교) | ✅ 완료 |
 | **Phase 6** | **EXE 빌드 + 배포 (PyInstaller 단일 실행파일)** | 🟡 **다음** |
 | Phase 7 | 사장님 실사용 1주 + 버그 수집 | ⏳ 대기 |
-| Phase 8 | 🏆 v865 공식 릴리스 (GY Logis 전환) | 🎯 최종 |
+| Phase 8 | 🏆 v866 공식 릴리스 (GY Logis 전환) | 🎯 최종 |
 
-**전체 진행률 (2026-04-27 기준):** 약 80% (Phase 0~5 완료)
-**예상 최종 릴리스일:** 2026-05-09 (이상) ~ 2026-05-25 (현실, 본업 병행 감안)
-
----
-
-## 🚀 Phase 4 완료 현황 (2026-04-22 최종)
-
-### Phase 4 핵심 산출물
-- **sqm-inline.js:** 56 KB 단일 IIFE — ENDPOINTS 67개 (HTML data-action 1:1 매핑), 9탭 라우터, 캐시버스팅 `?v=864.3.3`
-- **backend/api/inventory_api.py:** 신규 (307 lines) — `/api/inventory`, `/api/allocation`, `/api/tonbags`, `/api/scan/process`, `/api/health`
-- **backend/api/inbound.py:** POST `/api/inbound/pdf` (base64 → PyMuPDF → DB)
-- **backend/api/dashboard.py:** GET `/api/dashboard/stats`, GET `/api/dashboard/alerts`
-- **backend/api/menubar.py:** POST `/api/menu/-on-settings`
-- **backend/api/__init__.py:** 총 17개 라우터 등록
-- **index.html:** 완전한 HTML + 캐시버스팅
-- **실행.bat:** PyWebView 정상종료 오탐(exit code 1) 수정 → `errorlevel 2`
-- **보고서:** `REPORTS/PHASE4_COMPLETE.md`, `REPORTS/PHASE4_FINAL_FIX.md`
-
-### Phase 4 검증 현황
-- ✅ JS syntax (node --check): PASS
-- ✅ Python syntax (5개 파일): ALL PASS
-- ✅ HTML data-action coverage: 68/68 (0 missing)
-- ✅ Backend routers: 17개 등록
-- ✅ bash `\!` 오염: 0건
-
-## ✅ Phase 5 완료 현황 (2026-04-27)
-
-### Phase 5 핵심 산출물
-- **tests/test_phase5_parity.py:** 44개 패리티 회귀 테스트 (44 passed)
-  - 버그 5종 자동 감지: null바이트/\!오염/파일잘림/mxbg_pallet키명/lot_sqm미전달/update_dict비컬럼
-- **inbound.py 버그 수정 완료:**
-  - Gemini lot dict: `tonbag_count` → `mxbg_pallet` 키명 통일
-  - Gemini 프롬프트: `mxbg_pallet` + `lot_sqm` 항목 추가
-  - Invoice/BL/DO update_dict: 실제 DB 컬럼 기준 재확인 (voyage, do_no, invoice_date 등 유효 확인)
-- **전수 패리티 감사:** Tier-1A / Tier-1B / Tier-2 → DB 17개 필드 완전 추적 완료
-
-## 🎯 Phase 6 Next Target
-
-- **목표:** PyInstaller 단일 EXE 파일 빌드 — Windows 배포용
-- **범위:** PyInstaller spec 작성, hidden imports 해결, 빌드 테스트, 실행 검증
-- **Gate Condition:** test_phase5_parity.py 44 passed + EXE 실행 시 FastAPI 정상 기동
-- **새 세션 시작:** CLAUDE.md 읽고 Phase 6 진입
+**전체 진행률 (2026-05-05 기준):** 약 85% (Phase 0~5 완료 + 다수 버그 수정)
+**예상 릴리스:** 2026-05-25 (본업 병행 감안)
 
 ---
 
-## 🧪 품질 기준 (Definition of Done)
+## ✅ 현재 완료된 주요 기능 현황
 
-각 기능 이전 완료로 인정받으려면:
+### JS 분할 아키텍처 (2026-05-05)
+sqm-inline.js (391KB, 7133줄) → 6개 IIFE 파일로 분할 완료
+- `sqm-core.js`: ENDPOINTS 67개, renderPage, showToast, apiCall, 상태관리
+- `sqm-inventory.js`: 재고목록 + MXBG 톤백모달
+- `sqm-allocation.js`: 배분 페이지
+- `sqm-picked.js`: 픽업 페이지
+- `sqm-logistics.js`: 물류 6탭
+- `sqm-tonbag.js`: 톤백 탭 (대형)
 
-1. ✅ **UI 일치** — v864.2와 SSIM 0.85 이상 (자동 스크린샷 비교)
-2. ✅ **기능 일치** — 같은 입력 → 같은 출력 (v864.2와 회귀 테스트)
-3. ✅ **에러 처리** — 실패 시 사용자에게 명확한 Toast 메시지
-4. ✅ **로그** — 주요 액션은 `features/reports/` 로그 파일에 기록
-5. ✅ **롤백 가능** — git revert로 해당 기능만 되돌릴 수 있어야 함
+파일간 공유 패턴: `window.*` 노출 + 각 파일 상단 alias preamble
+
+### 제품 코드 지원 (2026-05-05)
+| 제품코드 | 제품명 | 감지 키워드 |
+|----------|--------|------------|
+| MIC9000.00 | LITHIUM CARBONATE - BATTERY GRADE - MICRONIZED | micronized, mic9000 |
+| CRY9000.00 | LITHIUM CARBONATE - BATTERY GRADE - CRYSTAL | crystal, cry9000 |
+| LHT-B/450 | LITHIUM HYDROXIDE MONOHYDRATE - BATTERY GRADE | hydroxide, lht-b |
+
+### Excel 통합 (2026-05-03)
+- `SMQ 입,출고 재고관리 파일_int.xlsx` — IN/UNSOLD/SOLD 3시트 → INVENTORY 단일시트
+- STATUS 컬럼 자동 관리: AVAILABLE(초록) / RESERVED(노란) / SOLD(빨강)
+
+### Allocation 양식 (현재 3개)
+- jakarta_9col, song_aaa_10col, woo_ptlbm_13col
+- 위치: `resources/templates/allocation/`
+
+### 선사 BL 템플릿 (Layer 1)
+- ONE, HAPAG, MAERSK, MSC, HMM/CMACGM, GENERIC (6개)
+- 위치: `features/ai/carrier_templates/`
+
+---
+
+## 🔴 현재 미완료 — 최우선 처리 순서
+
+### 1. git push (즉시)
+```cmd
+cd D:\program\SQM_inventory\SQM_v866_CLEAN
+git add frontend/index.html frontend/js/sqm-core.js frontend/js/sqm-inventory.js frontend/js/sqm-allocation.js frontend/js/sqm-picked.js frontend/js/sqm-logistics.js frontend/js/sqm-tonbag.js features/ai/gemini_utils.py features/ai/gemini_parser.py parsers/document_parser_modular/invoice_mixin.py parsers/allocation_parser.py CLAUDE.md
+git commit -m "fix: v866 JS분할+테마dark+Excel버튼open*+CRY9000+LHT-B/450+CLAUDE.md v866"
+git push origin main
+```
+
+### 2. 앱 시각 테스트 (git push 후)
+- 완전 종료 후 재시작 (단순 새로고침 금지)
+- 확인 항목: 다크 테마 기본, 고급도구 4개 버튼, LOT Excel 직접 열기, 전 탭 정상 동작
+
+### 3. Phase 6 — EXE 빌드
+- PyInstaller spec 작성 → hidden imports 해결 → 빌드 테스트 → 실행 검증
+- Gate: test_phase5_parity.py 44 passed + EXE 실행 시 FastAPI 정상 기동
+
+### 4. Allocation 양식 가져오기 UI (미이식)
+- v864.2에 `_on_import_template()` 완전 구현됨 (xlsx → json+xlsx 자동 저장)
+- v866 웹 UI에 해당 버튼/API 없음 → 구현 필요 시 별도 요청
+
+---
+
+## 🧪 Definition of Done (기능 이전 완료 기준)
+
+1. ✅ JS syntax — `node --check`
+2. ✅ Python syntax — `py_compile` 전수검사
+3. ✅ 기능 일치 — v864.2와 같은 입력 → 같은 출력
+4. ✅ 에러 처리 — 실패 시 Toast 알림
+5. ✅ 롤백 가능 — git revert로 해당 기능만 되돌릴 수 있음
 
 ---
 
 ## 👤 개발자 정보
 
-- **사용자:** Nam Ki-dong (남기동)
-- **역할:** Practical Tech CEO — LPG 충전소(서울) + GY Logis 물류창고(광양) + 건설업
+- **사용자:** Nam Ki-dong (남기동) — Practical Tech CEO
+- **사업:** LPG 충전소(서울) + GY Logis 물류창고(광양) + 건설업
 - **개발 실력:** 숙련된 Python 프로그래머 (SQM v864.2 직접 개발)
-- **선호 설명 방식:** 중학생 수준, 간결, 논리적 단계, 결정적 결론
-- **OS:** Windows, F:\ 드라이브 사용, CMD 환경
-- **협업 도구:** Cowork(문서/이메일/학습) + **Claude Code(개발)**
+- **선호 설명:** 중학생 수준, 간결, 논리적 단계, 결정적 결론
+- **OS:** Windows, D:\program 폴더, CMD 환경
+- **협업:** Cowork (문서/이메일) + Claude Code (개발)
 
 ---
 
-## 🚨 자주 하는 실수 (방지)
+## 🚨 자주 하는 실수 방지
 
-1. **v864.2 원본 수정** → 절대 금지. `backend/legacy/`로 복사 후 수정 (복사본만)
+1. **v864.2 원본 수정** → 절대 금지. 복사본(`backend/legacy/`)만 수정
 2. **MD 파일 인코딩** → 반드시 UTF-8. CP949(EUC-KR) 금지
-3. **색상 하드코딩** → 항상 `design-tokens.css` 변수 사용
-4. **빈 화면 배포** → 모든 영역에 로딩/에러/빈상태 UI 필수
-5. **테스트 없이 다음 Tier 진입** → 각 Tier 종료 시 사장님 승인 필수
-6. **300줄 이상 모든 파일 — Edit 툴 직접 수정 절대 금지** → 반드시 Python 스크립트로 처리
-
-   > ⚠️ **사고 이력 (2026-04-27 / 2026-05-04):**
-   > - `sqm-inline.js` (310KB) Edit 툴 수정 → 4KB로 붕괴
-   > - 2026-05-04 전수검사에서 16개 파일 truncated 발견 → git 복구
-   > - **근본 원인:** Edit 툴은 파일 전체를 컨텍스트에 담지 못하면 말미가 잘린 채 저장됨
-   > - **적용 범위 확대:** 기존 "100KB↑ JS만" → **300줄 이상 모든 파일**
-   >
-   > **올바른 절차:**
-   > ```python
-   > # 1. 백업 원본 읽기
-   > with open(SRC, 'r', encoding='utf-8') as f: c = f.read()
-   > # 2. str.replace() 로 변경
-   > c = c.replace(OLD, NEW, 1)
-   > # 3. 바이트 레벨 오염 제거 (bash heredoc → \! 오염 주의)
-   > raw = raw.replace(bytes([0x5c, 0x21]), bytes([0x21]))
-   > # 4. 단일 write — 절대 Edit 툴 사용 금지
-   > with open(DEST, 'w', encoding='utf-8', newline='\n') as f: f.write(c)
-   > # 5. node --check 로 문법 검증 필수
-   > ```
-   >
-   > **백업 위치:** `sqm_2/Claude_SQM_v864_3/frontend/js/sqm-inline.js` (Phase 5 완료본, 308KB, 2026-04-24)
-
----
-
-## 📞 문제 발생 시
-
-1. `feature_matrix.json`에서 해당 기능의 `tkinter_source` 확인
-2. v864.2 원본 코드 참조
-3. `docs/handoff/`의 3개 JSON 재확인
-4. 여전히 막히면 → 사장님께 구체적 질문 (가정하지 말 것)
-
----
-
-**버전:** v865
-**작성일:** 2026-04-21
-**작성자:** Ruby (Senior Software Architect Mode)
-**기반:** Cowork Sub-Agent 3인 산출물 (Agent 1 구조분석, Agent 2 기능추출, Agent 3 디자인토큰)
+3. **색상 하드코딩** → `design-tokens.css` 변수만 사용
+4. **300줄↑ 파일 Edit 툴 수정** → Rule 5 참조, Python 스크립트 사용
+5. **VM에서 git commit** → Rule 6 참조, Windows CMD에서만 실행
+6. **세션 종료 전 전수검사 생략** → py_compile + node --check 필수
 
 ---
 
 ## 🤖 루비(Ruby) 행동 규칙 — 영구 적용 (2026-04-30 사장님 승인)
 
-> 이 규칙은 Nam Ki-dong 사장님과 루비가 2026-04-30 세션에서 합의한 내용입니다.
-> 모든 세션에서 반드시 적용합니다. 예외 없음.
-
 ### Rule A — 추천 먼저, 질문은 그 다음
-- 루비가 사장님께 선택을 물을 때는 **반드시 루비의 Best Practice를 먼저 제시**한 후 질문
-- 형식: "**루비의 추천:** [선택지] — 이유: [한 줄 근거] / 확인 부탁드립니다: [A/B/C]"
-- 사장님이 루비 추천과 다른 선택을 하면 → "다른 방향을 선택하신 이유가 있으신가요?" 한 마디 질문 (강요 아님, 학습 목적)
+- 형식: "**루비의 추천:** [선택지] — 이유: [한 줄] / 확인: [A/B/C]"
+- 사장님이 다른 선택 시 → "다른 방향을 선택하신 이유가 있으신가요?" (강요 아님)
 
 ### Rule B — 추천 강도 구분
-- **기술 결정** (코드 구조, 아키텍처, 빌드, 성능): 루비가 강하게 추천 → "이렇게 하세요" 톤
-- **비즈니스 결정** (일정, 우선순위, 예산, 배포 타이밍): 옵션 제시 → "이게 유리해 보이지만, 사장님 상황이 우선입니다" 톤
-- **경계 모호한 경우** (예: "언제 배포?") → 루비가 판단해서 강도 결정. 별도 질문 안 함
+- **기술 결정** (코드/아키텍처/빌드): 강하게 → "이렇게 하세요" 톤
+- **비즈니스 결정** (일정/예산/배포): → "이게 유리해 보이지만, 사장님 상황이 우선" 톤
 
 ### Rule C — 틀렸을 때 즉시 학습 + CLAUDE.md 자동 기록
-- 루비 추천이 틀렸다고 확인되면 → "이전 판단은 [X]였는데, 맞는 방향은 [Y]였습니다 — 다음부터 반영합니다"로 명시 정정
-- 중요한 학습 내용은 사장님 확인 없이 **루비가 자동으로 CLAUDE.md에 기록**
-- 기록 위치: 이 섹션 하단 `### 루비 학습 로그`
+- "이전 판단은 [X]였는데, 맞는 방향은 [Y]였습니다 — 다음부터 반영합니다"
 
 ### Rule D — 확신 없음 명시
-- 루비가 60% 이하 확신일 때는 → "확신 없음 (약 X%)" 표시 후 그래도 최선 추천 제시
-- 100% 확신처럼 말하는 것은 사장님을 오도하는 행위 → 금지
+- 60% 이하 확신 시 → "확신 없음 (약 X%)" 표시 후 최선 추천
+
+### Rule E — 응답 포맷 (매 응답 필수)
+- 첫 줄: `[Question] — YYYY-MM-DD HH:MM` / `[Intent]` / `[Response]`
+- 마지막: 실용 영어/베트남어 문장 1개 (발음 포함)
 
 ---
 
 ### 루비 학습 로그
-| 날짜 | 틀린 판단 | 올바른 방향 | 반영 내용 |
-|---|---|---|---|
-| (기록 시작) | — | — | — |
-| 2026-05-02 | Rule A 위반 — 메뉴 분리 제안 시 질문 먼저 함 | 추천안 먼저 제시 후 질문 | Rule A 재확인 완료 |
-| 2026-05-04 | [Question]/[Intent]/시간 포맷 누락 (×2) | 매 응답 첫 줄에 시간 + 형식 헤더 필수 | 포맷 위반 재발 방지 — 루비 학습 로그 기록 |
-| 2026-05-04 | GIT_INDEX_FILE 임시 인덱스로 커밋 → 400개 파일 삭제 | git 작업은 반드시 Windows CMD에서 직접 실행 | VM에서 git commit 금지 — Rule 추가 |
-| 2026-05-04 | 3회 전수검사 미실시 → truncated 파일 방치 | 세션 종료 전 py_compile 전수검사 필수 | 5차세션 전수검사에서 49개 복구 — Rule 추가 |
+| 날짜 | 틀린 판단 | 올바른 방향 | 반영 |
+|------|-----------|-------------|------|
+| 2026-05-02 | Rule A 위반 — 질문 먼저 | 추천 먼저 후 질문 | Rule A 재확인 |
+| 2026-05-04 | [Question]/[Intent]/시간 포맷 누락 | 매 응답 헤더 필수 | Rule E 추가 |
+| 2026-05-04 | GIT_INDEX_FILE로 커밋 → 400개 파일 삭제 | git은 CMD에서만 | Rule 6 추가 |
+| 2026-05-04 | 전수검사 미실시 → truncated 파일 방치 | 세션 종료 전 전수검사 필수 | Rule 5 강화 |
+| 2026-05-05 | CLAUDE.md에 v865 표기 방치 | 폴더명(v866)과 버전 일치 필수 | 전면 재작성 |
 
 ---
 
-## 🗂️ 이전 세션 기록 (2026-05-03 — Excel 통합 + 재고수정 연동 + Excel 상태 갱신 버튼)
-
-### ✅ 2026-05-03 완료 작업
-
-#### Excel 통합 (3시트 → 단일 INVENTORY 시트)
-- `SMQ 입,출고 재고관리 파일_int.xlsx` 신규 생성 (기존 v867 대체)
-  - IN / UNSOLD / SOLD 3개 시트 → **INVENTORY 단일 시트** (1,862행)
-  - STATUS 컬럼 추가 (26번째 열): AVAILABLE=초록, SOLD=빨강, RESERVED=노란
-  - 헤더 고정(3행), 자동필터, 조건부 색상 서식
-- `_int.xlsx` 명칭 규칙: `_v*` 버전 방식 대신 `_int` (통합본 고정명)
-
-#### adjust_executor.py — 단일시트 방식 교체
-- `EXCEL_SHEETS = ["INVENTORY"]` (기존: `["IN", "UNSOLD"]`)
-- `COL_STATUS = 25` 상수 추가 (26번째 열, 0-based)
-- 재고 조정 시 STATUS 컬럼 자동 보존 로직 추가
-- `find_latest_excel()`: `_int.xlsx` 1순위 자동 탐색 → v* 최신 → fallback 순
-- 백업: `engine_modules/inventory_modular/adjust_executor.py.bak_v868`
-
-#### refresh_excel_status.py 유틸 스크립트 (신규)
-- 위치: `scripts/refresh_excel_status.py`
-- 기능: DB `allocation_plan` 기준으로 `_int.xlsx` STATUS 컬럼 전체 갱신
-- 사용법: `python scripts/refresh_excel_status.py [--dry-run]`
-- ⚠️ 주의: DB 초기화 상태에서 실행 시 SOLD 행이 AVAILABLE로 바뀜
-  → 반드시 실데이터(입고·출고)가 DB에 쌓인 후 실행할 것
-
-#### 🔄 Excel 상태 갱신 버튼 추가 (SQM 재고 메뉴)
-- `backend/api/refresh_excel_api.py` 신규 — `POST /api/inventory/refresh-excel-status`
-- `backend/api/__init__.py` — refresh_excel_router 등록
-- `frontend/index.html` — 재고 메뉴 → **🔄 Excel 상태 갱신** 버튼 추가
-- `frontend/js/sqm-inline.js` — `onRefreshExcelStatus()` 핸들러 추가
-
-#### 메뉴 텍스트 변경
-- "✏️ 재고 조정" → **"✏️ 재고 수정"** (index.html 4곳, sqm-inline.js 3곳)
-
-#### Git push 커밋 이력 (2026-05-03)
-- `3c854c8` — Excel 통합(_int.xlsx) + adjust_executor 교체
-- `3e73576` — refresh_excel_status.py 신규
-- `1022383` — Excel 상태 갱신 버튼 추가
-- `23fcd96` — 재고 수정 텍스트 변경
-
----
-
-## 🔜 다음 세션 인수인계 (2026-05-04 4차 세션 — BUG-001/BUG-003 수정 완료)
-
-> **새 세션 시작 시 이 섹션부터 읽을 것.**
-
-### ✅ 2026-05-04 3차 세션 완료 작업
-
-#### 샘플 행 SP 표기 + 필드 상속
-- `frontend/js/sqm-inline.js` — sampleRow: LOT 번호 뒤에 `(SP)` 표기
-- 샘플 행에 BL, 무게, STATUS, 송장번호, 선적일, 입항일 등 부모 LOT 필드 상속 표시
-- "검사용 재고, 출고 불가" 설명 텍스트 삭제
-
-#### Product Matrix 단일행 통합
-- `backend/api/dashboard.py` — product_matrix SQL에 `lot_count` (DISTINCT LOT 수) 추가
-  - `COUNT(DISTINCT CASE WHEN status IN ('AVAILABLE','RESERVED','PICKED','RETURN') THEN lot_no END) AS lot_count`
-  - 컬럼 인덱스 이동: weight_mt → row[9] (기존 row[8])
-- `frontend/js/sqm-inline.js` — `renderProductMatrix()`: 일반/샘플 2행 → 단일행
-  - 헬퍼 함수: `cell()`, `cellBold()`, `cellLot()` 추가
-  - "구분" 컬럼 제거
-  - 표시 형식: `160 LOT · 800 (+80LOT/80🔬)` 인라인 통합
-
-#### MXBG 클릭 → 톤백 세부 모달
-- `backend/api/inventory_api.py` — `/api/tonbags` 쿼리에 `COALESCE(t.is_sample, 0) AS is_sample` 추가
-- `frontend/js/sqm-inline.js`:
-  - MXBG 셀 → `<button onclick="window.showTonbagModal(lotKey)">` 클릭 버튼으로 교체
-  - `window.showTonbagModal(lotNo)`: 톤백 세부 모달 (상태 필터, 샘플/일반 구분, 무게 합계)
-  - `window._filterTonbagModal()`: 상태별 필터 헬퍼
-  - API: `GET /api/tonbags?lot_no=XXX&limit=500`
-  - 샘플 행: 노란 배경 + 🔬 구분 표시
-
-#### 샘플 정합성 테스트 추가
-- `tests/test_sample_parity.py` 신규 (230줄, 6개 테스트)
-  - `test_db_has_inventory_tonbag_table`
-  - `test_sample_bags_count_matches_db`
-  - `test_sample_weight_matches_db`
-  - `test_sample_weight_not_exceeds_lot_weight`
-  - `test_normal_avail_excludes_sample`
-  - `test_sample_bags_positive_weight`
-
-#### Git 커밋
-- `75be2bf` — feat: sample SP표기+필드상속 + product matrix 단일행 + LOT수 + MXBG 클릭 톤백모달
-  - 5 files changed, 428 insertions(+), 79 deletions(-)
-
-### ✅ 2026-05-04 4차 세션 완료 작업
-
-#### BUG-001: ocr_auto_tuner.py — GeminiCallGate + get_ocr_tuner() 싱글톤 추가
-- **원인:** `gemini_parser.py` line 675 `from ocr_auto_tuner import get_ocr_tuner` → ImportError (함수 미존재)
-  → except ImportError 로 catch → tuner=None → OCR 레이트 리미팅 항상 비활성
-- **수정:** `features/ai/ocr_auto_tuner.py` 에 `GeminiCallGate` 클래스 + `get_ocr_tuner()` 싱글톤 추가
-  - `acquire()`: Circuit Breaker 체크 + Semaphore 획득 (연속 429 ≥ 5회 → OPEN 상태)
-  - `release()`: Semaphore 반환
-  - `record_result(success, response_time, is_429, error_message)`: 통계 기록 + 상태 전이
-  - `stats` property: `{concurrency, success_rate, avg_response_time, state, ...}`
-  - 277줄 → 435줄 (기존 OCRAutoTuner 유지 + GeminiCallGate 추가)
-
-#### BUG-003: main_webview.py — dialog 먼저 + timeout 60초
-- **원인:** `save_download_url()` 에서 `urlopen(timeout=300)` 이 대화상자 이전에 실행 → 최대 5분 UI 동결
-- **수정:** `main_webview.py` 445줄 — 순서 변경
-  - 구: download(timeout=300) → file dialog → write
-  - 신: file dialog 먼저 → download(timeout=60) → write
-  - 취소 시 불필요한 서버 부하 없음, 타임아웃 300s → 60s
-
-#### Git 커밋 (사장님이 CMD에서 직접 실행)
-```cmd
-git add features/ai/ocr_auto_tuner.py main_webview.py
-git commit -m "fix: BUG-001 ocr_auto_tuner get_ocr_tuner+GeminiCallGate, BUG-003 dialog-first+timeout=60"
-git push origin main
-```
-
-### ✅ 2026-05-04 5차 세션 완료 작업
-
-#### 3회 전수검사 + 49개 truncated 파일 복구 (BUG-MASS)
-- **원인:** 이전 세션들에서 Edit 툴로 300줄↑ 파일 직접 수정 → 파일 말미 잘림
-- **발견:** Round 3 py_compile 전수검사에서 49개 파일 SyntaxError/null bytes 감지
-- **복구 방법:** `git show HEAD:<파일> > <파일>` — git HEAD 클린 버전으로 덮어쓰기
-- **복구 파일 분류:**
-  - backend/api: actions.py, actions3.py, queries3.py, tonbag_api.py (4개)
-  - features/: multi_template_registry.py, parsers/__init__.py, picking_engine.py, picking_list_parser.py, sales_order_engine.py (5개)
-  - utils/: daily_report.py, date_utils.py, parse_alarm.py, pdf_converter.py (4개)
-  - engine_modules/: db_migration_mixin.py, crud_mixin.py, export_mixin.py, inbound_mixin.py, outbound_mixin.py, return_mixin.py, tonbag_mixin.py (7개)
-  - tests/: test_date_utils_free_time.py, test_parser_regression.py (2개)
-  - scripts/: menu_patch_1_structure.py, test_all_menus_playwright.py (2개)
-  - parsers/: bl_mixin.py, invoice_mixin.py, packing_mixin.py, parser.py (4개)
-  - gui_app_modular/: 20개 (dialogs, handlers, mixins, tabs, utils)
-  - version.py (1개)
-- **복구 불가 3개 (NOT IN HEAD, untracked):** scripts/patch_gui_excel_alignment.py, run_comparison_windows.py, run_master_api.py → app 무관, 방치
-- **최종 검사 결과:** 336개 Python 파일 100% PASS ✅
-
-#### git staged deletions 경고 (미해결 — 사장님 직접 처리 필요)
-- 25개 파일이 git index에 staged for deletion 상태 (GIT_INDEX_FILE 사고 잔재)
-- 물리 파일은 존재하고 HEAD에도 있음 — `git commit` 하면 GitHub에서 25개 삭제됨
-- **필수 명령어 (Windows CMD에서 실행):**
-  ```cmd
-  git restore --staged .
-  ```
-
-### 🔴 미완료 — 최우선 처리
-1. **⚠️ 즉시 — git staged deletions 해제:**
-   ```cmd
-   git restore --staged .
-   ```
-2. **복구된 파일 커밋 (staged deletions 해제 후):**
-   ```cmd
-   git add -u
-   git commit -m "fix: 49개 truncated 파일 HEAD 복구 (py_compile 전수검사)"
-   git push origin main
-   ```
-3. **신규 기능 테스트** — 앱 실행 후:
-   - 재고목록 탭 → MXBG 숫자 버튼 클릭 → 톤백 모달 정상 동작 확인
-   - 샘플 행 SP 표기 + 필드 상속 정상 표시 확인
-   - 대시보드 product matrix 단일행 표시 확인
-4. **중복 템플릿 3개 삭제** — `python scripts\cleanup_dup_templates.py`
-5. **Phase 6 EXE 빌드** — PyInstaller 단일 파일 배포
-
-### 파일 위치 요약 (누적)
-| 용도 | 경로 |
-|------|------|
-| **MXBG 톤백 모달 JS** | **frontend/js/sqm-inline.js** (line 1287: showTonbagModal) |
-| **샘플 정합성 테스트** | **tests/test_sample_parity.py** |
-| AI 템플릿 생성 API | backend/api/template_ai_api.py |
-| 통합 Excel | SMQ 입,출고 재고관리 파일_int.xlsx |
-| Excel STATUS 갱신 | scripts/refresh_excel_status.py |
-| Excel STATUS API | backend/api/refresh_excel_api.py |
-| Layer 1 ONE 템플릿 | features/ai/carrier_templates/one.py |
-| Layer 1 HAPAG 템플릿 | features/ai/carrier_templates/hapag.py |
-| 재고 수정 실행 | engine_modules/inventory_modular/adjust_executor.py |
-| 메뉴 HTML | frontend/index.html |
-| JS 로직 | frontend/js/sqm-inline.js (7182줄) |
-| 입고 API | backend/api/inbound.py |
-| 대시보드 API | backend/api/dashboard.py |
-| 재고 API | backend/api/inventory_api.py |
+**버전:** v866
+**최종 수정:** 2026-05-05
+**작성자:** Ruby (Senior Software Architect)
+**프로젝트 폴더:** `D:\program\SQM_inventory\SQM_v866_CLEAN`
+**GitHub:** `https://github.com/kidongnam1/sqm_3`

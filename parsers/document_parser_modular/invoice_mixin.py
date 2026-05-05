@@ -42,6 +42,26 @@ logger = logging.getLogger(__name__)
 _CUSTOMER_NAME  = "SOQUIMICH LLC"
 _PRODUCT_NAME   = "LITHIUM CARBONATE - BATTERY GRADE - MICRONIZED"
 _PRODUCT_CODE   = "MIC9000.00"
+
+# v9.2: 다중 제품 코드 매핑 (텍스트 감지 우선, 미감지 시 _PRODUCT_CODE 사용)
+_PRODUCT_CODE_MAP = {
+    # keyword_lower → (product_code, product_name)
+    "crystal":     ("CRY9000.00", "LITHIUM CARBONATE - BATTERY GRADE - CRYSTAL"),
+    "cry9000":     ("CRY9000.00", "LITHIUM CARBONATE - BATTERY GRADE - CRYSTAL"),
+    "hydroxide":   ("LHT-B/450",  "LITHIUM HYDROXIDE MONOHYDRATE - BATTERY GRADE"),
+    "lht-b":       ("LHT-B/450",  "LITHIUM HYDROXIDE MONOHYDRATE - BATTERY GRADE"),
+    "lht-b/450":   ("LHT-B/450",  "LITHIUM HYDROXIDE MONOHYDRATE - BATTERY GRADE"),
+    "micronized":  ("MIC9000.00", "LITHIUM CARBONATE - BATTERY GRADE - MICRONIZED"),
+    "mic9000":     ("MIC9000.00", "LITHIUM CARBONATE - BATTERY GRADE - MICRONIZED"),
+}
+
+def _detect_product_code(text: str):
+    """페이지 텍스트에서 제품 코드+이름 동적 감지. 미감지 시 기본값 반환."""
+    low = text.lower()
+    for kw, (code, name) in _PRODUCT_CODE_MAP.items():
+        if kw in low:
+            return code, name
+    return _PRODUCT_CODE, _PRODUCT_NAME
 _CURRENCY       = "USD"
 _SUPPLIER_NAME  = "SQM SALAR SpA"
 
@@ -200,12 +220,8 @@ class InvoiceMixin:
         _qty_m = re.search(r'(\d{2,4}[,.]?\d{1,3})', qty_raw)
         quantity_mt = _parse_euro_number(_qty_m.group(1)) if _qty_m else 0.0
 
-        # Product Code: x=27%
-        prod_code = _PRODUCT_CODE  # v9.1: 고정 상수
-
-        # Product Name: x=38~52%, y=49~52%
-        # v9.1: 제품명/제품코드는 고정 상수 (SQM SALAR SpA 단일 제품)
-        prod_name = _PRODUCT_NAME
+        # Product Code: x=27% — v9.2: 텍스트 기반 동적 감지
+        prod_code, prod_name = _detect_product_code(full_text)
 
         # Unit Price: x=68~78%
         unit_price = _parse_euro_number(by_xy(68, 78, 49, 51))
