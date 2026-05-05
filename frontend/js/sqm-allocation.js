@@ -15,6 +15,13 @@
   var extractRows               = function() { return window.extractRows.apply(window, arguments); };
   /* ──────────────────────────────────────────────────────────────── */
 
+  /* ─── 모듈 상태 (sqm-inline.js 분리 후 이쪽에서 선언) ─────────── */
+  var _allocState = {
+    currentFilter: 'all',
+    rows: [],
+    selectedLots: new Set()
+  };
+
   function loadAllocationPage() {
     var route = window.getCurrentRoute();
     var c = document.getElementById('page-container');
@@ -696,7 +703,7 @@
                 '<span style="font-weight:600">' + escapeHtml(t.tab_label) + '</span>' +
                 '<span style="color:var(--text-muted);margin-left:8px;font-size:.8rem">[' + cols + '컬럼]</span>' +
               '</div>' +
-              '<button type="button" onclick="window._atplDelete(' + JSON.stringify(t.id) + ')" ' +
+              '<button type="button" onclick="window._atplDelete(\'' + t.id.replace(/\'/g, "\\\'" ) + '\')" ' +
                 'style="background:none;border:1px solid var(--danger);color:var(--danger);border-radius:4px;padding:2px 8px;font-size:.78rem;cursor:pointer">🗑️ 삭제</button>' +
             '</div>';
           });

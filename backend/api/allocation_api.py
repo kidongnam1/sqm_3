@@ -20,7 +20,7 @@ _ALLOC_COLUMN_MAP = {
     "lot_no":        ["lot_no", "lot", "lot no", "lot번호", "로트"],
     "sold_to":       ["sold_to", "sold to", "customer", "고객", "고객사"],
     "sale_ref":      ["sale_ref", "sale ref", "sales_ref", "sales ref", "sc_rcvd", "sc rcvd", "판매참조"],
-    "qty_mt":        ["qty_mt", "qty", "quantity", "qty mt", "qty(mt)", "kg", "weight", "수량"],
+    "qty_mt":        ["qty_mt", "qty", "quantity", "qty mt", "qty(mt)", "qty (mt)", "kg", "weight", "수량"],
     "outbound_date": ["outbound_date", "outbound date", "ship_date", "ship date", "출고일", "선적일"],
     "sublot_count":  ["sublot_count", "sublot count", "tonbag_count", "tonbag count", "톤백수"],
     "is_sample":     ["is_sample", "sample", "샘플"],
@@ -55,6 +55,71 @@ def _clean_value(v: Any) -> Any:
         s = v.strip()
         return s if s else None
     return v
+
+# ── AI 폴백 컬럼 매핑 ────────────────────────────────────────────────
+def _ai_match_columns(df, context_rows: int = 3) -> dict:
+    """
+    Gemini를 사용해 DataFrame 컬럼을 표준 키에 매핑.
+    _match_alloc_columns() 실패 시 Stage-2 폴백으로 호출.
+    반환: {std_key: 실제컬럼명}  예) {"lot_no": "Batch Code", "qty_mt": "Net WT"}
+    """
+    import json as _json
+    try:
+        from features.ai.gemini_utils import get_gemini_client, get_model_name, call_gemini_safe
+    except ImportError:
+        logger.warning("[AI-mapping] gemini_utils import 실패")
+        return {}
+
+    client = get_gemini_client()
+    if not client:
+        logger.warning("[AI-mapping] Gemini client 없음 (API 키 미설정?)")
+        return {}
+
+    cols = list(df.columns)
+    try:
+        sample = df.head(context_rows).astype(str).to_dict(orient='records')
+    except Exception:
+        sample = []
+
+    prompt = (
+        "You are analyzing an Excel allocation file for a lithium cargo inventory system.\n\n"
+        f"Column names in the file: {cols}\n"
+        f"Sample data (first {context_rows} rows): {_json.dumps(sample, ensure_ascii=False)}\n\n"
+        "Map these columns to the standard field keys below.\n"
+        "Return ONLY a JSON object — no explanation, no markdown:\n"
+        '{\n'
+        '  \"lot_no\": \"<column that holds the LOT number / batch ID / cargo lot>\",\n'
+        '  \"qty_mt\": \"<column that holds quantity in metric tons / net weight / MT>\",\n'
+        '  \"sold_to\": \"<column that holds customer / buyer / consignee / ship-to>\",\n'
+        '  \"sale_ref\": \"<column that holds sale reference / SC No / contract number, or null>\",\n'
+        '  \"outbound_date\": \"<column that holds shipment / delivery date, or null>\"\n'
+        '}\n\n'
+        "Rules:\n"
+        "- Use the EXACT column name from the provided list (case-sensitive).\n"
+        "- Set value to null if no suitable column found.\n"
+        "- lot_no and at least one of qty_mt/sold_to MUST be mapped."
+    )
+
+    try:
+        resp = call_gemini_safe(client, get_model_name(), prompt, timeout=15, max_output_tokens=300)
+        if not resp:
+            return {}
+        text = resp.text.strip()
+        if "```" in text:
+            parts = text.split("```")
+            text = parts[1] if len(parts) > 1 else parts[0]
+            if text.startswith("json"):
+                text = text[4:]
+        result = _json.loads(text.strip())
+        valid = {}
+        for key, col in result.items():
+            if col and col != "null" and col in cols:
+                valid[key] = col
+        logger.info(f"[AI-mapping] 매핑 결과: {valid}")
+        return valid
+    except Exception as e:
+        logger.warning(f"[AI-mapping] Gemini 매핑 실패: {e}")
+        return {}
 
 
 @router.post("/bulk-import-excel", summary="📍 Allocation 입력 — Excel 업로드 (F014)")
@@ -98,7 +163,8 @@ async def bulk_import_allocation(file: UploadFile = File(...)):
         # header=0/1/2 자동 감지
         df = None
         header_used = None
-        for header_row in (0, 1, 2):
+        col_map_override = None  # AI 폴백 시 채워짐
+        for header_row in (0, 1, 2, 3, 4, 5):
             try:
                 candidate = pd.read_excel(tmp_path, header=header_row)
                 if candidate.empty:
@@ -111,11 +177,32 @@ async def bulk_import_allocation(file: UploadFile = File(...)):
             except Exception as e:
                 logger.debug(f"[allocation-import] header={header_row} 실패: {e}")
                 continue
+        # Stage 2: Gemini AI 폴백 — alias 매핑 실패 시
         if df is None or df.empty:
-            raise HTTPException(400, "Excel 헤더 인식 실패 — lot_no + sold_to/qty_mt 컬럼 필요")
+            logger.info("[allocation-import] alias 매핑 실패 → Gemini AI 폴백 시도")
+            for header_row in (0, 1, 2, 3, 4, 5):
+                try:
+                    candidate = pd.read_excel(tmp_path, header=header_row)
+                    if candidate.empty:
+                        continue
+                    ai_map = _ai_match_columns(candidate)
+                    if "lot_no" in ai_map and ("sold_to" in ai_map or "qty_mt" in ai_map):
+                        df = candidate
+                        header_used = header_row
+                        col_map_override = ai_map
+                        logger.info(f"[allocation-import] AI 폴백 성공 header={header_row}: {ai_map}")
+                        break
+                except Exception as _ae:
+                    logger.debug(f"[allocation-import] AI폴백 header={header_row}: {_ae}")
 
-        col_map = _match_alloc_columns(df.columns)
-        logger.info(f"[allocation-import] header={header_used}, {len(df)}행, 매핑: {list(col_map.keys())}")
+        if df is None or df.empty:
+            raise HTTPException(400,
+                "Excel 헤더 인식 실패 — lot_no + sold_to/qty_mt 컬럼 필요 "
+                "(AI 폴백도 실패. 컬럼명을 확인하거나 표준 양식을 사용하세요)")
+
+        col_map = col_map_override if col_map_override else _match_alloc_columns(df.columns)
+        _mapping_source = "AI폴백" if col_map_override else "alias"
+        logger.info(f"[allocation-import] header={header_used}, {len(df)}행, 매핑({_mapping_source}): {list(col_map.keys())}")
 
         # row dict 리스트 생성 + 검증 통계
         rows = []
@@ -166,6 +253,26 @@ async def bulk_import_allocation(file: UploadFile = File(...)):
         error_details = result.get("error_details", [])
         plan_ids = result.get("plan_ids", [])
 
+        # UNIQUE constraint 에러 → 사용자 친화적 메시지로 변환
+        if not success and errors:
+            dup_errors = [e for e in errors if 'UNIQUE' in str(e) or 'unique' in str(e).lower() or 'idx_allocation_lot_mode_active_no_dup' in str(e)]
+            if dup_errors:
+                return {
+                    "ok": False,
+                    "data": {
+                        "filename": file.filename,
+                        "total_rows": len(rows),
+                        "reserved": 0,
+                        "errors": errors[:20],
+                        "validation_summary": validation_summary,
+                    },
+                    "error": (
+                        "이미 예약된 LOT이 포함되어 있습니다 — "
+                        "같은 LOT을 다시 업로드하려면 먼저 [배분 탭 → 전체 초기화] 를 실행한 후 재시도하세요."
+                    ),
+                    "error_code": "DUPLICATE_LOT",
+                }
+
         if success:
             logger.info(
                 f"[allocation-import] 완료: {reserved}건 예약 / 에러 {len(errors)}건 ({file.filename})"
@@ -179,6 +286,7 @@ async def bulk_import_allocation(file: UploadFile = File(...)):
                     "plan_ids": plan_ids[:50],
                     "header_row": header_used,
                     "matched_columns": list(col_map.keys()),
+                    "mapping_source": _mapping_source,
                     "errors": errors[:20],
                     "error_details": error_details[:20],
                     "warnings": result.get("warnings", [])[:20],

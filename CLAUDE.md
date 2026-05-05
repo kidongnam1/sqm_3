@@ -245,9 +245,14 @@ sqm-inline.js (391KB, 7133줄) → 6개 IIFE 파일로 분할 완료
 - `SMQ 입,출고 재고관리 파일_int.xlsx` — IN/UNSOLD/SOLD 3시트 → INVENTORY 단일시트
 - STATUS 컬럼 자동 관리: AVAILABLE(초록) / RESERVED(노란) / SOLD(빨강)
 
-### Allocation 양식 (현재 3개)
-- jakarta_9col, song_aaa_10col, woo_ptlbm_13col
+### Allocation 양식 (현재 4개, 2026-05-05 추가)
+- jakarta_9col, song_aaa_10col, woo_ptlbm_13col, **woo_202606** (5행헤더블록 신규)
 - 위치: `resources/templates/allocation/`
+
+### Allocation 버그 수정 (2026-05-05)
+- **Bug①** `outbound_mixin.py` LOT mode loop → UNIQUE 위반: 1행 INSERT로 수정
+- **Bug②** `sqm-allocation.js` `_allocState` undefined → 빈화면: 모듈 내 선언 추가
+- **Bug③** `queries.py` allocation-summary → inventory JOIN 추가: SAP NO/PRODUCT/WH 채움 + PICKED/SOLD 탭도 활성화
 
 ### 선사 BL 템플릿 (Layer 1)
 - ONE, HAPAG, MAERSK, MSC, HMM/CMACGM, GENERIC (6개)
@@ -257,25 +262,39 @@ sqm-inline.js (391KB, 7133줄) → 6개 IIFE 파일로 분할 완료
 
 ## 🔴 현재 미완료 — 최우선 처리 순서
 
-### 1. git push (즉시)
+### 1. git push (즉시) — 2026-05-05 세션 변경분
 ```cmd
 cd D:\program\SQM_inventory\SQM_v866_CLEAN
-git add frontend/index.html frontend/js/sqm-core.js frontend/js/sqm-inventory.js frontend/js/sqm-allocation.js frontend/js/sqm-picked.js frontend/js/sqm-logistics.js frontend/js/sqm-tonbag.js features/ai/gemini_utils.py features/ai/gemini_parser.py parsers/document_parser_modular/invoice_mixin.py parsers/allocation_parser.py CLAUDE.md
-git commit -m "fix: v866 JS분할+테마dark+Excel버튼open*+CRY9000+LHT-B/450+CLAUDE.md v866"
+git add engine_modules/inventory_modular/outbound_mixin.py
+git add backend/api/allocation_api.py
+git add backend/api/queries.py
+git add frontend/js/sqm-allocation.js
+git add resources/templates/allocation/woo_202606.json
+git add resources/templates/allocation/woo_202606.xlsx
+git add alloc_test_files/alloc_test_v2_song.xlsx
+git add alloc_test_files/alloc_test_v2_woo.xlsx
+git add alloc_test_files/alloc_test_v2_woo202606.xlsx
+git add alloc_test_files/alloc_test_v2_jakarta.xlsx
+git add CLAUDE.md
+git commit -m "fix: allocation 3-bug fix + woo_202606 template + test files v2
+
+- outbound_mixin.py: LOT mode UNIQUE 위반 수정 (loop→1행 INSERT)
+- sqm-allocation.js: _allocState undefined 수정 (빈화면 fix)
+- queries.py: allocation-summary inventory JOIN 추가 (SAP NO/PRODUCT/WH + PICKED/SOLD 탭 활성화)
+- woo_202606.json+xlsx: 5행헤더블록 Woo 신규 템플릿
+- alloc_test_files: v2 테스트 파일 4개 (파서 검증 완료)"
 git push origin main
 ```
 
-### 2. 앱 시각 테스트 (git push 후)
+### 2. 앱 재시작 후 확인 항목
 - 완전 종료 후 재시작 (단순 새로고침 금지)
-- 확인 항목: 다크 테마 기본, 고급도구 4개 버튼, LOT Excel 직접 열기, 전 탭 정상 동작
+- 배분 탭 → RESERVED 행 SAP NO / PRODUCT / WH 데이터 표시 확인
+- PICKED / SOLD 탭도 데이터 표시 확인
+- alloc_test_v2_*.xlsx 4개 파일 업로드 테스트
 
 ### 3. Phase 6 — EXE 빌드
 - PyInstaller spec 작성 → hidden imports 해결 → 빌드 테스트 → 실행 검증
 - Gate: test_phase5_parity.py 44 passed + EXE 실행 시 FastAPI 정상 기동
-
-### 4. Allocation 양식 가져오기 UI (미이식)
-- v864.2에 `_on_import_template()` 완전 구현됨 (xlsx → json+xlsx 자동 저장)
-- v866 웹 UI에 해당 버튼/API 없음 → 구현 필요 시 별도 요청
 
 ---
 

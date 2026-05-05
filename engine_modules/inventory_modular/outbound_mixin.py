@@ -1980,15 +1980,16 @@ class OutboundMixin(InventoryBaseMixin):
             return reserved_in_lot, reserved_kg, selected_sub_lts, seed_hash, plan_line_counter, selected
 
         if effective_mode == "lot":
-            qty_mt_each = (qty_mt / pick_count) if pick_count > 0 else qty_mt
-            for _ in range(pick_count):
-                plan_line_counter += 1
-                payload = self._ra_build_plan_payload(
-                    qty_mt=qty_mt_each, status="RESERVED",
-                    source_label="LOT", line_no=plan_line_counter,
-                    **_common_kw)
-                _insert_plan(payload)
-                reserved_in_lot += 1
+            # v9.2 [LOT-MODE-FIX]: 1행 INSERT (pick_count 반복 → UNIQUE 위반 수정)
+            # lot 모드는 tonbag_id=NULL 1행으로 전체 qty_mt 기록.
+            # pick_count는 결과 카운트에만 반영 (실출고 시 바코드 스캔으로 tonbag 특정).
+            plan_line_counter += 1
+            payload = self._ra_build_plan_payload(
+                qty_mt=qty_mt, status="RESERVED",
+                source_label="LOT", line_no=plan_line_counter,
+                **_common_kw)
+            _insert_plan(payload)
+            reserved_in_lot = pick_count  # tonbag 개수 반영
             reserved_kg = sum(float(tb.get('weight') or 0) for tb in tonbags[:pick_count])
         else:
             # 톤백 단위 예약

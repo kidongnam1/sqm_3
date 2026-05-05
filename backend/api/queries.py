@@ -526,22 +526,32 @@ def get_allocation_summary():
     """allocation_plan GROUP BY lot_no — LOT별 요약 (v864.2 동일 2단 구조)"""
     try:
         con = _db()
+        # v9.3 [ALLOC-SUMMARY-JOIN]: inventory JOIN → SAP NO/PRODUCT/WH 채움
+        #         status 필터 제거 → RESERVED/PICKED/SOLD 모두 반환
         rows = con.execute("""
             SELECT ap.lot_no,
                    ap.customer,
-                   SUM(COALESCE(ap.qty_mt, 0))                    AS total_mt,
-                   COUNT(*)                                        AS tonbag_count,
-                   COALESCE(date(ap.outbound_date), '0000-00-00')  AS plan_date
+                   SUM(COALESCE(ap.qty_mt, 0))                     AS total_mt,
+                   COUNT(*)                                         AS tonbag_count,
+                   COALESCE(date(ap.outbound_date), '0000-00-00')   AS plan_date,
+                   MAX(ap.sale_ref)                                  AS sale_ref,
+                   MAX(ap.outbound_date)                             AS outbound_date,
+                   MAX(ap.status)                                    AS status,
+                   i.sap_no,
+                   i.product,
+                   COALESCE(i.warehouse, 'GY')                      AS warehouse
             FROM allocation_plan ap
-            WHERE ap.status = 'RESERVED'
-            GROUP BY ap.lot_no, COALESCE(date(ap.outbound_date), '0000-00-00')
-            ORDER BY ap.lot_no, plan_date
+            LEFT JOIN inventory i ON ap.lot_no = i.lot_no
+            WHERE ap.status NOT IN ('CANCELLED')
+            GROUP BY ap.lot_no, COALESCE(date(ap.outbound_date), '0000-00-00'),
+                     i.sap_no, i.product, i.warehouse
+            ORDER BY ap.status, ap.lot_no, plan_date
         """).fetchall()
         con.close()
         return ok_response(data={
             "items": _rows_to_list(rows),
             "total": len(rows),
-            "columns": ["lot_no", "customer", "total_mt", "tonbag_count", "plan_date"]
+            "columns": ["lot_no", "customer", "total_mt", "tonbag_count", "plan_date", "sale_ref", "outbound_date", "status", "sap_no", "product", "warehouse"]
         })
     except Exception as e:
         logger.error("allocation-summary error: %s", e)

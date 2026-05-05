@@ -1,0 +1,29 @@
+{
+  "id": "woo_202606",
+  "tab_label": "📄 Woo 202606 (5행헤더)",
+  "template_file": "woo_202606.xlsx",
+  "sheet": "Allocation",
+  "header_row": 6,
+  "data_start_row": 7,
+  "description": "Woo/PTLBM 계열 │ 1~5행 헤더블록(고객/제품/기간/총수량) + 6행 컬럼 │ 컬럼: Product / SAP NO / Date in stock / QTY (MT) / Lot No / WH / Customs / Export / SOLD TO / SALE REF / Balance / GW / Remark │ 샘플: QTY < 0.01 MT",
+  "columns": [
+    "Product",
+    "SAP NO",
+    "Date in stock",
+    "QTY (MT)",
+    "Lot No",
+    "WH",
+    "Customs",
+    "Export",
+    "SOLD TO",
+    "SALE REF",
+    "Balance",
+    "GW",
+    "Remark"
+  ],
+  "sample_rule": {
+    "field": "Product",
+    "contains": "sample",
+    "qty_mt_max": 0.01
+  }
+}
