@@ -146,7 +146,10 @@ def get_dashboard_stats():
         stock_lots  = c.execute("SELECT COUNT(*) FROM inventory WHERE status='AVAILABLE'").fetchone()[0]
         sold_lots   = c.execute("SELECT COUNT(*) FROM inventory WHERE status IN ('SOLD','RESERVED','PICKED')").fetchone()[0]
         total_wt    = c.execute("SELECT COALESCE(SUM(current_weight),0) FROM inventory").fetchone()[0]
-        avail_wt    = c.execute("SELECT COALESCE(SUM(current_weight),0) FROM inventory WHERE status='AVAILABLE'").fetchone()[0]
+        # v9.4 [AVAIL-FIX]: 톤백 레벨 status 기준 무게 집계 (LOT 레벨 오버카운트 수정)
+        avail_wt    = c.execute("SELECT COALESCE(SUM(weight),0) FROM inventory_tonbag WHERE status='AVAILABLE'").fetchone()[0]
+        reserved_wt = c.execute("SELECT COALESCE(SUM(weight),0) FROM inventory_tonbag WHERE status='RESERVED'").fetchone()[0]
+        picked_wt   = c.execute("SELECT COALESCE(SUM(weight),0) FROM inventory_tonbag WHERE status='PICKED'").fetchone()[0]
 
         # ── 상태 요약 (inventory_tonbag 기준) — 일반 + 샘플 분리 ──
         status_rows = c.execute("""
@@ -289,7 +292,10 @@ def get_dashboard_stats():
             "stock_lots":      stock_lots,
             "sold_lots":       sold_lots,
             "total_weight_mt": round(total_wt / 1000.0, 2),
-            "available_mt":    round(avail_wt / 1000.0, 2),
+            # v9.4: 톤백 레벨 정확한 상태별 무게
+            "available_mt":    round(avail_wt  / 1000.0, 3),
+            "reserved_mt":     round(reserved_wt / 1000.0, 3),
+            "picked_mt":       round(picked_wt  / 1000.0, 3),
             # 신규: 5단계 상태 요약
             "status_summary":  status_summary,
             # 신규: 제품x상태 매트릭스

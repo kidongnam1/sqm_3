@@ -71,6 +71,16 @@ def get_inventory(
                 (SELECT COUNT(*) FROM inventory_tonbag t
                  WHERE t.lot_no = i.lot_no AND t.status = 'AVAILABLE' AND t.is_sample = 0
                 ) AS avail_bags,
+                -- v9.4: 톤백 레벨 상태별 무게 (MT)
+                ROUND((SELECT COALESCE(SUM(t.weight),0) FROM inventory_tonbag t
+                 WHERE t.lot_no = i.lot_no AND t.status = 'AVAILABLE' AND t.is_sample = 0
+                ) / 1000.0, 3) AS avail_mt,
+                ROUND((SELECT COALESCE(SUM(t.weight),0) FROM inventory_tonbag t
+                 WHERE t.lot_no = i.lot_no AND t.status = 'RESERVED' AND t.is_sample = 0
+                ) / 1000.0, 3) AS reserved_mt,
+                ROUND((SELECT COALESCE(SUM(t.weight),0) FROM inventory_tonbag t
+                 WHERE t.lot_no = i.lot_no AND t.status = 'PICKED' AND t.is_sample = 0
+                ) / 1000.0, 3) AS picked_mt,
                 (SELECT COUNT(*) FROM inventory_tonbag t
                  WHERE t.lot_no = i.lot_no AND t.status = 'AVAILABLE' AND t.is_sample = 0
                 ) AS tb_avail,

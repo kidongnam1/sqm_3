@@ -253,6 +253,8 @@ sqm-inline.js (391KB, 7133줄) → 6개 IIFE 파일로 분할 완료
 - **Bug①** `outbound_mixin.py` LOT mode loop → UNIQUE 위반: 1행 INSERT로 수정
 - **Bug②** `sqm-allocation.js` `_allocState` undefined → 빈화면: 모듈 내 선언 추가
 - **Bug③** `queries.py` allocation-summary → inventory JOIN 추가: SAP NO/PRODUCT/WH 채움 + PICKED/SOLD 탭도 활성화
+- **Bug④** `outbound_mixin.py` LOT mode → `inventory_tonbag.status` RESERVED 미갱신: executemany UPDATE 추가 (commit 9bc4463)
+- **Bug⑤** Dashboard/Inventory AVAILABLE 오버카운트: `inventory.current_weight`(LOT레벨) → `inventory_tonbag.weight`(톤백레벨) 집계로 교정 + `reserved_mt`/`picked_mt` 필드 추가 + 재고현황 바 차트 렌더링 추가
 
 ### 선사 BL 템플릿 (Layer 1)
 - ONE, HAPAG, MAERSK, MSC, HMM/CMACGM, GENERIC (6개)
@@ -262,37 +264,14 @@ sqm-inline.js (391KB, 7133줄) → 6개 IIFE 파일로 분할 완료
 
 ## 🔴 현재 미완료 — 최우선 처리 순서
 
-### 1. git push (즉시) — 2026-05-05 세션 변경분
-```cmd
-cd D:\program\SQM_inventory\SQM_v866_CLEAN
-git add engine_modules/inventory_modular/outbound_mixin.py
-git add backend/api/allocation_api.py
-git add backend/api/queries.py
-git add frontend/js/sqm-allocation.js
-git add resources/templates/allocation/woo_202606.json
-git add resources/templates/allocation/woo_202606.xlsx
-git add alloc_test_files/alloc_test_v2_song.xlsx
-git add alloc_test_files/alloc_test_v2_woo.xlsx
-git add alloc_test_files/alloc_test_v2_woo202606.xlsx
-git add alloc_test_files/alloc_test_v2_jakarta.xlsx
-git add CLAUDE.md
-git commit -m "fix: allocation 3-bug fix + woo_202606 template + test files v2
-
-- outbound_mixin.py: LOT mode UNIQUE 위반 수정 (loop→1행 INSERT)
-- sqm-allocation.js: _allocState undefined 수정 (빈화면 fix)
-- queries.py: allocation-summary inventory JOIN 추가 (SAP NO/PRODUCT/WH + PICKED/SOLD 탭 활성화)
-- woo_202606.json+xlsx: 5행헤더블록 Woo 신규 템플릿
-- alloc_test_files: v2 테스트 파일 4개 (파서 검증 완료)"
-git push origin main
-```
-
-### 2. 앱 재시작 후 확인 항목
+### 1. 앱 재시작 후 확인 항목 (Bug④⑤ 검증)
 - 완전 종료 후 재시작 (단순 새로고침 금지)
-- 배분 탭 → RESERVED 행 SAP NO / PRODUCT / WH 데이터 표시 확인
-- PICKED / SOLD 탭도 데이터 표시 확인
-- alloc_test_v2_*.xlsx 4개 파일 업로드 테스트
+- Dashboard → 상단 "재고 현황" 바 차트 표시 확인 (Available/Reserved/Picked MT)
+- alloc_test_v2_*.xlsx 중 1개 업로드 → Available↓ Reserved↑ 반영 확인
+- Inventory탭 → Balance 옆 "Avail/Rsv(MT)" 컬럼: 초록=가용MT, 파랑=배분MT
+- 배분 탭 RESERVED 행 SAP NO / PRODUCT / WH 데이터 표시 확인
 
-### 3. Phase 6 — EXE 빌드
+### 2. Phase 6 — EXE 빌드
 - PyInstaller spec 작성 → hidden imports 해결 → 빌드 테스트 → 실행 검증
 - Gate: test_phase5_parity.py 44 passed + EXE 실행 시 FastAPI 정상 기동
 
