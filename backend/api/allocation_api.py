@@ -117,18 +117,42 @@ async def bulk_import_allocation(file: UploadFile = File(...)):
         col_map = _match_alloc_columns(df.columns)
         logger.info(f"[allocation-import] header={header_used}, {len(df)}행, 매핑: {list(col_map.keys())}")
 
-        # row dict 리스트 생성
+        # row dict 리스트 생성 + 검증 통계
         rows = []
+        skip_no_lot   = 0   # lot_no 없어서 건너뛴 행
+        warn_no_qty   = []  # qty_mt 0이하 또는 없음
+        warn_no_sold  = []  # sold_to/customer 없음
+        total_df_rows = len(df)
+
         for idx, row in df.iterrows():
             r = {}
             for std_key, orig_col in col_map.items():
                 r[std_key] = _clean_value(row[orig_col])
             if not r.get("lot_no"):
+                skip_no_lot += 1
                 continue  # 빈 lot_no 행은 skip
             # customer 별명: sold_to ↔ customer
             if r.get("sold_to") and not r.get("customer"):
                 r["customer"] = r["sold_to"]
+            # 검증 경고 수집 (skip하지 않고 계속 진행)
+            qty = r.get("qty_mt")
+            try:
+                qty_f = float(qty) if qty not in (None, "") else 0.0
+            except (ValueError, TypeError):
+                qty_f = 0.0
+            if qty_f <= 0:
+                warn_no_qty.append(str(r["lot_no"]))
+            if not r.get("sold_to") and not r.get("customer"):
+                warn_no_sold.append(str(r["lot_no"]))
             rows.append(r)
+
+        validation_summary = {
+            "total_rows": total_df_rows,
+            "valid_rows": len(rows),
+            "skipped_no_lot": skip_no_lot,
+            "warn_no_qty": warn_no_qty[:20],
+            "warn_no_sold_to": warn_no_sold[:20],
+        }
 
         if not rows:
             raise HTTPException(400, "유효한 데이터 행이 없습니다 (lot_no 전부 비어있음)")
@@ -158,6 +182,7 @@ async def bulk_import_allocation(file: UploadFile = File(...)):
                     "errors": errors[:20],
                     "error_details": error_details[:20],
                     "warnings": result.get("warnings", [])[:20],
+                    "validation_summary": validation_summary,
                 },
                 "message": f"{reserved}건 Allocation 예약 완료 / 경고 {len(errors)}건",
             }
@@ -170,6 +195,7 @@ async def bulk_import_allocation(file: UploadFile = File(...)):
                     "reserved": reserved,
                     "errors": errors[:20],
                     "error_details": error_details[:20],
+                    "validation_summary": validation_summary,
                 },
                 "error": "Allocation 예약 실패",
                 "detail": {"code": "ALLOCATION_FAILED", "errors": errors[:10]},

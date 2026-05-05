@@ -775,6 +775,21 @@
         });
     });
 
+    // ── 필수 컬럼 검증 ────────────────────────────────────
+    var _REQUIRED_PATTERNS = {
+      'LOT NO':   /lot/i,
+      'QTY(MT)':  /qty|quantity|balance|수량/i,
+      'SOLD TO':  /sold|customer|고객/i
+    };
+    function _checkRequiredCols(columns) {
+      var missing = [];
+      Object.keys(_REQUIRED_PATTERNS).forEach(function(label) {
+        var found = columns.some(function(c) { return _REQUIRED_PATTERNS[label].test(c); });
+        if (!found) missing.push(label);
+      });
+      return missing;
+    }
+
     // ── 분석 결과 표시 + 확인 UI ───────────────────────────
     function showAnalysisResult(res) {
       var cols = (res.columns || []).join(', ');
@@ -785,6 +800,17 @@
         '<b>헤더행:</b> ' + res.header_row + '행<br>' +
         '<b>감지 컬럼 (' + (res.columns||[]).length + '개):</b> ' + escapeHtml(cols) +
         '</div></div>';
+
+      // 필수 컬럼 누락 경고 배너
+      var missingCols = _checkRequiredCols(res.columns || []);
+      if (missingCols.length > 0) {
+        preview += '<div style="background:rgba(255,193,7,.1);border:1px solid #ffc107;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:.85rem">' +
+          '<b style="color:#ffc107">⚠️ 필수 컬럼 누락 감지</b><br>' +
+          '<span style="color:var(--text-muted)">아래 컬럼이 없으면 배분 실행 시 오류가 발생할 수 있습니다:</span><br>' +
+          missingCols.map(function(m){ return '&nbsp;&nbsp;• <b>' + escapeHtml(m) + '</b>'; }).join('<br>') +
+          '<br><span style="color:var(--text-muted);font-size:.8rem">계속 등록할 수 있지만, 실제 사용 전 Excel 양식에 해당 컬럼을 추가하세요.</span>' +
+          '</div>';
+      }
 
       if (!res.duplicate) {
         // 비중복 → 추가 확인

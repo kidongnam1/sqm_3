@@ -2910,6 +2910,24 @@
       subtitle: 'Allocation Excel 파일을 선택하세요. 컬럼: <code>lot_no, sold_to, sale_ref, qty_mt, outbound_date, sublot_count</code>',
       endpoint: '/api/allocation/bulk-import-excel',
       onSuccess: function(d) {
+        // ── validation_summary 경고 배너 ──────────────────
+        var vs = d.validation_summary || {};
+        var vsHtml = '';
+        var vsItems = [];
+        if (vs.skipped_no_lot > 0)
+          vsItems.push('LOT NO 없음: <b>' + vs.skipped_no_lot + '행</b> 건너뜀');
+        if (vs.warn_no_qty && vs.warn_no_qty.length)
+          vsItems.push('QTY(MT) 0 이하: <b>' + vs.warn_no_qty.length + '건</b> (' + vs.warn_no_qty.slice(0,5).join(', ') + (vs.warn_no_qty.length>5?'…':'') + ')');
+        if (vs.warn_no_sold_to && vs.warn_no_sold_to.length)
+          vsItems.push('SOLD TO 없음: <b>' + vs.warn_no_sold_to.length + '건</b> (' + vs.warn_no_sold_to.slice(0,5).join(', ') + (vs.warn_no_sold_to.length>5?'…':'') + ')');
+        if (vsItems.length) {
+          vsHtml = '<div style="background:rgba(255,193,7,.1);border:1px solid #ffc107;border-radius:6px;padding:8px 12px;margin-top:8px;font-size:.83rem">' +
+            '<b style="color:#ffc107">⚠️ 데이터 검증 알림</b><br>' +
+            vsItems.map(function(s){ return '&nbsp;• ' + s; }).join('<br>') +
+            '<br><span style="color:var(--text-muted);font-size:.79rem">예약은 완료됐습니다. 위 항목은 실무 확인이 필요합니다.</span>' +
+            '</div>';
+        }
+        // ── 기존 에러/경고 ─────────────────────────────────
         var warnHtml = '';
         if (d.errors && d.errors.length) {
           warnHtml = '<details style="margin-top:8px"><summary style="cursor:pointer;color:var(--warning)">⚠️ 경고 ' + d.errors.length + '건</summary><pre style="white-space:pre-wrap;font-size:.8rem;margin-top:8px;max-height:200px;overflow:auto">' +
@@ -2922,7 +2940,7 @@
         }
         return '<div style="color:var(--text-muted);font-size:.85rem">파일: ' + escapeHtml(d.filename||'-') +
                ' · <strong style="color:var(--accent)">' + (d.reserved||0) + '건</strong> 예약 / 총 ' + (d.total_rows||0) + '행 · 매핑: ' + ((d.matched_columns||[]).join(', ')) +
-               '</div>' + warnHtml + detailHtml;
+               '</div>' + vsHtml + warnHtml + detailHtml;
       }
     });
   }
