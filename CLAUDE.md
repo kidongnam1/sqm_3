@@ -256,6 +256,14 @@ sqm-inline.js (391KB, 7133줄) → 6개 IIFE 파일로 분할 완료
 - **Bug④** `outbound_mixin.py` LOT mode → `inventory_tonbag.status` RESERVED 미갱신: executemany UPDATE 추가 (commit 9bc4463)
 - **Bug⑤** Dashboard/Inventory AVAILABLE 오버카운트: `inventory.current_weight`(LOT레벨) → `inventory_tonbag.weight`(톤백레벨) 집계로 교정 + `reserved_mt`/`picked_mt` 필드 추가 + 재고현황 바 차트 렌더링 추가
 
+### 사이드바 Inventory 하위메뉴 구조 (2026-05-05)
+- 사이드바 Inventory 버튼 → 4개 하위메뉴 토글: Available / Allocation / Picked / Return
+- 각 항목 배지: N개 톤백 · X.XXX MT 표시 (30초 자동 갱신)
+- Available 전용 페이지 추가: AVAILABLE 상태 LOT 목록 (Avail/Rsv MT 컬럼)
+- 관련 파일: `index.html`, `v864-layout.css`, `sqm-core.js`, `sqm-inventory.js`
+- 백엔드: `dashboard.py` `/api/dashboard/sidebar-counts` 엔드포인트 추가
+- JS 파일 분할 버그 수정: `sqm-inventory.js` 꼬리 truncation 복구, `sqm-picked.js` 잘못 포함된 inbound 코드 제거 → `sqm-logistics.js`로 이동
+
 ### 선사 BL 템플릿 (Layer 1)
 - ONE, HAPAG, MAERSK, MSC, HMM/CMACGM, GENERIC (6개)
 - 위치: `features/ai/carrier_templates/`
@@ -264,12 +272,15 @@ sqm-inline.js (391KB, 7133줄) → 6개 IIFE 파일로 분할 완료
 
 ## 🔴 현재 미완료 — 최우선 처리 순서
 
-### 1. 앱 재시작 후 확인 항목 (Bug④⑤ 검증)
+### 1. 앱 재시작 후 확인 항목 (Bug④⑤ + 사이드바 검증)
 - 완전 종료 후 재시작 (단순 새로고침 금지)
 - Dashboard → 상단 "재고 현황" 바 차트 표시 확인 (Available/Reserved/Picked MT)
 - alloc_test_v2_*.xlsx 중 1개 업로드 → Available↓ Reserved↑ 반영 확인
 - Inventory탭 → Balance 옆 "Avail/Rsv(MT)" 컬럼: 초록=가용MT, 파랑=배분MT
 - 배분 탭 RESERVED 행 SAP NO / PRODUCT / WH 데이터 표시 확인
+- 사이드바 Inventory 클릭 → 하위메뉴(Available/Allocation/Picked/Return) 펼침 확인
+- Available 메뉴 클릭 → AVAILABLE LOT 목록 표시 확인
+- 배지(N개·X MT) 30초마다 자동 갱신 확인
 
 ### 2. Phase 6 — EXE 빌드
 - PyInstaller spec 작성 → hidden imports 해결 → 빌드 테스트 → 실행 검증

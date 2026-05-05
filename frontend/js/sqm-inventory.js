@@ -32,8 +32,16 @@
       var sumNet = 0;
       var sumIni = 0;
       var sumOb = 0;
+      var sumUnsold = 0;
+      var sumSold = 0;
       rows.forEach(function(r){
-        if (r.balance != null && !isNaN(Number(r.balance))) sumBal += Number(r.balance);
+        if (r.balance != null && !isNaN(Number(r.balance))) {
+          var bal = Number(r.balance);
+          sumBal += bal;
+          var st = String(r.status || '').toUpperCase();
+          if (st === 'SOLD' || st === 'OUTBOUND' || st === 'SHIPPED' || st === 'CONFIRMED') sumSold += bal;
+          else sumUnsold += bal;
+        }
         if (r.net != null && !isNaN(Number(r.net))) sumNet += Number(r.net);
         if (r.initial_weight != null && !isNaN(Number(r.initial_weight))) sumIni += Number(r.initial_weight);
         if (r.outbound_weight != null && !isNaN(Number(r.outbound_weight))) sumOb += Number(r.outbound_weight);
@@ -60,10 +68,10 @@
         '  <button class="btn btn-ghost" style="font-size:12px" onclick="window.invClearFilter()">✕ 초기화</button>' +
         '</div>' +
         '<p style="font-size:12px;color:var(--text-muted);margin:0 0 8px 0">' +
-        '목록 합계 · NET(MT): <b style="color:var(--accent)">'+fmtN(sumNet)+'</b> · Balance(MT): <b>'+fmtN(sumBal)+'</b> · 차이(순−현, 샘플 등): <b style="color:#f59e0b">'+fmtN(sumNet - sumBal)+'</b>' +
+        '목록 합계 · NET(MT): <b style="color:var(--accent)">'+fmtN(sumNet)+'</b> · Balance(MT): <b>'+fmtN(sumBal)+'</b> · 미판매(MT): <b style="color:#22c55e">'+fmtN(sumUnsold)+'</b> · 판매완료(MT): <b style="color:#ef4444;font-weight:700">'+fmtN(sumSold)+'</b> · 차이(순−현, 샘플 등): <b style="color:#f59e0b">'+fmtN(sumNet - sumBal)+'</b>' +
         '</p>' +
         '<div style="overflow-x:auto"><table class="data-table"><thead><tr>' +
-        '<th>#</th><th>LOT</th><th>SAP</th><th>BL</th><th>Product</th>' +
+        '<th>#</th><th style="text-align:left !important">LOT</th><th>SAP</th><th>BL</th><th>Product</th>' +
         '<th>Status</th><th>Balance(MT)</th><th>Avail/Rsv(MT)</th><th>NET(MT)</th><th>Container</th>' +
         '<th>MXBG</th><th>Avail</th><th>Invoice</th>' +
         '<th>Ship</th><th>Arrival</th><th>Con Return</th><th>Free</th>' +
@@ -71,6 +79,7 @@
         '</tr></thead><tbody>';
       html += rows.map(function(r, i){
         var lotKey = escapeHtml(r.lot||'');
+        var parentContainer = escapeHtml(r.parent_container || r.container || '-');
         var hasSample = (r.sample_bags > 0);
         var sampleRow = '';
         if (hasSample) {
@@ -84,7 +93,8 @@
             '<td style="font-size:15px;color:#eab308;font-weight:600;padding:6px 10px;line-height:1.2">SAMPLE</td>' +
             '<td class="mono-cell" style="text-align:right;color:#eab308;font-weight:600;padding:6px 10px;line-height:1.2">'+fmtN(r.sample_weight_mt||0)+'</td>' +
             '<td class="mono-cell" style="text-align:right;color:#eab308;padding:6px 10px;line-height:1.2">'+fmtN(r.sample_weight_mt||0)+'</td>' +
-            '<td class="mono-cell" style="font-size:15px;color:#94a3b8;padding:6px 10px;line-height:1.2">'+escapeHtml(r.container||'')+'</td>' +
+            '<td class="mono-cell" style="text-align:right;color:#eab308;padding:6px 10px;line-height:1.2">'+fmtN(r.sample_weight_mt||0)+'</td>' +
+            '<td class="mono-cell" style="font-size:15px;color:#94a3b8;padding:6px 10px;line-height:1.2">'+parentContainer+'</td>' +
             '<td class="mono-cell" style="text-align:center;color:#eab308;font-weight:700;padding:6px 10px;line-height:1.2">'+r.sample_bags+'</td>' +
             '<td class="mono-cell" style="text-align:center;color:#eab308;font-weight:700;padding:6px 10px;line-height:1.2">'+r.sample_bags+'</td>' +
             '<td class="mono-cell" style="font-size:15px;color:#94a3b8;padding:6px 10px;line-height:1.2">'+escapeHtml(r.invoice_no||'')+'</td>' +
@@ -100,6 +110,21 @@
             '<td></td>' +
             '</tr>';
         }
+        var rawStatus = String(r.status || '').toUpperCase();
+        var statusLabel = rawStatus || '-';
+        var statusBadgeBg = (rawStatus === 'AVAILABLE') ? 'rgba(34,197,94,0.18)'
+          : (rawStatus === 'RESERVED') ? 'rgba(245,158,11,0.22)'
+          : (rawStatus === 'PICKED') ? 'rgba(59,130,246,0.22)'
+          : (rawStatus === 'SOLD' || rawStatus === 'OUTBOUND' || rawStatus === 'SHIPPED' || rawStatus === 'CONFIRMED') ? 'rgba(239,68,68,0.2)'
+          : (rawStatus === 'RETURN' || rawStatus === 'RETURNED') ? 'rgba(168,85,247,0.2)'
+          : 'rgba(148,163,184,0.2)';
+        var statusBadgeColor = (rawStatus === 'AVAILABLE') ? '#22c55e'
+          : (rawStatus === 'RESERVED') ? '#f59e0b'
+          : (rawStatus === 'PICKED') ? '#3b82f6'
+          : (rawStatus === 'SOLD' || rawStatus === 'OUTBOUND' || rawStatus === 'SHIPPED' || rawStatus === 'CONFIRMED') ? '#ef4444'
+          : (rawStatus === 'RETURN' || rawStatus === 'RETURNED') ? '#a855f7'
+          : '#94a3b8';
+
         var mainRow =
           '<tr style="'+(hasSample ? 'border-left:3px solid #3b82f6' : '')+'">' +
           '<td class="mono-cell" style="color:var(--text-muted)">'+(i+1)+'</td>' +
@@ -107,7 +132,7 @@
           '<td class="mono-cell">'+escapeHtml(r.sap||'')+'</td>' +
           '<td class="mono-cell">'+escapeHtml(r.bl||'')+'</td>' +
           '<td><span class="tag">'+escapeHtml(r.product||'')+'</span></td>' +
-          '<td>'+escapeHtml(r.status||'')+'</td>' +
+          '<td><span class="tag" style="background:'+statusBadgeBg+';color:'+statusBadgeColor+';font-weight:700">'+escapeHtml(statusLabel)+'</span></td>' +
           '<td class="mono-cell" style="text-align:right">'+(r.balance!=null?fmtN(r.balance):'-')+'</td>' +
           '<td class="mono-cell" style="text-align:right">'
             + '<span style="color:#22c55e;font-weight:700">'+(r.avail_mt!=null?fmtN(r.avail_mt):'-')+'</span>'
@@ -115,7 +140,7 @@
             + '<span style="color:#3b82f6">'+(r.reserved_mt!=null&&r.reserved_mt>0?'▲'+fmtN(r.reserved_mt):'0')+'</span>'
           + '</td>' +
           '<td class="mono-cell" style="text-align:right">'+(r.net!=null?fmtN(r.net):'-')+'</td>' +
-          '<td class="mono-cell">'+escapeHtml(r.container||'')+'</td>' +
+          '<td class="mono-cell">'+parentContainer+'</td>' +
           '<td class="mono-cell" style="text-align:center;padding:6px 10px;line-height:1.2">' +
           (r.mxbg_pallet > 0
             ? '<button class="btn btn-ghost btn-xs" style="font-weight:700;color:var(--accent);padding:0 4px;line-height:1.1;min-height:18px" '
@@ -146,7 +171,7 @@
         return sampleRow + mainRow;
       }).join('');
       html += '</tbody><tfoot><tr style="background:var(--panel);font-weight:700">';
-      html += '<td colspan="6" style="text-align:right;padding:8px 10px">합계 ('+rows.length+' LOT)</td>';
+      html += '<td colspan="6" style="text-align:right;padding:8px 10px">합계 ('+rows.length+' LOT) · 미판매 '+fmtN(sumUnsold)+' / <span style="color:#ef4444;font-weight:700">판매완료 '+fmtN(sumSold)+'</span></td>';
       html += '<td class="mono-cell" style="text-align:right">'+fmtN(sumBal)+'</td>';
       html += '<td></td>'; // Avail/Rsv MT (합계 미계산)
       html += '<td class="mono-cell" style="text-align:right">'+fmtN(sumNet)+'</td>';
@@ -358,6 +383,99 @@
   };
 
 
+  /* ===================================================
+     7a-2. PAGE: Available (AVAILABLE 톤백 필터 뷰) — v9.5
+     =================================================== */
+  function loadAvailablePage() {
+    var route = 'available';
+    if (window.getCurrentRoute() !== route) return;
+    var c = document.getElementById('page-container');
+    if (!c) return;
+    c.innerHTML = '<div class="loading-spinner" style="padding:40px;text-align:center;color:var(--text-muted)">⏳ Available 재고 로딩 중...</div>';
+
+    // /api/inventory?status=AVAILABLE 호출 — 기존 인벤토리 API 재활용
+    apiGet('/api/inventory?status=AVAILABLE&limit=500').then(function(res) {
+      if (window.getCurrentRoute() !== route) return;
+      var rows = Array.isArray(res) ? res : (res.data || res.rows || res.items || []);
+      if (!rows.length) {
+        c.innerHTML = '<div class="empty" style="padding:60px;text-align:center;color:var(--text-muted,#888)">✅ Available 재고 없음 (전량 배분 또는 피킹 완료)</div>';
+        return;
+      }
+      // 헤더 (색상 강조 — Available 전용)
+      var sumBal = 0, sumNet = 0, sumIni = 0, sumOb = 0;
+      rows.forEach(function(r) {
+        if (r.balance != null && !isNaN(Number(r.balance))) sumBal += Number(r.balance);
+        if (r.net     != null && !isNaN(Number(r.net)))     sumNet += Number(r.net);
+        if (r.initial_weight != null) sumIni += Number(r.initial_weight);
+        if (r.outbound_weight != null) sumOb  += Number(r.outbound_weight);
+      });
+      var html = '<section style="padding:12px 16px">'
+        + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">'
+        + '<h2 style="margin:0;font-size:16px;color:#22c55e">✅ Available 재고 — 판매 가능 물량</h2>'
+        + '<span style="font-size:12px;color:var(--text-muted)">' + rows.length + ' LOT · Balance ' + fmtN(sumBal) + ' MT</span>'
+        + '<button class="btn btn-ghost" style="font-size:12px;margin-left:auto" onclick="window.loadAvailablePage()">🔄 새로고침</button>'
+        + '</div>'
+        + '<div style="overflow-x:auto"><table class="data-table"><thead><tr>'
+        + '<th>#</th><th>LOT</th><th>SAP</th><th>BL</th><th>Product</th>'
+        + '<th>Status</th><th>Balance(MT)</th><th>Avail/Rsv(MT)</th><th>NET(MT)</th><th>Container</th>'
+        + '<th>MXBG</th><th>Avail</th><th>Invoice</th>'
+        + '<th>Ship</th><th>Arrival</th><th>WH</th><th>Customs</th>'
+        + '<th>Inbound(MT)</th><th>Location</th><th></th>'
+        + '</tr></thead><tbody>';
+      html += rows.map(function(r, i) {
+        var lotKey = escapeHtml(r.lot||'');
+        return '<tr>'
+          + '<td class="mono-cell" style="color:var(--text-muted)">' + (i+1) + '</td>'
+          + '<td class="mono-cell" style="color:var(--accent);font-weight:600;text-align:left;padding:6px 10px">' + lotKey + '</td>'
+          + '<td class="mono-cell">' + escapeHtml(r.sap||'') + '</td>'
+          + '<td class="mono-cell">' + escapeHtml(r.bl||'') + '</td>'
+          + '<td><span class="tag">' + escapeHtml(r.product||'') + '</span></td>'
+          + '<td><span class="tag" style="background:rgba(34,197,94,0.15);color:#22c55e">✅ AVAILABLE</span></td>'
+          + '<td class="mono-cell" style="text-align:right">' + (r.balance!=null?fmtN(r.balance):'-') + '</td>'
+          + '<td class="mono-cell" style="text-align:right">'
+            + '<span style="color:#22c55e;font-weight:700">' + (r.avail_mt!=null?fmtN(r.avail_mt):'-') + '</span>'
+            + '<span style="color:#94a3b8;font-size:11px"> / </span>'
+            + '<span style="color:#3b82f6">' + (r.reserved_mt!=null&&r.reserved_mt>0?'▲'+fmtN(r.reserved_mt):'0') + '</span>'
+          + '</td>'
+          + '<td class="mono-cell" style="text-align:right">' + (r.net!=null?fmtN(r.net):'-') + '</td>'
+          + '<td class="mono-cell">' + escapeHtml(r.container||'') + '</td>'
+          + '<td class="mono-cell" style="text-align:center">'
+            + (r.mxbg_pallet > 0
+              ? '<button class="btn btn-ghost btn-xs" style="font-weight:700;color:var(--accent)" '
+                + 'onclick="window.showTonbagModal(\'' + lotKey + '\')">' + r.mxbg_pallet + '</button>'
+              : '-')
+          + '</td>'
+          + '<td class="mono-cell" style="text-align:center">' + (r.avail_bags!=null?r.avail_bags:'-') + '</td>'
+          + '<td class="mono-cell">' + escapeHtml(r.invoice_no||'') + '</td>'
+          + '<td class="mono-cell">' + escapeHtml((r.ship_date||'').slice(0,10)) + '</td>'
+          + '<td class="mono-cell">' + escapeHtml((r.arrival_date||'').slice(0,10)) + '</td>'
+          + '<td class="mono-cell">' + escapeHtml(r.wh||'') + '</td>'
+          + '<td class="mono-cell">' + escapeHtml(r.customs||'') + '</td>'
+          + '<td class="mono-cell" style="text-align:right">' + (r.initial_weight!=null?fmtN(r.initial_weight):'-') + '</td>'
+          + '<td><span class="tag">' + escapeHtml(r.location||'-') + '</span></td>'
+          + '<td style="white-space:nowrap;padding:6px 10px">'
+            + '<button class="btn btn-ghost btn-xs" onclick="window.showLotDetail(\'' + lotKey + '\')" title="LOT 상세" style="padding:0 3px">📋</button> '
+            + '<button class="btn btn-ghost btn-xs" onclick="window.invCopyLot(\'' + lotKey + '\')" title="복사" style="padding:0 3px">📄</button>'
+          + '</td>'
+          + '</tr>';
+      }).join('');
+      html += '</tbody><tfoot><tr style="background:var(--panel);font-weight:700">';
+      html += '<td colspan="6" style="text-align:right;padding:8px 10px">합계 (' + rows.length + ' LOT)</td>';
+      html += '<td class="mono-cell" style="text-align:right">' + fmtN(sumBal) + '</td>';
+      html += '<td></td>';
+      html += '<td class="mono-cell" style="text-align:right">' + fmtN(sumNet) + '</td>';
+      html += '<td colspan="8"></td>';
+      html += '<td class="mono-cell" style="text-align:right">' + fmtN(sumIni) + '</td>';
+      html += '<td colspan="2"></td>';
+      html += '</tr></tfoot></table></div></section>';
+      c.innerHTML = html;
+    }).catch(function(e) {
+      if (window.getCurrentRoute() !== route) return;
+      c.innerHTML = '<div class="empty" style="padding:40px;text-align:center">Load failed: ' + escapeHtml(e.message||String(e)) + '</div>';
+      showToast('error', 'Available 로드 실패');
+    });
+  }
+  window.loadAvailablePage = loadAvailablePage;
   /* ===================================================
      7b. PAGE: Allocation
      =================================================== */

@@ -324,11 +324,17 @@
 
 <div class="app-body">
   <aside class="sidebar" id="sidebar">
-    <button class="side-btn" data-route="inventory"><span class="side-icon">📦</span><span class="side-label">Inventory</span></button>
-    <button class="side-btn" data-route="allocation"><span class="side-icon">📋</span><span class="side-label">Allocation</span></button>
-    <button class="side-btn" data-route="picked"><span class="side-icon">🚛</span><span class="side-label">Picked</span></button>
+    <!-- Inventory 그룹: 부모 + 4개 하위 메뉴 -->
+    <div class="side-group">
+      <button class="side-btn side-parent" data-route="inventory"><span class="side-icon">📦</span><span class="side-label">Inventory</span><span class="side-total-badge" id="badge-inv-total"></span></button>
+      <div class="side-children">
+        <button class="side-btn side-child" data-route="available"><span class="side-child-icon">✅</span><span class="side-child-label">Available</span><span class="side-child-badge" id="badge-available" style="color:#22c55e"></span></button>
+        <button class="side-btn side-child" data-route="allocation"><span class="side-child-icon">📋</span><span class="side-child-label">Allocation</span><span class="side-child-badge" id="badge-allocation" style="color:#3b82f6"></span></button>
+        <button class="side-btn side-child" data-route="picked"><span class="side-child-icon">📦</span><span class="side-child-label">Picked</span><span class="side-child-badge" id="badge-picked" style="color:#f59e0b"></span></button>
+        <button class="side-btn side-child" data-route="return"><span class="side-child-icon">🔄</span><span class="side-child-label">Return</span><span class="side-child-badge" id="badge-return" style="color:#8b5cf6"></span></button>
+      </div>
+    </div>
     <button class="side-btn" data-route="outbound"><span class="side-icon">📤</span><span class="side-label">Outbound</span></button>
-    <button class="side-btn" data-route="return"><span class="side-icon">🔄</span><span class="side-label">Return</span></button>
     <button class="side-btn" data-route="move"><span class="side-icon">🔀</span><span class="side-label">Move</span></button>
     <button class="side-btn active" data-route="dashboard"><span class="side-icon">📊</span><span class="side-label">Dashboard</span></button>
     <button class="side-btn" data-route="log"><span class="side-icon">📝</span><span class="side-label">Log</span></button>

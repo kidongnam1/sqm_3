@@ -77,6 +77,12 @@ html[data-theme="light"] {
   --status-available: #2e7d32;
   --status-return:    #c62828;
   --text: #1a1a1a;
+  --sqm-table-font-size: 14px;
+  --sqm-table-cell-padding-y: 6px;
+  --sqm-table-cell-padding-x: 10px;
+  --sqm-table-line-height: 1.2;
+  --sqm-table-filter-font-size: 13px;
+  --sqm-table-filter-height: 26px;
 }
 
 html[data-theme="dark"] {
@@ -133,6 +139,23 @@ html[data-theme="dark"] {
   --status-available: #66bb6a;
   --status-return:    #ef5350;
   --text: #e6e6e6;
+  --sqm-table-font-size: 14px;
+  --sqm-table-cell-padding-y: 6px;
+  --sqm-table-cell-padding-x: 10px;
+  --sqm-table-line-height: 1.2;
+  --sqm-table-filter-font-size: 13px;
+  --sqm-table-filter-height: 26px;
+}
+
+html[data-table-preset="default"] {
+  --sqm-table-font-size: 14px;
+  --sqm-table-filter-font-size: 13px;
+  --sqm-table-filter-height: 26px;
+}
+html[data-table-preset="large"] {
+  --sqm-table-font-size: 15px;
+  --sqm-table-filter-font-size: 14px;
+  --sqm-table-filter-height: 28px;
 }
 
 /* ── App Titlebar (창 제목) ───────────────────────────────────────── */
@@ -386,7 +409,7 @@ html[data-theme="dark"] {
   background: var(--panel);
 }
 .onestop-preview-table tr:nth-child(even) td { background: var(--table-row-alt); }
-.onestop-preview-table tr:hover td { background: var(--btn-hover) \!important; }
+.onestop-preview-table tr:hover td { background: var(--btn-hover) !important; }
 .onestop-preview-empty {
   padding: 40px; text-align: center; color: var(--text-muted);
   background: var(--panel); border: 1px dashed var(--panel-border); border-radius: 6px;
@@ -885,6 +908,44 @@ html[data-theme="dark"] {
 .side-icon { font-size: 30px; line-height: 1; }
 .side-label { font-size: 14px; letter-spacing: 0.3px; font-weight: 900; }
 
+/* ── Inventory 그룹: 부모 + 자식 메뉴 (v9.5) ─────────────────────── */
+.side-group { display: flex; flex-direction: column; gap: 0; }
+.side-parent { position: relative; }
+.side-total-badge {
+  font-size: 9px; color: rgba(255,255,255,0.55);
+  line-height: 1.2; margin-top: 1px; letter-spacing: 0;
+}
+.side-children {
+  display: flex; flex-direction: column;
+  background: rgba(0,0,0,0.18);
+  border-radius: 0 0 8px 8px;
+  padding: 2px 0 4px 0;
+  gap: 1px;
+}
+.side-btn.side-child {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 5px 8px 5px 16px;
+  gap: 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  min-height: 32px;
+}
+.side-child-icon { font-size: 14px; flex-shrink: 0; }
+.side-child-label { font-size: 12px; font-weight: 700; flex: 1; text-align: left; }
+.side-child-badge {
+  font-size: 10px; font-weight: 600;
+  text-align: right; line-height: 1.3;
+  white-space: pre-line; flex-shrink: 0;
+  min-width: 36px;
+}
+.side-btn.active-parent {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.15);
+}
+
 /* ── Main Area ────────────────────────────────────────────────────── */
 .main-area {
   flex: 1;
@@ -931,11 +992,12 @@ html[data-theme="dark"] {
 /* ── Data Table (재고 및 확인 스타일) ─────────────────────────────── */
 .data-table {
   width: 100%; border-collapse: collapse;
-  font-size: 13px;
+  font-size: 14px;
 }
 .data-table th {
   background: var(--table-header);
   padding: 8px 10px;
+  font-size: 14px;
   text-align: center !important;
   font-weight: 700;
   border-bottom: 2px solid var(--panel-border);
@@ -981,6 +1043,7 @@ html[data-theme="dark"] {
 }
 .data-table td {
   padding: 7px 10px;
+  font-size: 14px;
   text-align: center !important;
   border-bottom: 1px solid var(--panel-border);
 }
@@ -1563,6 +1626,46 @@ body,
   background: var(--table-cell-alt-bg);
 }
 
+/* Global table readability baseline (all pages/tabs/modals) */
+.data-table th,
+.sqm-table th,
+.inventory-table th,
+#sqm-modal-content table th,
+.page table th {
+  font-size: var(--sqm-table-font-size) !important;
+  padding: var(--sqm-table-cell-padding-y) var(--sqm-table-cell-padding-x) !important;
+  line-height: var(--sqm-table-line-height) !important;
+}
+
+.data-table td,
+.sqm-table td,
+.inventory-table td,
+#sqm-modal-content table td,
+.page table td {
+  font-size: var(--sqm-table-font-size) !important;
+  padding: var(--sqm-table-cell-padding-y) var(--sqm-table-cell-padding-x) !important;
+  line-height: var(--sqm-table-line-height) !important;
+}
+
+/* Keep filter row readable with new table baseline */
+.data-table th .table-column-filter,
+.sqm-table th .table-column-filter,
+.inventory-table th .table-column-filter,
+.inv-filter-input {
+  font-size: var(--sqm-table-filter-font-size) !important;
+  height: var(--sqm-table-filter-height);
+}
+
+/* Prevent icon/button cells from stretching row height */
+.data-table td .btn.btn-xs,
+.sqm-table td .btn.btn-xs,
+.inventory-table td .btn.btn-xs {
+  min-height: 18px;
+  line-height: 1.1;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
 input[type="text"],
 input[type="search"],
 input[type="number"],
@@ -1617,12 +1720,12 @@ select option {
 /* ═══════════════════════════════════════════════════════════════
    DRAGGABLE / RESIZABLE MODAL  —  v8.6.5
    ═══════════════════════════════════════════════════════════════ */
-#sqm-modal { overflow: hidden \!important; }
+#sqm-modal { overflow: hidden !important; }
 
 #sqm-modal-inner {
-  display: flex \!important;
-  flex-direction: column \!important;
-  overflow: visible \!important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: visible !important;
   min-width: 360px;
   min-height: 180px;
   box-shadow: 0 8px 40px rgba(0,0,0,.45);
@@ -1648,7 +1751,7 @@ select option {
 /* 스크롤 가능한 콘텐츠 영역 */
 #sqm-modal-content {
   flex: 1 1 auto;
-  overflow: auto \!important;       /* 상하좌우 스크롤바 */
+  overflow: auto !important;       /* 상하좌우 스크롤바 */
   padding: 16px 20px 16px 20px;
   position: relative;
   overscroll-behavior: contain;
@@ -1704,10 +1807,10 @@ select option {
 
 /* 인라인 오버레이 모달 (별도 overlay div) 공통 */
 .sqm-float-modal {
-  position: fixed \!important;
-  display: flex \!important;
-  flex-direction: column \!important;
-  overflow: visible \!important;
+  position: fixed !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: visible !important;
   min-width: 360px;
   min-height: 180px;
   background: var(--bg-card);

@@ -533,7 +533,8 @@
     switch(key) {
       case 'C-r': case 'F5': e.preventDefault(); renderPage(_currentRoute||'dashboard'); break;
       case 'C-1': e.preventDefault(); renderPage('inventory'); break;
-      case 'C-2': e.preventDefault(); renderPage('allocation'); break;
+      case 'C-2': e.preventDefault(); renderPage('available'); break;
+      case 'C-3': e.preventDefault(); renderPage('allocation'); break;
       case 'C-3': e.preventDefault(); renderPage('picked'); break;
       case 'C-4': e.preventDefault(); renderPage('outbound'); break;
       case 'C-5': e.preventDefault(); renderPage('return'); break;
@@ -791,7 +792,16 @@
       ' page='+(page?page.style.display:'?'), '#ab47bc');
     document.querySelectorAll('[data-route]').forEach(function(el){
       el.classList.toggle('active', el.dataset.route === route);
+      el.classList.remove('active-parent');
     });
+    // 자식 라우트 선택 시 부모(Inventory) 버튼 강조
+    var _childRoutes = {'available':'inventory','allocation':'inventory','picked':'inventory','return':'inventory'};
+    var _parent = _childRoutes[route];
+    if (_parent) {
+      document.querySelectorAll('[data-route="' + _parent + '"]').forEach(function(el){
+        el.classList.add('active-parent');
+      });
+    }
   }
 
   function renderPage(route) {
@@ -803,6 +813,7 @@
     switch (route) {
       case 'dashboard':  loadDashboard();     break;
       case 'inventory':  window.loadInventoryPage();  break;
+      case 'available':  window.loadAvailablePage();  break;  // v9.5 신규
       case 'allocation': window.loadAllocationPage(); break;
       case 'picked':     window.loadPickedPage();     break;
       case 'inbound':    window.loadInboundPage();    break;
@@ -870,7 +881,32 @@
     _kpiTimer = setInterval(function(){
       if (_currentRoute === 'dashboard' && document.visibilityState !== 'hidden') loadKpi();
     }, 5000);
+    // v9.5: 사이드바 배지 초기 로드 + 30초 갱신
+    loadSidebarBadges();
+    _sidebarBadgeTimer = setInterval(function(){
+      if (document.visibilityState !== 'hidden') loadSidebarBadges();
+    }, 30000);
   }
+
+  /* v9.5: 사이드바 배지 (개수·MT) 주기적 갱신 */
+  var _sidebarBadgeTimer = null;
+  function loadSidebarBadges() {
+    apiGet('/api/dashboard/sidebar-counts').then(function(res){
+      var d = (res && res.data) ? res.data : {};
+      function setBadge(id, info) {
+        var el = document.getElementById(id);
+        if (!el || !info) return;
+        el.textContent = info.bags + '개\n' + info.mt.toFixed(1) + 'MT';
+      }
+      setBadge('badge-available',  d.available);
+      setBadge('badge-allocation', d.reserved);
+      setBadge('badge-picked',     d.picked);
+      setBadge('badge-return',     d.return);
+      var tot = document.getElementById('badge-inv-total');
+      if (tot && d.total) tot.textContent = d.total.bags + '개 · ' + d.total.mt.toFixed(1) + 'MT';
+    }).catch(function(){});
+  }
+  window.loadSidebarBadges = loadSidebarBadges;
 
   function loadDashboardTables() {
     apiGet('/api/dashboard/stats').then(function(res){

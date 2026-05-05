@@ -313,3 +313,53 @@ def get_dashboard_stats():
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # GET /api/dashboard/alerts — ALERTS 패널
 # ━━━━━━━━━━━━━━━━━━━━━━━
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# GET /api/dashboard/sidebar-counts  — 사이드바 배지용 경량 집계
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@router.get("/sidebar-counts")
+def get_sidebar_counts():
+    """
+    사이드바 Inventory 하위 메뉴 배지용 경량 API.
+    inventory_tonbag.status 기준 — 샘플 포함.
+
+    Response:
+        available / reserved / picked / return / total
+        각각: { bags: int, mt: float }
+    """
+    try:
+        db_path = _get_db_path()
+        con = sqlite3.connect(db_path, timeout=5, check_same_thread=False)
+        con.execute("PRAGMA journal_mode=WAL")
+        con.execute("PRAGMA busy_timeout=3000")
+        c = con.cursor()
+
+        rows = c.execute("""
+            SELECT
+                status,
+                COUNT(*)             AS bags,
+                COALESCE(SUM(weight), 0) / 1000.0 AS mt
+            FROM inventory_tonbag
+            WHERE status IN ('AVAILABLE', 'RESERVED', 'PICKED', 'RETURN')
+            GROUP BY status
+        """).fetchall()
+        con.close()
+
+        result = {
+            "available": {"bags": 0, "mt": 0.0},
+            "reserved":  {"bags": 0, "mt": 0.0},
+            "picked":    {"bags": 0, "mt": 0.0},
+            "return":    {"bags": 0, "mt": 0.0},
+        }
+        for status, bags, mt in rows:
+            key = status.lower()
+            if key in result:
+                result[key] = {"bags": int(bags), "mt": round(float(mt), 2)}
+
+        total_bags = sum(v["bags"] for v in result.values())
+        total_mt   = round(sum(v["mt"]  for v in result.values()), 2)
+        result["total"] = {"bags": total_bags, "mt": total_mt}
+        return {"ok": True, "data": result}
+    except Exception as exc:
+        logger.error("[dashboard/sidebar-counts] 집계 실패: %s", exc, exc_info=True)
+        return {"ok": False, "error": str(exc)}
