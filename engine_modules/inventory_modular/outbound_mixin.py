@@ -1991,6 +1991,22 @@ class OutboundMixin(InventoryBaseMixin):
             _insert_plan(payload)
             reserved_in_lot = pick_count  # tonbag 개수 반영
             reserved_kg = sum(float(tb.get('weight') or 0) for tb in tonbags[:pick_count])
+            # v9.3 [LOT-MODE-RESERVED]: inventory_tonbag.status → RESERVED (즉시 반영)
+            _lot_selected = tonbags[:pick_count]
+            _now = _common_kw['now']
+            _customer = _common_kw['customer']
+            _sale_ref_kw = _common_kw['sale_ref']
+            _upd_lot_rows = [
+                (STATUS_RESERVED, _customer, _sale_ref_kw, _now, tb['id'])
+                for tb in _lot_selected
+            ]
+            if _upd_lot_rows:
+                self.db.executemany(
+                    """UPDATE inventory_tonbag SET
+                        status = ?, picked_to = ?, sale_ref = ?, updated_at = ?
+                    WHERE id = ?""", _upd_lot_rows)
+            selected_sub_lts = [str(tb.get('sub_lt', '')) for tb in _lot_selected]
+            self._recalc_lot_status(lot_no)
         else:
             # 톤백 단위 예약
             pool = list(tonbags)
