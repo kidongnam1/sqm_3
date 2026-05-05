@@ -55,6 +55,50 @@ def _excel_path() -> Optional[str]:
 
 # ─── Pydantic 모델 ───────────────────────────────────────────────────────────
 
+# ─── 단순 상태변경 요청 모델 ────────────────────────────────────────────────
+class SimpleActionRequest(BaseModel):
+    lot_no: str
+    action: str          # e.g. 'return_to_available'
+    operator: Optional[str] = "Nam Ki-dong"
+
+
+@router.post("")
+def simple_action(req: SimpleActionRequest):
+    """
+    단순 액션 처리 (return_to_available 등)
+    POST /api/inventory/adjust  { lot_no, action }
+    """
+    import sqlite3
+    from datetime import datetime
+
+    if req.action == "return_to_available":
+        try:
+            conn = sqlite3.connect(_db_path())
+            conn.row_factory = sqlite3.Row
+            now = datetime.now().isoformat(sep=" ", timespec="seconds")
+            # LOT 전체 RETURN 톤백 → AVAILABLE
+            updated = conn.execute(
+                """UPDATE inventory_tonbag SET status='AVAILABLE', updated_at=?
+                   WHERE lot_no=? AND status='RETURN'""",
+                (now, req.lot_no)
+            ).rowcount
+            # LOT 헤더 상태도 AVAILABLE로
+            conn.execute(
+                """UPDATE inventory SET status='AVAILABLE', updated_at=?
+                   WHERE lot_no=? AND status='RETURN'""",
+                (now, req.lot_no)
+            )
+            conn.commit()
+            conn.close()
+            logger.info("[SimpleAction] %s return_to_available: %d tonbags updated", req.lot_no, updated)
+            return {"ok": True, "updated_tonbags": updated, "lot_no": req.lot_no}
+        except Exception as exc:
+            logger.error("[SimpleAction] return_to_available 오류: %s", exc, exc_info=True)
+            raise HTTPException(status_code=500, detail=str(exc))
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown action: {req.action}")
+
+
 class ParseRequest(BaseModel):
     text: str
 

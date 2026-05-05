@@ -64,7 +64,7 @@
         var lot = escapeHtml(r.lot_no||'');
         return '<tr class="picked-summary-row" data-lot="'+lot+'" style="cursor:pointer" onclick="window.togglePickedDetail(\''+lot+'\')">' +
           '<td style="width:24px;text-align:center"><span class="picked-expand-icon">▶</span></td>' +
-          '<td class="mono-cell" style="color:var(--accent);font-weight:600">'+lot+'</td>' +
+          '<td class="mono-cell cell-left" style="color:var(--accent);font-weight:600">'+lot+'</td>' +
           '<td class="mono-cell">'+escapeHtml(r.picking_no||'')+'</td>' +
           '<td>'+escapeHtml(r.customer||r.picked_to||'')+'</td>' +
           '<td class="mono-cell" style="text-align:right">'+(r.tonbag_count||0)+'</td>' +

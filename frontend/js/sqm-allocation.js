@@ -22,6 +22,16 @@
     selectedLots: new Set()
   };
 
+  function allocStatusPalette(status) {
+    var st = String(status || '').toUpperCase();
+    if (st === 'AVAILABLE') return { bg: 'rgba(34,197,94,0.18)', fg: '#22c55e' };
+    if (st === 'RESERVED')  return { bg: 'rgba(245,158,11,0.22)', fg: '#f59e0b' };
+    if (st === 'PICKED')    return { bg: 'rgba(59,130,246,0.22)', fg: '#3b82f6' };
+    if (st === 'SOLD' || st === 'OUTBOUND' || st === 'SHIPPED' || st === 'CONFIRMED') return { bg: 'rgba(239,68,68,0.2)', fg: '#ef4444' };
+    if (st === 'RETURN' || st === 'RETURNED') return { bg: 'rgba(168,85,247,0.2)', fg: '#a855f7' };
+    return { bg: 'rgba(148,163,184,0.2)', fg: '#94a3b8' };
+  }
+
   function loadAllocationPage() {
     var route = window.getCurrentRoute();
     var c = document.getElementById('page-container');
@@ -149,8 +159,7 @@
       var qtyMt = (r.total_mt != null) ? Number(r.total_mt) : (r.qty_mt != null ? Number(r.qty_mt) : 0);
       if (!isNaN(qtyMt)) totalMt += qtyMt;
       var status = (r.status || 'RESERVED').toUpperCase();
-      var statusColor = status === 'SOLD' ? '#66bb6a' : status === 'PICKED' ? '#42a5f5' : 'var(--warning)';
-      var statusFg = status === 'RESERVED' ? '#000' : '#fff';
+      var pal = allocStatusPalette(status);
       var checked = _allocState.selectedLots.has(lot) ? 'checked' : '';
 
       /* 편집 가능 셀 attrs 헬퍼 */
@@ -165,7 +174,7 @@
       return '<tr class="alloc-summary-row" data-lot="' + lot + '" data-status="' + status + '" oncontextmenu="window.allocContextMenu(event, \'' + lot + '\'); return false;">' +
         '<td style="text-align:center"><input type="checkbox" ' + checked + ' onclick="event.stopPropagation();window.allocToggleRow(\'' + lot + '\',this.checked)"></td>' +
         '<td class="mono-cell" style="text-align:right">' + (i + 1) + '</td>' +
-        '<td class="mono-cell" style="color:var(--accent);font-weight:600;cursor:pointer" onclick="window.toggleAllocDetail(\'' + lot + '\')">' +
+        '<td class="mono-cell cell-left" style="color:var(--accent);font-weight:600;cursor:pointer" onclick="window.toggleAllocDetail(\'' + lot + '\')">' +
           '<span class="alloc-expand-icon">▶</span> ' + lot + '</td>' +
         '<td class="mono-cell">' + escapeHtml(r.sap_no || '-') + '</td>' +
         '<td>' + escapeHtml(r.product || '-') + '</td>' +
@@ -174,7 +183,7 @@
         editTd('sale_ref', escapeHtml(r.sale_ref || '-'), 'mono-cell', '') +
         editTd('outbound_date', escapeHtml(r.outbound_date || r.ship_date || '-'), 'mono-cell', '') +
         '<td>' + escapeHtml(r.warehouse || r.wh || '-') + '</td>' +
-        '<td><span class="tag" style="background:' + statusColor + ';color:' + statusFg + '">' + status + '</span></td>' +
+        '<td><span class="tag" style="background:' + pal.bg + ';color:' + pal.fg + ';font-weight:700">' + status + '</span></td>' +
         '</tr>';
     }).join('');
 
@@ -604,7 +613,8 @@
       if (!rows.length) { content.innerHTML = '<div class="empty">상세 데이터 없음</div>'; return; }
       var tbl = '<table class="data-table"><thead><tr><th>#</th><th>톤백ID</th><th>중량(kg)</th><th>위치</th><th>상태</th><th>배정일</th></tr></thead><tbody>';
       tbl += rows.map(function(r, i){
-        return '<tr><td>'+(i+1)+'</td><td class="mono-cell">'+escapeHtml(r.tonbag_id||r.sub_lt||'-')+'</td><td class="mono-cell" style="text-align:right">'+(r.weight!=null?Number(r.weight).toLocaleString():'-')+'</td><td>'+escapeHtml(r.location||'-')+'</td><td><span class="tag">'+escapeHtml(r.status||'-')+'</span></td><td>'+escapeHtml(r.plan_date||r.allocated_date||'-')+'</td></tr>';
+        var p = allocStatusPalette(r.status);
+        return '<tr><td>'+(i+1)+'</td><td class="mono-cell">'+escapeHtml(r.tonbag_id||r.sub_lt||'-')+'</td><td class="mono-cell" style="text-align:right">'+(r.weight!=null?Number(r.weight).toLocaleString():'-')+'</td><td>'+escapeHtml(r.location||'-')+'</td><td><span class="tag" style="background:'+p.bg+';color:'+p.fg+';font-weight:700">'+escapeHtml(r.status||'-')+'</span></td><td>'+escapeHtml(r.plan_date||r.allocated_date||'-')+'</td></tr>';
       }).join('');
       tbl += '</tbody></table>';
       content.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem;margin-bottom:8px">' + rows.length + '개 톤백</p>' + tbl;

@@ -128,7 +128,7 @@
         var mainRow =
           '<tr style="'+(hasSample ? 'border-left:3px solid #3b82f6' : '')+'">' +
           '<td class="mono-cell" style="color:var(--text-muted)">'+(i+1)+'</td>' +
-          '<td class="mono-cell" style="color:var(--accent);font-weight:600;text-align:left;padding:6px 10px;line-height:1.2">'+lotKey+'</td>' +
+          '<td class="mono-cell cell-left" style="color:var(--accent);font-weight:600;padding:6px 10px;line-height:1.2">'+lotKey+'</td>' +
           '<td class="mono-cell">'+escapeHtml(r.sap||'')+'</td>' +
           '<td class="mono-cell">'+escapeHtml(r.bl||'')+'</td>' +
           '<td><span class="tag">'+escapeHtml(r.product||'')+'</span></td>' +
@@ -424,9 +424,32 @@
         + '</tr></thead><tbody>';
       html += rows.map(function(r, i) {
         var lotKey = escapeHtml(r.lot||'');
-        return '<tr>'
+        var hasSample = (r.sample_bags > 0);
+        var parentContainer = escapeHtml(r.container || '-');
+        var sampleRow = '';
+        if (hasSample) {
+          sampleRow =
+            '<tr style="background:rgba(234,179,8,0.08);border-left:3px solid #eab308">' +
+            '<td class="mono-cell" style="color:#eab308;text-align:center;padding:6px 10px">🔬</td>' +
+            '<td class="mono-cell cell-left" style="color:#eab308;font-weight:700;padding:6px 10px">' + lotKey + '(SP)</td>' +
+            '<td class="mono-cell" style="color:#94a3b8">' + escapeHtml(r.sap||'') + '</td>' +
+            '<td class="mono-cell" style="color:#94a3b8">' + escapeHtml(r.bl||'') + '</td>' +
+            '<td><span class="tag" style="background:rgba(234,179,8,0.2);color:#eab308">' + escapeHtml(r.product||'') + '</span></td>' +
+            '<td style="color:#eab308;font-weight:600">SAMPLE</td>' +
+            '<td class="mono-cell" style="text-align:right;color:#eab308;font-weight:600">' + fmtN(r.sample_weight_mt||0) + '</td>' +
+            '<td class="mono-cell" style="text-align:right;color:#eab308">' + fmtN(r.sample_weight_mt||0) + '</td>' +
+            '<td class="mono-cell" style="text-align:right;color:#eab308">' + fmtN(r.sample_weight_mt||0) + '</td>' +
+            '<td class="mono-cell" style="color:#94a3b8">' + parentContainer + '</td>' +
+            '<td class="mono-cell" style="text-align:center;color:#eab308;font-weight:700">' + r.sample_bags + '</td>' +
+            '<td class="mono-cell" style="text-align:center;color:#eab308;font-weight:700">' + r.sample_bags + '</td>' +
+            '<td colspan="7" style="color:#555">—</td>' +
+            '<td></td><td></td>' +
+            '</tr>';
+        }
+        var mainRow =
+          '<tr style="' + (hasSample ? 'border-left:3px solid #22c55e' : '') + '">'
           + '<td class="mono-cell" style="color:var(--text-muted)">' + (i+1) + '</td>'
-          + '<td class="mono-cell" style="color:var(--accent);font-weight:600;text-align:left;padding:6px 10px">' + lotKey + '</td>'
+          + '<td class="mono-cell cell-left" style="color:var(--accent);font-weight:600;padding:6px 10px">' + lotKey + '</td>'
           + '<td class="mono-cell">' + escapeHtml(r.sap||'') + '</td>'
           + '<td class="mono-cell">' + escapeHtml(r.bl||'') + '</td>'
           + '<td><span class="tag">' + escapeHtml(r.product||'') + '</span></td>'
@@ -442,7 +465,7 @@
           + '<td class="mono-cell" style="text-align:center">'
             + (r.mxbg_pallet > 0
               ? '<button class="btn btn-ghost btn-xs" style="font-weight:700;color:var(--accent)" '
-                + 'onclick="window.showTonbagModal(\'' + lotKey + '\')">' + r.mxbg_pallet + '</button>'
+                + 'data-lot="' + lotKey + '" onclick="window.showTonbagModal(this.dataset.lot)">' + r.mxbg_pallet + '</button>'
               : '-')
           + '</td>'
           + '<td class="mono-cell" style="text-align:center">' + (r.avail_bags!=null?r.avail_bags:'-') + '</td>'
@@ -454,10 +477,11 @@
           + '<td class="mono-cell" style="text-align:right">' + (r.initial_weight!=null?fmtN(r.initial_weight):'-') + '</td>'
           + '<td><span class="tag">' + escapeHtml(r.location||'-') + '</span></td>'
           + '<td style="white-space:nowrap;padding:6px 10px">'
-            + '<button class="btn btn-ghost btn-xs" onclick="window.showLotDetail(\'' + lotKey + '\')" title="LOT 상세" style="padding:0 3px">📋</button> '
-            + '<button class="btn btn-ghost btn-xs" onclick="window.invCopyLot(\'' + lotKey + '\')" title="복사" style="padding:0 3px">📄</button>'
-          + '</td>'
+          + '<td style="white-space:nowrap;padding:6px 10px">'
+            + '<button class="btn btn-ghost btn-xs" data-lot="' + lotKey + '" onclick="window.showLotDetail(this.dataset.lot)" title="LOT 상세" style="padding:0 3px">📋</button> '
+            + '<button class="btn btn-ghost btn-xs" data-lot="' + lotKey + '" onclick="window.invCopyLot(this.dataset.lot)" title="복사" style="padding:0 3px">📄</button>'
           + '</tr>';
+        return mainRow + sampleRow;
       }).join('');
       html += '</tbody><tfoot><tr style="background:var(--panel);font-weight:700">';
       html += '<td colspan="6" style="text-align:right;padding:8px 10px">합계 (' + rows.length + ' LOT)</td>';

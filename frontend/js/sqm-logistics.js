@@ -250,41 +250,89 @@
      =================================================== */
   function loadReturnPage() {
     var route = window.getCurrentRoute();
-    var c = document.getElementById('page-container');
-    if (!c) return;
-    c.innerHTML = [
-      '<section class="page" data-page="return">',
-      '<h2>Return - Re-inbound</h2>',
-      '<div class="toolbar-mini"><button class="btn btn-secondary" onclick="renderPage(\'return\')">Refresh</button></div>',
-      '<div id="return-loading" style="padding:40px;text-align:center">Loading...</div>',
-      '<table class="data-table" id="return-table" style="display:none">',
-      '<thead><tr><th>LOT</th><th>Product</th><th>Qty</th><th>Date</th><th>Reason</th></tr></thead>',
-      '<tbody id="return-tbody"></tbody></table>',
-      '<div class="empty" id="return-empty" style="display:none">No return data</div>',
-      '</section>'
-    ].join('');
-    /* return-stats는 통계 구조(by_reason/monthly_trend)라 items 없음 → inventory?status=RETURN 직접 조회 */
+    var container = document.getElementById('page-container');
+    if (!container) return;
+    container.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted)">⏳ Return 재고 로딩 중...</div>';
     apiGet('/api/inventory?status=RETURN').then(function(res){
       if (window.getCurrentRoute() !== route) return;
       var rows = extractRows(res);
-      renderReturnRows(rows, route);
-    }).catch(function(){
+      renderReturnRows(rows, container);
+    }).catch(function(e){
       if (window.getCurrentRoute() !== route) return;
-      document.getElementById('return-loading').style.display = 'none';
-      document.getElementById('return-empty').style.display = 'block';
+      container.innerHTML = '<div class="empty" style="padding:60px;text-align:center">Load failed: ' + escapeHtml(String(e)) + '</div>';
     });
   }
 
-  function renderReturnRows(rows, route) {
-    if (window.getCurrentRoute() !== route) return;
-    document.getElementById('return-loading').style.display = 'none';
-    if (!rows.length) { document.getElementById('return-empty').style.display='block'; return; }
-    var tbody = document.getElementById('return-tbody');
-    if (tbody) tbody.innerHTML = rows.map(function(r){
-      return '<tr><td>'+escapeHtml(r.lot||'')+'</td><td>'+escapeHtml(r.product||'')+'</td><td>'+(r.bags||r.qty||'')+'</td><td>'+escapeHtml(r.date||'')+'</td><td>'+escapeHtml(r.reason||'')+'</td></tr>';
+  function renderReturnRows(rows, container) {
+    if (!rows.length) {
+      container.innerHTML = '<div class="empty" style="padding:60px;text-align:center;color:var(--text-muted)">🔄 반품 재고 없음</div>';
+      return;
+    }
+    var sumBal = 0;
+    rows.forEach(function(r){ if (r.balance != null) sumBal += Number(r.balance); });
+    var html = '<section style="padding:12px 16px">'
+      + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">'
+      + '<h2 style="margin:0;font-size:16px;color:#a855f7">🔄 Return 재고 — 반품 입고 · 검사 대기</h2>'
+      + '<span style="font-size:12px;color:var(--text-muted)">' + rows.length + ' LOT · ' + fmtN(sumBal) + ' MT</span>'
+      + '<span style="font-size:11px;color:#f59e0b;background:rgba(245,158,11,0.12);padding:2px 8px;border-radius:4px">⚠ 검사완료 후 수동으로 AVAILABLE 전환</span>'
+      + '<button class="btn btn-ghost" style="font-size:12px;margin-left:auto" onclick="window.loadReturnPage()">🔄 새로고침</button>'
+      + '</div>'
+      + '<div style="overflow-x:auto"><table class="data-table"><thead><tr>'
+      + '<th>#</th><th style="text-align:left!important">LOT</th><th>SAP</th><th>BL</th><th>Product</th>'
+      + '<th>Balance(MT)</th><th>NET(MT)</th><th>Container</th><th>Invoice</th>'
+      + '<th>Ship</th><th>Arrival</th><th>WH</th><th>Inbound(MT)</th><th>Location</th><th>검사완료</th>'
+      + '</tr></thead><tbody>';
+    html += rows.map(function(r, i){
+      var lotKey = escapeHtml(r.lot||'');
+      var hasSample = (r.sample_bags > 0);
+      var sampleRow = '';
+      if (hasSample) {
+        sampleRow =
+          '<tr style="background:rgba(234,179,8,0.08);border-left:3px solid #eab308">' +
+          '<td style="text-align:center">🔬</td>' +
+          '<td class="mono-cell cell-left" style="color:#eab308;font-weight:700;padding:6px 10px">' + lotKey + '(SP)</td>' +
+          '<td class="mono-cell" style="color:#94a3b8">' + escapeHtml(r.sap||'') + '</td>' +
+          '<td class="mono-cell" style="color:#94a3b8">' + escapeHtml(r.bl||'') + '</td>' +
+          '<td><span class="tag" style="background:rgba(234,179,8,0.2);color:#eab308">' + escapeHtml(r.product||'') + '</span></td>' +
+          '<td class="mono-cell" style="text-align:right;color:#eab308">' + fmtN(r.sample_weight_mt||0) + '</td>' +
+          '<td colspan="8" style="color:#555;text-align:center">—</td>' +
+          '<td></td>' +
+          '</tr>';
+      }
+      var mainRow =
+        '<tr style="border-left:3px solid #a855f7">'
+        + '<td class="mono-cell" style="color:var(--text-muted)">' + (i+1) + '</td>'
+        + '<td class="mono-cell cell-left" style="color:#a855f7;font-weight:600;padding:6px 10px">' + lotKey + '</td>'
+        + '<td class="mono-cell">' + escapeHtml(r.sap||'') + '</td>'
+        + '<td class="mono-cell">' + escapeHtml(r.bl||'') + '</td>'
+        + '<td><span class="tag" style="background:rgba(168,85,247,0.12);color:#a855f7">' + escapeHtml(r.product||'') + '</span></td>'
+        + '<td class="mono-cell" style="text-align:right">' + (r.balance!=null?fmtN(r.balance):'-') + '</td>'
+        + '<td class="mono-cell" style="text-align:right">' + (r.net!=null?fmtN(r.net):'-') + '</td>'
+        + '<td class="mono-cell">' + escapeHtml(r.container||'') + '</td>'
+        + '<td class="mono-cell">' + escapeHtml(r.invoice_no||'') + '</td>'
+        + '<td class="mono-cell">' + escapeHtml((r.ship_date||'').slice(0,10)) + '</td>'
+        + '<td class="mono-cell">' + escapeHtml((r.arrival_date||'').slice(0,10)) + '</td>'
+        + '<td class="mono-cell">' + escapeHtml(r.wh||'') + '</td>'
+        + '<td class="mono-cell" style="text-align:right">' + (r.initial_weight!=null?fmtN(r.initial_weight):'-') + '</td>'
+        + '<td><span class="tag">' + escapeHtml(r.location||'-') + '</span></td>'
+        + '<td style="white-space:nowrap;padding:4px 8px">'
+          + '<button class="btn btn-ghost btn-xs" style="color:#22c55e;font-size:11px" '
+          + 'data-lot="' + lotKey + '" onclick="window.returnToAvailable(this.dataset.lot)" title="검사완료 → AVAILABLE 전환">✅ 검사완료</button>'
+        + '</td>'
+        + '</tr>';
+      return mainRow + sampleRow;
     }).join('');
-    document.getElementById('return-table').style.display = '';
+    html += '</tbody></table></div></section>';
+    container.innerHTML = html;
   }
+
+  /* 반품 검사완료 → AVAILABLE 전환 */
+  window.returnToAvailable = function(lotNo) {
+    if (!confirm('LOT ' + lotNo + ' 검사완료 처리합니다.\nAVAILABLE로 전환하시겠습니까?')) return;
+    apiPost('/api/inventory/adjust', { lot_no: lotNo, action: 'return_to_available' })
+      .then(function(){ showToast('success', lotNo + ' AVAILABLE 전환 완료'); window.loadReturnPage(); })
+      .catch(function(e){ showToast('error', '전환 실패: ' + (e.message||String(e))); });
+  };
 
   /* ===================================================
      7f. PAGE: Move
