@@ -2938,8 +2938,11 @@
           detailHtml = '<details style="margin-top:4px"><summary style="cursor:pointer;color:var(--text-muted)">상세 (' + d.error_details.length + '건)</summary><pre style="white-space:pre-wrap;font-size:.8rem;margin-top:8px;max-height:200px;overflow:auto">' +
             escapeHtml(JSON.stringify(d.error_details, null, 2)) + '</pre></details>';
         }
+        var aiBadge = d.mapping_source === 'AI폴백'
+          ? ' <span style="background:#7c3aed;color:#fff;font-size:.75rem;padding:1px 6px;border-radius:10px">🤖 AI 매핑</span>'
+          : '';
         return '<div style="color:var(--text-muted);font-size:.85rem">파일: ' + escapeHtml(d.filename||'-') +
-               ' · <strong style="color:var(--accent)">' + (d.reserved||0) + '건</strong> 예약 / 총 ' + (d.total_rows||0) + '행 · 매핑: ' + ((d.matched_columns||[]).join(', ')) +
+               ' · <strong style="color:var(--accent)">' + (d.reserved||0) + '건</strong> 예약 / 총 ' + (d.total_rows||0) + '행' + aiBadge + ' · 매핑: ' + ((d.matched_columns||[]).join(', ')) +
                '</div>' + vsHtml + warnHtml + detailHtml;
       }
     });

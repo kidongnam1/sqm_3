@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-SQM v864.3 — Allocation API (Phase 4-B)
+SQM v8.6.6 — Allocation API (Phase 4-B)
 POST /api/allocation/bulk-import-excel : Excel 업로드 → reserve_from_allocation
 F014 위치 배정 (Allocation 출고 예약) 네이티브 구현
 """

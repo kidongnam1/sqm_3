@@ -1,5 +1,5 @@
 /* =======================================================================
-   sqm-onestop-inbound.js  (v20260429)
+   sqm-onestop-inbound.js  (v8.6.6)
    OneStop Inbound — 4-slot wizard modal + parse engine
    Extracted from sqm-inline.js lines 3811–5008 by extract_onestop.py
    Dependencies (provided by sqm-inline.js):

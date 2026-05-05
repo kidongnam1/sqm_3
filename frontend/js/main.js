@@ -1,5 +1,5 @@
-// SQM v864.3 — Main Entry Point (Tier 2 Stage 5 통합)
-console.info('[SQM v864.3] main.js 로드 시작');
+// SQM v8.6.6
+console.info('[SQM v8.6.6] main.js 로드 시작');
 
 // 모듈 import — 단계별로 try/catch
 let mods = {};
@@ -57,7 +57,7 @@ function installFailSafe() {
 }
 
 async function boot() {
-  console.info('[SQM v864.3] boot 시작');
+  console.info('[SQM v8.6.6] boot 시작');
   installFailSafe();
   await loadModules();
   try { mods.state?.initStatePersistence?.(); } catch (e) { console.error('state init', e); }
@@ -75,7 +75,7 @@ async function boot() {
   try { mods.short?.initShortcuts?.(); } catch (e) { console.error('shortcuts', e); }
   try { mods.router?.initRouter?.(); } catch (e) { console.error('router', e); }
   try { mods.refresh?.startAutoRefresh?.(); } catch (e) { console.error('autorefresh', e); }
-  console.info('[SQM v864.3] boot 완료');
+  console.info('[SQM v8.6.6] boot 완료');
   console.info('  로드된 모듈:', Object.keys(mods).filter(k => mods[k]).join(', '));
   console.info('  실패한 모듈:', Object.keys(mods).filter(k => !mods[k]).join(', ') || '없음');
   // 콘솔에서 즉시 확인 가능하도록 전역 노출

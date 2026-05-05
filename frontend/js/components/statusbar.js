@@ -1,4 +1,4 @@
-// SQM v864.3 — Status Bar (Tier 2 Stage 3)
+// SQM v8.6.6
 // Golden Reference 하단: 위치 미배정 400개 | 스캔 실패율 - | LOT 평균 재고기간 6.2일
 // 마지막 경신 타임스탬프
 

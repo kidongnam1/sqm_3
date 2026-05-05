@@ -1,5 +1,5 @@
 """
-SQM v864.3 — Optional 11 Features API (Tier 3 S1)
+SQM v8.6.6 — Optional 11 Features API (Tier 3 S1)
 =================================================
 Tier 2 에서 deferred 로 남겨진 옵션 기능들을 실제 구현.
 존재하지 않는 원본 handler 는 501 Mock 유지.

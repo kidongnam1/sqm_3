@@ -1,0 +1,117 @@
+# SQM v866 Cursor Rules (실제 폴더 구조 기반)
+# 작성: Ruby / 2026-05-01 / v8.6.5 분석 기반
+
+## 프로젝트 정체성
+SQM Inventory v866 — PyWebView + FastAPI + Vanilla JS
+진입점: main_webview.py → FastAPI port 8765 → frontend/index.html
+담당자: 남기동 / 광양 GY Logis 물류창고
+
+## 폴더 구조 (실제)
+frontend/         ← HTML/CSS/JS (Vanilla, 프레임워크 없음)
+backend/api/      ← FastAPI 라우터 (engine_modules 얇게 감싸기만)
+engine_modules/   ← 핵심 엔진 (수정 금지)
+features/parsers/ ← 파서 (수정 금지)
+docs/handoff/     ← 설계도 3종 (수정 금지)
+
+## 절대 원칙 10가지
+
+1. sub_lt 컬럼 삭제/변경 절대 금지
+   (inventory_tonbag 테이블 UNIQUE INDEX, sub_lt=0=샘플)
+
+2. engine_modules/ features/ parsers/ utils/ 수정 절대 금지
+   (검증된 비즈니스 로직, SQMInventoryEngineV3 사용)
+
+3. frontend/js/sqm-inline.js Edit 툴 직접 수정 금지
+   (310KB 대용량, 파일 붕괴 위험 — Python 스크립트로만)
+
+4. docs/handoff/ 3개 JSON 삭제/수정 금지
+   (v864_2_structure.json, feature_matrix.json, design_tokens.json)
+
+5. 색상 하드코딩 금지
+   (반드시 frontend/css/design-system.css CSS 변수 사용)
+
+6. 모든 FastAPI 엔드포인트 try/except + HTTPException 필수
+
+7. 모든 JS fetch → try/catch + showToast 필수
+
+8. 빈 화면(blank screen) 절대 금지
+   (로딩/에러/빈상태 UI 반드시 존재)
+
+9. 배치파일 CP949 + CRLF 필수
+
+10. pytest test_phase5_parity.py 44 passed 유지
+    (감소 불가, 추가만 허용)
+
+## 기술 스택
+- Desktop Shell: PyWebView 5.1.0
+- Backend: FastAPI 0.104+ + uvicorn (port 8765)
+- Frontend: Vanilla HTML/CSS/JS (React/Vue 금지)
+- Data: pandas + openpyxl + SQLite (data/db/sqm_inventory.db)
+- AI: Gemini (gemini-2.5-flash) + OpenAI 폴백
+
+## SQM 도메인 규칙
+
+### 무게 보존 법칙
+initial_weight = current_weight + picked_weight (±1.0kg)
+LOT 총무게 = (톤백수 × 단위중량) + 1kg (샘플)
+
+### status 전환 (엄수)
+AVAILABLE → RESERVED → PICKED → OUTBOUND → SOLD
+AVAILABLE → PICKED (배정 건너뛰기 허용)
+OUTBOUND → RETURN → AVAILABLE
+SOLD 전환: scan_api.py 에서만 허용
+
+### API 응답 표준
+모든 FastAPI 엔드포인트 반환 형식:
+{"success": bool, "data": any, "message": str}
+
+### JS API 호출 표준
+frontend/js/api-client.js 의 apiGet / apiPost / apiPut 사용
+직접 fetch 호출 금지 (api-client.js 통해서만)
+
+## 대용량 파일 수정 규칙
+sqm-inline.js (310KB) 수정 시 반드시:
+1. shutil.copy2 로 .bak 백업
+2. content = open().read()
+3. content.replace() 로 변경
+4. open(newline='\n', encoding='utf-8').write()
+5. node --check 로 검증
+6. 파일 크기 확인 (200,000 bytes 이상)
+
+## 코딩 패턴
+
+### FastAPI 표준 패턴
+@router.get("/endpoint")
+async def handler(param: str = ""):
+    try:
+        engine = SQMInventoryEngineV3(str(DB_PATH))
+        result = engine.기존함수(param)
+        return {"success": True, "data": result, "message": "OK"}
+    except Exception as e:
+        return {"success": False, "message": str(e), "data": None}
+
+### JS 표준 패턴
+async function loadData() {
+    try {
+        const data = await apiGet('/api/endpoint', {param: value});
+        renderTable(data.data);
+    } catch (e) {
+        // apiGet이 이미 showToast 처리함
+    }
+}
+
+## 참조 우선순위
+코드 작성 전 반드시 이 순서로 파일 확인:
+1. docs/handoff/feature_matrix.json (85개 기능 매핑)
+2. docs/handoff/v864_2_structure.json (UI 구조)
+3. docs/handoff/design_tokens.json (색상/폰트)
+4. CLAUDE.md (프로젝트 규칙)
+5. 수정 대상 파일 (기존 코드 분석 후 수정)
+
+## 현재 진행 상태 (2026-05-01 기준)
+완료: Phase 0~5 (44 passed)
+진행 중: Phase 6 (EXE 빌드 + 기능 완성)
+미완성: scan.js 4버튼, dashboard.js KPI 실데이터,
+        scan_api.py 신규, integrity_api.py 신규,
+        carriers.py GET 쓰기 버그, config_logging.py CP949 버그,
+        sqm-inline.js _zFloatTop IIFE 버그

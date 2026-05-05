@@ -1,5 +1,5 @@
 """
-SQM v864.3 — 엔진+SQL 혼합 액션 엔드포인트
+SQM v8.6.6 — 엔진+SQL 혼합 액션 엔드포인트
 Phase 4-A Group 4: F013, F029, F035, F050, F061
 
 - F013: 🔍 정합성 검증 (inventory vs inventory_tonbag 무결성)

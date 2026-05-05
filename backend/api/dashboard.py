@@ -1,5 +1,5 @@
 """
-SQM v864.3 — Dashboard KPI 실데이터 엔드포인트
+SQM v8.6.6 — Dashboard KPI 실데이터 엔드포인트
 Phase 3 Q1: GET /api/dashboard/kpi
 
 SQL 집계 — DB 직접 접근 (engine 없이도 동작)

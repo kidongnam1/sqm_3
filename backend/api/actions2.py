@@ -1,5 +1,5 @@
 """
-SQM v865 — Phase 4-B + MISS-02/03 액션 엔드포인트
+SQM v8.6.6 — Phase 4-B + MISS-02/03 액션 엔드포인트
 actions2.py: inbound-cancel, inventory-move, allocate,
              outbound-confirm, export-tonbag-excel,
              sales-order-upload (MISS-02), swap-report (MISS-03)

@@ -1,4 +1,4 @@
-// SQM v864.3 — Return Page (Tier 2 Stage 3)
+// SQM v8.6.6
 import { apiGet } from '../api-client.js';
 import { showToast } from '../toast.js';
 

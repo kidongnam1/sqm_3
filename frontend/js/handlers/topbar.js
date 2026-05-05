@@ -1,4 +1,4 @@
-// SQM v864.3 — Topbar Handlers (Tier 2 Stage 4)
+// SQM v8.6.6
 // 새로고침, Dark/Light, 돈백/LOT/MT 라디오
 import { showToast } from '../toast.js';
 import { refresh as refreshStatus } from '../components/statusbar.js';

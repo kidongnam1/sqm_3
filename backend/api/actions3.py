@@ -1,5 +1,5 @@
 """
-SQM v864.3 — Phase 4-C 액션 엔드포인트
+SQM v8.6.6 — Phase 4-C 액션 엔드포인트
 actions3.py: optimize-db, cleanup-logs, do-update,
              return-create, export-invoice-excel, settings-get
 

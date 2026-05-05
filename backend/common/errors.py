@@ -1,5 +1,5 @@
 """
-SQM v864.3 - FastAPI common error module
+SQM v8.6.6 - FastAPI common error module
 =========================================
 - ApiError: 프로젝트 표준 예외
 - wrap_engine_call: 엔진 호출 래퍼 (HTTP 로 예외 승격)

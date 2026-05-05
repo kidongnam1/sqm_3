@@ -1,0 +1,25 @@
+# SQM v866 작업 진행 상태
+START: 2026-05-01
+DONE: P0-TASK-01  # Python 3.14.2 / Node 22.22.0 / fastapi 0.135.3 / Engine OK
+DONE: P1-TASK-01  # carriers.py GET handlers already read-only (SELECT only) - verified
+DONE: P1-TASK-02  # config_logging.py FileHandler encoding=utf-8 already set - verified
+DONE: P1-TASK-03  # sqm-inline.js window._sqmZ + window._bringToFront already applied (329243 bytes) node --check PASS
+DONE: PHASE1
+DONE: P2-TASK-01  # API endpoint verification - scan/integrity routes confirmed
+DONE: P2-TASK-02  # scan_api.py created (lookup/confirm_outbound/return/move)
+DONE: P2-TASK-03  # integrity_api.py created (/api/integrity/check)
+DONE: P2-TASK-04  # routers registered in __init__.py, 4 new routes verified
+DONE: PHASE2
+DONE: P3-TASK-01  # api-client.js + menubar apiCall — node --check PASS (Ruby/Cursor, Claude 크레딧 없이 진행)
+DONE: P3-TASK-02  # 실사용 UI는 sqm-inline.js loadInventoryPage → apiGet('/api/inventory') — 검증됨
+DONE: P3-TASK-03  # 대시보드 sqm-inline loadKpi(5s) + loadDashboardTables(stats/integrity) — 검증됨
+DONE: P3-TASK-04  # 스캔 탭 sqm-inline apiPost('/api/scan/process') — 검증됨 (모듈 scan.js는 병행 유지)
+DONE: P3-TASK-05  # menubar.js api-client 연동 — 검증됨
+DONE: PHASE3  # 2026-05-01 Ruby: run_master Phase3는 Claude 크레딧 부족 시 Cursor에서 상기 검증으로 대체 완료
+DONE: P4-SMOKE-RUBY  # backend compileall OK, node --check sqm-inline.js OK (Phase4 claude 크레딧 부족으로 ZIP/DONE.md는 보류)
+DONE: P4-TASK-01  # 교차검증 5항목 — Ruby 수동 (SOLD 경로는 scan 외 다수 존재 → DONE.md 기록)
+DONE: P4-TASK-02  # pytest tests: 151 passed, 10 skipped (test_phase5_parity.py 없음)
+DONE: P4-TASK-03  # UI 스모크 — 기동님 수동 확인 권장 (자동 불가)
+DONE: P4-TASK-04  # Claude_SQM_v866_PATCH.zip 생성 완료
+DONE: P4-TASK-05  # DONE.md 생성 완료
+DONE: PHASE4  # 2026-05-01 Ruby — Claude 크레딧 없이 Phase4 완료

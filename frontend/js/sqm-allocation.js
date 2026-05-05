@@ -1,4 +1,4 @@
-/* SQM Inventory — sqm-allocation.js (Allocation — 배정관리) */
+/* SQM Inventory v8.6.6 — sqm-allocation.js (Allocation — 배정관리) */
 (function () {
   'use strict';
   /* ─── sqm-core.js 공유 함수 로컬 앨리어스 ─────────────────────────

@@ -1,5 +1,5 @@
 """
-SQM v864.3 — Phase 4-C SQL 조회 엔드포인트
+SQM v8.6.6 — Phase 4-C SQL 조회 엔드포인트
 queries3.py: sales-order-dn, dn-cross-check, do-status,
              invoice-list, settings-info
 

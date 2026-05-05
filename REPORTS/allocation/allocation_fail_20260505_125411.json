@@ -1,0 +1,9 @@
+{
+  "source_file": "alloc_test_woo_real.xlsx",
+  "saved_at": "2026-05-05 12:54:11",
+  "error_count": 1,
+  "errors": [
+    "UNIQUE constraint failed: index 'idx_allocation_lot_mode_active_no_dup'"
+  ],
+  "error_details": []
+}

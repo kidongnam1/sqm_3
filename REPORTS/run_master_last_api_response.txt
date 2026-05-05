@@ -1,0 +1,114 @@
+# Phase 4: QA + ZIP 체크리스트
+
+**목표:** 통합 검증 → 패치 ZIP 생성 → 완료 보고서 작성
+
+## 실행 순서 (사람/IDE 수행)
+
+### P4-TASK-01: 교차검증 5항목
+```bash
+# ① SQL 오염 확인
+grep -rn "\-\-" backend/api/ --include="*.py" | grep -v "^.*#"
+
+# ② SOLD 전환 경로 확인  
+grep -rn "SOLD\|confirm_outbound" backend/api/ --include="*.py"
+
+# ③ 미들웨어 등록 확인
+grep -n "exception_handler\|add_middleware" backend/api/__init__.py
+
+# ④ 전체 문법 검사
+find backend -name "*.py" | xargs python -m py_compile
+find frontend/js -name "*.js" | xargs node --check
+
+# ⑤ 대용량 파일 크기 확인
+python -c "import os; s=os.path.getsize('frontend/js/sqm-inline.js'); print(f'sqm-inline.js: {s:,} bytes'); assert s > 200000"
+```
+
+### P4-TASK-02: pytest 기준 유지
+```bash
+python -m pytest tests/test_phase5_parity.py -v --tb=short
+# 기준: 44 passed 유지 (감소 불가)
+
+python -m pytest tests/ -q --tb=short
+```
+
+### P4-TASK-03: UI 스모크 체크
+**사람이 수동 확인:**
+- `python main_webview.py` 실행 → 브라우저 창 열림
+- 사이드바 9개 탭 표시
+- Inventory 탭 데이터 로드  
+- 상단 메뉴 드롭다운 열림
+- Dashboard KPI 숫자 표시
+
+### P4-TASK-04: 패치 ZIP 생성
+**사람/IDE가 ZIP 파일 생성:**
+
+파일명: `Claude_SQM_v866_PATCH.zip`
+
+포함 구조:
+```
+Claude_SQM_v866_PATCH\
+  backend\api\
+    scan_api.py          ← 신규
+    integrity_api.py     ← 신규  
+    carriers.py          ← 수정
+    __init__.py          ← 라우터 추가
+  frontend\js\
+    api-client.js        ← 수정
+    sqm-inline.js        ← 수정
+    pages\
+      inventory.js       ← 수정
+      dashboard.js       ← 수정
+      scan.js            ← 수정
+    handlers\
+      menubar.js         ← 수정
+  config_logging.py      ← 수정
+  scripts\
+    telegram_notify.py   ← 신규
+```
+
+⚠️ **주의:** 폴더 구조 반드시 포함. 파일만 단독 삽입 금지.
+
+### P4-TASK-05: DONE.md 생성
+**사람/IDE가 파일 생성:**
+
+```markdown
+# SQM v866 Sub-Agent Team 작업 완료
+날짜: 2026-05-01
+팀: MASTER + Agent A/B/C/D/E
+
+## 완료 내역
+Phase 0: 환경 검증 [OK]
+Phase 1: 버그 수정 3건 [OK]
+  - carriers.py GET 쓰기 버그
+  - config_logging.py CP949
+  - sqm-inline.js _zFloatTop IIFE
+Phase 2: 백엔드 API 보완 [OK]
+  - scan_api.py 신규
+  - integrity_api.py 신규
+Phase 3: 프론트엔드 JS 완성 [OK]
+  - inventory.js 실데이터 연결
+  - dashboard.js KPI + 30초 갱신
+  - scan.js 4버튼 연결
+Phase 4: 교차검증 통과 [OK]
+
+## 테스트 결과
+pytest test_phase5_parity.py: 44 passed (기준 유지)
+
+## 패치 파일
+Claude_SQM_v866_PATCH.zip
+
+## 다음 작업 권장
+1. Phase 6: PyInstaller EXE 빌드
+2. 파서 비교 결과 기반 기본 파싱 방식 확정
+3. inbound.py 예외 pass → 단계별 실패 사유 명시
+```
+
+## 완료 기준
+- [ ] 교차검증 5항목 전체 PASS
+- [ ] pytest 44 passed 유지
+- [ ] UI 스모크 체크 완료
+- [ ] 패치 ZIP 생성 완료  
+- [ ] DONE.md 생성 완료
+- [ ] progress.txt에 "DONE: PHASE4" 기록
+
+**모든 파일 생성/수정은 사람/IDE가 직접 수행합니다.**

@@ -1,7 +1,7 @@
 """
-Gemini AI API — v865 신규 (1차 작업)
+Gemini AI API — v8.6.6 신규 (1차 작업)
 =========================================
-v864.2의 검증된 features/ai/gemini_utils.py를 thin wrapper로 노출.
+v8.6.6의 검증된 features/ai/gemini_utils.py를 thin wrapper로 노출.
 
 엔드포인트:
 - GET  /api/ai/settings    → 현재 키/모델/사용여부 조회 (키는 마스킹)

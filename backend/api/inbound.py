@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-SQM v865 - Inbound API
+SQM v8.6.6 - Inbound API
 POST /api/inbound/pdf  : base64 PDF decode -> pdf_parser -> DB save
 Phase 4-D + Gemini Vision Fallback (Phase 5)
 

@@ -1,4 +1,4 @@
-// SQM v864.3 — Picked Page (Tier 2 Stage 3)
+// SQM v8.6.6
 // v864.2 기준: 출고 예정 중 "Picked" 상태만 필터
 import { apiGet } from '../api-client.js';
 import { showToast } from '../toast.js';

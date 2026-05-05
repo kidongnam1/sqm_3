@@ -1,0 +1,1593 @@
+{
+  "source_file": "test_alloc_song_10col.xlsx",
+  "saved_at": "2026-05-05 11:51:26",
+  "error_count": 176,
+  "errors": [
+    "[AL-09][ZERO_QTY] LOT 2200034501: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034501: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034501: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034501: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034501: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034502: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034502: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034502: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034503: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034503: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034503: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034504: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034504: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034504: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034504: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034504: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034505: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034505: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034505: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034505: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034506: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034506: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034506: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034507: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034507: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034507: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034508: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034508: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034508: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034509: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034509: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034509: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034509: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034509: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034510: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034510: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034510: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034511: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034511: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034511: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034511: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034511: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034512: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034512: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034512: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034512: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034512: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034513: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034513: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034513: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034513: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034513: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034514: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034514: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034514: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034515: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034515: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034515: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034515: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034515: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034516: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034516: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034516: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034516: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034517: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034517: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034517: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034518: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034518: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034518: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034519: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034519: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034519: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034520: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034520: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034520: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034521: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034521: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034521: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034522: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034522: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034522: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034522: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034522: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034523: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034523: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034523: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034523: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034523: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034524: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034524: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034524: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034525: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034525: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034525: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034525: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034525: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034526: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034526: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034526: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034527: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034527: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034527: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034527: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034527: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034528: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034528: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034528: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034528: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034528: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034529: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034529: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034529: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034529: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034529: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034530: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034530: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034530: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034530: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034530: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034531: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034531: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034531: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034531: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034532: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034532: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034532: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034533: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034533: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034533: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034533: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034534: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034534: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034534: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034534: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034534: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034535: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034535: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034535: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034535: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034536: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034536: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034536: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034537: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034537: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034537: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034538: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034538: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034538: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034538: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034538: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034539: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034539: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034539: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034539: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034540: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034540: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034540: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034540: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034541: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034544: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034547: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034550: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034526: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034536: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034524: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034506: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034549: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034501: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034517: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034535: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034508: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034530: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034545: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034541: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+    "[AL-09][ZERO_QTY] LOT 2200034525: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)"
+  ],
+  "error_details": [
+    {
+      "line_no": 1,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034501: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034501",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 2,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034501: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034501",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 3,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034501: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034501",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 4,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034501: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034501",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 5,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034501: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034501",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 6,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034502: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034502",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 7,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034502: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034502",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 8,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034502: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034502",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 9,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034503: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034503",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 10,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034503: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034503",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 11,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034503: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034503",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 12,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034504: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034504",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 13,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034504: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034504",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 14,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034504: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034504",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 15,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034504: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034504",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 16,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034504: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034504",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 17,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034505: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034505",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 18,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034505: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034505",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 19,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034505: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034505",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 20,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034505: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034505",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 21,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034506: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034506",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 22,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034506: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034506",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 23,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034506: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034506",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 24,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034507: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034507",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 25,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034507: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034507",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 26,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034507: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034507",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 27,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034508: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034508",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 28,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034508: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034508",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 29,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034508: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034508",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 30,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034509: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034509",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 31,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034509: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034509",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 32,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034509: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034509",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 33,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034509: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034509",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 34,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034509: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034509",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 35,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034510: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034510",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 36,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034510: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034510",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 37,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034510: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034510",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 38,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034511: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034511",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 39,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034511: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034511",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 40,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034511: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034511",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 41,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034511: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034511",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 42,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034511: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034511",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 43,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034512: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034512",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 44,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034512: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034512",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 45,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034512: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034512",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 46,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034512: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034512",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 47,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034512: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034512",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 48,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034513: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034513",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 49,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034513: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034513",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 50,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034513: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034513",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 51,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034513: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034513",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 52,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034513: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034513",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 53,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034514: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034514",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 54,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034514: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034514",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 55,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034514: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034514",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 56,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034515: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034515",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 57,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034515: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034515",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 58,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034515: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034515",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 59,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034515: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034515",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 60,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034515: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034515",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 61,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034516: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034516",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 62,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034516: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034516",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 63,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034516: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034516",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 64,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034516: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034516",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 65,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034517: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034517",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 66,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034517: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034517",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 67,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034517: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034517",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 68,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034518: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034518",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 69,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034518: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034518",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 70,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034518: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034518",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 71,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034519: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034519",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 72,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034519: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034519",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 73,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034519: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034519",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 74,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034520: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034520",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 75,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034520: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034520",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 76,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034520: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034520",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 77,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034521: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034521",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 78,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034521: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034521",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 79,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034521: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034521",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 80,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034522: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034522",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 81,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034522: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034522",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 82,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034522: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034522",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 83,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034522: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034522",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 84,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034522: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034522",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 85,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034523: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034523",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 86,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034523: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034523",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 87,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034523: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034523",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 88,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034523: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034523",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 89,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034523: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034523",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 90,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034524: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034524",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 91,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034524: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034524",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 92,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034524: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034524",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 93,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034525: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034525",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 94,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034525: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034525",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 95,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034525: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034525",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 96,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034525: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034525",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 97,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034525: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034525",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 98,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034526: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034526",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 99,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034526: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034526",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 100,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034526: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034526",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 101,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034527: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034527",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 102,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034527: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034527",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 103,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034527: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034527",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 104,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034527: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034527",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 105,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034527: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034527",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 106,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034528: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034528",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 107,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034528: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034528",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 108,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034528: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034528",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 109,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034528: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034528",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 110,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034528: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034528",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 111,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034529: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034529",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 112,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034529: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034529",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 113,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034529: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034529",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 114,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034529: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034529",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 115,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034529: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034529",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 116,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034530: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034530",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 117,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034530: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034530",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 118,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034530: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034530",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 119,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034530: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034530",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 120,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034530: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034530",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 121,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034531: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034531",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 122,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034531: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034531",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 123,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034531: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034531",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 124,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034531: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034531",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 125,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034532: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034532",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 126,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034532: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034532",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 127,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034532: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034532",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 128,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034533: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034533",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 129,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034533: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034533",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 130,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034533: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034533",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 131,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034533: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034533",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 132,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034534: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034534",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 133,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034534: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034534",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 134,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034534: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034534",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 135,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034534: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034534",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 136,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034534: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034534",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 137,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034535: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034535",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 138,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034535: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034535",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 139,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034535: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034535",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 140,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034535: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034535",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 141,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034536: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034536",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 142,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034536: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034536",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 143,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034536: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034536",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 144,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034537: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034537",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 145,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034537: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034537",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 146,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034537: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034537",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 147,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034538: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034538",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 148,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034538: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034538",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 149,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034538: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034538",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 150,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034538: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034538",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 151,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034538: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034538",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 152,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034539: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034539",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 153,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034539: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034539",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 154,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034539: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034539",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 155,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034539: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034539",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 156,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034540: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034540",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 157,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034540: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034540",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 158,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034540: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034540",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 159,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034540: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034540",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 160,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034541: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034541",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 161,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034544: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034544",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 162,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034547: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034547",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 163,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034550: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034550",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 164,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034526: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034526",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 165,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034536: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034536",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 166,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034524: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034524",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 167,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034506: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034506",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 168,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034549: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034549",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 169,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034501: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034501",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 170,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034517: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034517",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 171,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034535: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034535",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 172,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034508: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034508",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 173,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034530: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034530",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 174,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034545: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034545",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 175,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034541: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034541",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    },
+    {
+      "line_no": 176,
+      "fail_code": "ZERO_QTY",
+      "reason": "[AL-09][ZERO_QTY] LOT 2200034525: qty_mt=0 (빈 행 또는 수량 미입력 — 엑셀 확인 필요)",
+      "lot_no": "2200034525",
+      "sold_to": "SONG CO., LTD.",
+      "qty_mt": 0.0
+    }
+  ]
+}

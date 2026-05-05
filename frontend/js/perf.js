@@ -1,4 +1,4 @@
-// SQM v864.3 — Performance Hygiene (Tier 3 S2)
+// SQM v8.6.6
 // 이벤트 리스너 WeakMap 관리 + 페이지 언마운트 시 자동 cleanup
 // 메모리 누수 방지
 

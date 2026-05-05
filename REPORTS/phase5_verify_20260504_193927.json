@@ -1,0 +1,445 @@
+{
+  "started_at": "2026-05-04T19:39:26",
+  "get_endpoints": [
+    {
+      "url": "/api/dashboard/kpi",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/dashboard/stats",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/dashboard/alerts",
+      "status": 404,
+      "ok": false
+    },
+    {
+      "url": "/api/health",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/q/inbound-status",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/q/outbound-status",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/q/movement-history",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/q/audit-log?limit=10",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/q/inventory-report",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/q/inventory-trend",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/q/product-inventory",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/q/approval-history",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/q2/recent-files",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/q2/return-stats",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/q2/report-daily",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/q2/report-monthly",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/q2/outbound-confirm-list",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/q2/detail-outbound",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/q3/sales-order-dn",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/q3/dn-cross-check",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/action/integrity-check",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/action/export-lot-excel",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/inventory",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/allocation",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/outbound/quick/info?lot_no=NO_EXIST",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/outbound/picked-summary",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/log/ping",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/action/system-info",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/info/version",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/info/shortcuts",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/info/status-guide",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/info/backup-guide",
+      "status": 200,
+      "ok": true
+    },
+    {
+      "url": "/api/info/usage",
+      "status": 200,
+      "ok": true
+    }
+  ],
+  "new_post_tests": [
+    {
+      "id": "F001-pdf-empty",
+      "method": "POST",
+      "url": "/api/inbound/pdf-upload",
+      "files": {
+        "file": [
+          "empty.pdf",
+          "b''",
+          "application/pdf"
+        ]
+      },
+      "expect_status": 400,
+      "got_status": 400,
+      "passed": true,
+      "body_keys": [
+        "detail"
+      ]
+    },
+    {
+      "id": "F001-pdf-notpdf",
+      "method": "POST",
+      "url": "/api/inbound/pdf-upload",
+      "files": {
+        "file": [
+          "fake.pdf",
+          "b'not-a-pdf'",
+          "application/pdf"
+        ]
+      },
+      "expect_status": 400,
+      "got_status": 400,
+      "passed": true,
+      "body_keys": [
+        "detail"
+      ]
+    },
+    {
+      "id": "F002-bulk-empty",
+      "method": "POST",
+      "url": "/api/inbound/bulk-import-excel",
+      "files": {
+        "file": [
+          "empty.xlsx",
+          "b''",
+          "application/octet-stream"
+        ]
+      },
+      "expect_status": 400,
+      "got_status": 400,
+      "passed": true,
+      "body_keys": [
+        "detail"
+      ]
+    },
+    {
+      "id": "F002-bulk-badext",
+      "method": "POST",
+      "url": "/api/inbound/bulk-import-excel",
+      "files": {
+        "file": [
+          "bad.txt",
+          "b'x'",
+          "text/plain"
+        ]
+      },
+      "expect_status": 400,
+      "got_status": 400,
+      "passed": true,
+      "body_keys": [
+        "detail"
+      ]
+    },
+    {
+      "id": "F003-do-update-missing",
+      "method": "POST",
+      "url": "/api/action3/do-update",
+      "json": {},
+      "expect_status": 400,
+      "got_status": 400,
+      "passed": true,
+      "body_keys": [
+        "detail"
+      ]
+    },
+    {
+      "id": "F007-return-bad",
+      "method": "POST",
+      "url": "/api/inbound/return-excel",
+      "files": {
+        "file": [
+          "bad.txt",
+          "b'x'",
+          "text/plain"
+        ]
+      },
+      "expect_status": 400,
+      "got_status": 400,
+      "passed": true,
+      "body_keys": [
+        "detail"
+      ]
+    },
+    {
+      "id": "F014-alloc-empty",
+      "method": "POST",
+      "url": "/api/allocation/bulk-import-excel",
+      "files": {
+        "file": [
+          "empty.xlsx",
+          "b''",
+          "application/octet-stream"
+        ]
+      },
+      "expect_status": 400,
+      "got_status": 400,
+      "passed": true,
+      "body_keys": [
+        "detail"
+      ]
+    },
+    {
+      "id": "F015-quick-validation",
+      "method": "POST",
+      "url": "/api/outbound/quick",
+      "json": {
+        "lot_no": "",
+        "count": 1,
+        "customer": ""
+      },
+      "expect_status": 422,
+      "got_status": 422,
+      "passed": true,
+      "body_keys": [
+        "detail"
+      ]
+    },
+    {
+      "id": "F015-quick-nolot",
+      "method": "POST",
+      "url": "/api/outbound/quick",
+      "json": {
+        "lot_no": "NO_EXIST_LOT",
+        "count": 1,
+        "customer": "TEST"
+      },
+      "expect_status": 200,
+      "expect_ok": false,
+      "got_status": 200,
+      "passed": true,
+      "body_keys": [
+        "ok",
+        "data",
+        "error",
+        "detail",
+        "message"
+      ]
+    },
+    {
+      "id": "F016-quick-paste-empty",
+      "method": "POST",
+      "url": "/api/outbound/quick-paste",
+      "json": {
+        "rows": [],
+        "customer": "TEST"
+      },
+      "expect_status": 422,
+      "got_status": 422,
+      "passed": true,
+      "body_keys": [
+        "detail"
+      ]
+    },
+    {
+      "id": "F017-picking-empty",
+      "method": "POST",
+      "url": "/api/outbound/picking-list-pdf",
+      "files": {
+        "file": [
+          "empty.pdf",
+          "b''",
+          "application/pdf"
+        ]
+      },
+      "expect_status": 400,
+      "got_status": 400,
+      "passed": true,
+      "body_keys": [
+        "detail"
+      ]
+    },
+    {
+      "id": "F022-apply-approved",
+      "method": "POST",
+      "url": "/api/allocation/apply-approved",
+      "json": {},
+      "expect_status": 200,
+      "expect_ok": null,
+      "got_status": 200,
+      "passed": true,
+      "body_keys": [
+        "ok",
+        "data",
+        "error",
+        "detail",
+        "message"
+      ]
+    },
+    {
+      "id": "F028-confirm-blocked",
+      "method": "POST",
+      "url": "/api/outbound/confirm",
+      "json": {
+        "lot_no": "",
+        "force_all": false
+      },
+      "expect_status": 200,
+      "expect_ok": false,
+      "expect_code": "CONFIRM_ALL_BLOCKED",
+      "got_status": 200,
+      "passed": true,
+      "body_keys": [
+        "ok",
+        "data",
+        "error",
+        "detail",
+        "message"
+      ]
+    },
+    {
+      "id": "F028-confirm-nolot",
+      "method": "POST",
+      "url": "/api/outbound/confirm",
+      "json": {
+        "lot_no": "NO_EXIST",
+        "force_all": false
+      },
+      "expect_status": 200,
+      "expect_ok": false,
+      "got_status": 200,
+      "passed": true,
+      "body_keys": [
+        "ok",
+        "data",
+        "error",
+        "detail",
+        "message"
+      ]
+    },
+    {
+      "id": "F004-tonbag-empty",
+      "method": "POST",
+      "url": "/api/tonbag/location-upload",
+      "files": {
+        "file": [
+          "empty.xlsx",
+          "b''",
+          "application/octet-stream"
+        ]
+      },
+      "expect_status": 400,
+      "got_status": 400,
+      "passed": true,
+      "body_keys": [
+        "detail"
+      ]
+    }
+  ],
+  "not_ready_samples": [],
+  "summary": {
+    "total": 48,
+    "pass": 47,
+    "fail": 1,
+    "pass_rate": 97.9
+  }
+}

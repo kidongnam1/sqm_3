@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check frontend/js/sqm-inline.js)",
+      "Bash(python -c \"import config_logging; print\\('config_logging OK'\\)\")",
+      "Bash(python -c \"from backend.api.carriers import list_carriers, _ensure_default_carriers_once; print\\('carriers OK'\\)\")",
+      "Bash(python -c \"from backend.api.inbound import router; print\\('inbound OK'\\)\")",
+      "Bash(pytest tests/test_parser_regression.py -q --tb=no)",
+      "Bash(python scripts/run_comparison_windows.py)",
+      "Bash(python -c ' *)",
+      "Bash(pytest tests/test_parser_regression.py -q --tb=short)",
+      "Bash(python scripts/run_comparison_6method.py --no-gemini)",
+      "Bash(grep -v \"//.*OneStop\")",
+      "Bash(awk -F: '$2 > 3800')",
+      "Bash(awk -F: 'NR>50')",
+      "Bash(python scripts/extract_onestop.py --dry-run)",
+      "Bash(python scripts/extract_onestop.py)",
+      "Bash(node --check D:/program/SQM_inventory/SQM_v865_CLEAN/frontend/js/sqm-inline.js)",
+      "Bash(node --check D:/program/SQM_inventory/SQM_v865_CLEAN/frontend/js/sqm-onestop-inbound.js)",
+      "Bash(python -m pytest tests/test_phase5_parity.py -q --tb=short)",
+      "Bash(python -m pytest tests/ -q --tb=short)",
+      "Bash(python scripts/patch_menu_connections.py --dry-run)",
+      "Bash(python scripts/patch_menu_connections.py)",
+      "Bash(python scripts/patch_gemini_compare.py --dry-run)",
+      "Bash(python scripts/patch_gemini_compare.py)",
+      "Bash(node --check frontend/js/sqm-onestop-inbound.js)",
+      "Bash(python *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(gh release create v865-r5 --title 'SQM v865 r5 — Gemini 정확도 개선 + HAPAG 미탐지 버그 수정' --notes ' *)",
+      "Bash(git add *)"
+    ]
+  }
+}

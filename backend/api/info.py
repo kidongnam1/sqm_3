@@ -1,5 +1,5 @@
 """
-SQM v864.3 — Info / Help 정적 응답 엔드포인트
+SQM v8.6.6 — Info / Help 정적 응답 엔드포인트
 Phase 4-A Group 2: F057, F058, F059, F060, F062
 
 UI 다이얼로그 없이 JSON 으로 안내 데이터를 반환.

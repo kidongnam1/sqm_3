@@ -1,5 +1,5 @@
 """
-SQM v864.3 — SQL 직접 조회 엔드포인트
+SQM v8.6.6 — SQL 직접 조회 엔드포인트
 Phase 4-A Group 3: F009, F023, F025, F031, F034, F037, F038, F046, F047, F055
 
 엔진(Tkinter GUI) 우회 → DB 직접 쿼리

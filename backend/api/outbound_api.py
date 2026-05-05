@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-SQM v864.3 — Outbound API (Phase 4-B)
+SQM v8.6.6 — Outbound API (Phase 4-B)
 POST /api/outbound/quick : 즉시 출고 (원스톱) — F015
 engine.quick_outbound(lot_no, count, customer, reason, operator) 직접 호출
 """

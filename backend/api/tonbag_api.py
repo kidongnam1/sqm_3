@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-SQM v864.3 — Tonbag API (Phase 4-B)
+SQM v8.6.6 — Tonbag API (Phase 4-B)
 POST /api/tonbag/location-upload : 톤백 위치 Excel 업로드 (F004)
 engine.update_tonbag_location(lot_no, sub_lt, location) 반복 호출
 """

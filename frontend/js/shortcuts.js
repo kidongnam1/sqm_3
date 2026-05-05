@@ -1,4 +1,4 @@
-// SQM v864.3 — Keyboard Shortcuts (Tier 2 Stage 4)
+// SQM v8.6.6
 // feature_matrix.json 의 category=keyboard 13건 + Golden Reference 기본 단축키
 import { navigateTo } from './router.js';
 import { showToast } from './toast.js';

@@ -1,4 +1,4 @@
-/* SQM Inventory — sqm-picked.js (Picked — 출고예정) */
+/* SQM Inventory v8.6.6 — sqm-picked.js (Picked — 출고예정) */
 (function () {
   'use strict';
   /* ─── sqm-core.js 공유 함수 로컬 앨리어스 ─────────────────────────

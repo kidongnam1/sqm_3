@@ -1,0 +1,463 @@
+{
+  "timestamp": "2026-05-03T05:28:18.150Z",
+  "reason": "compaction",
+  "status": {
+    "version": "3.0",
+    "lastUpdated": "2026-05-01T13:07:14.860Z",
+    "activeFeatures": [
+      "js",
+      "SQM_v865_CLEAN",
+      "api",
+      "scripts",
+      "ai",
+      "document_parser_modular",
+      "tests"
+    ],
+    "primaryFeature": "js",
+    "features": {
+      "js": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-04-29T13:23:42.267Z",
+          "lastUpdated": "2026-04-29T13:23:45.989Z"
+        },
+        "lastFile": "D:\\program\\SQM_inventory\\SQM_v865_CLEAN\\frontend\\js\\sqm-inline.js"
+      },
+      "SQM_v865_CLEAN": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-04-29T13:23:51.420Z",
+          "lastUpdated": "2026-04-29T13:23:51.420Z"
+        },
+        "lastFile": "D:\\program\\SQM_inventory\\SQM_v865_CLEAN\\config_logging.py"
+      },
+      "api": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-04-29T13:24:02.209Z",
+          "lastUpdated": "2026-05-01T13:07:14.859Z"
+        },
+        "lastFile": "D:\\program\\SQM_inventory\\SQM_v866_CLEAN\\backend\\api\\__init__.py"
+      },
+      "scripts": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-04-29T13:24:17.037Z",
+          "lastUpdated": "2026-04-29T14:28:42.860Z"
+        },
+        "lastFile": "D:\\program\\SQM_inventory\\SQM_v865_CLEAN\\scripts\\patch_gemini_accuracy.py"
+      },
+      "ai": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-04-29T13:29:00.419Z",
+          "lastUpdated": "2026-04-29T14:47:28.328Z"
+        },
+        "lastFile": "D:\\program\\SQM_inventory\\SQM_v865_CLEAN\\features\\ai\\gemini_parser.py"
+      },
+      "document_parser_modular": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-04-29T14:46:55.746Z",
+          "lastUpdated": "2026-04-29T14:48:04.659Z"
+        },
+        "lastFile": "D:\\program\\SQM_inventory\\SQM_v865_CLEAN\\parsers\\document_parser_modular\\do_mixin.py"
+      },
+      "tests": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-04-29T14:48:40.208Z",
+          "lastUpdated": "2026-04-29T14:48:40.208Z"
+        },
+        "lastFile": "D:\\program\\SQM_inventory\\SQM_v865_CLEAN\\tests\\test_parser_regression.py"
+      }
+    },
+    "pipeline": {
+      "currentPhase": 1,
+      "level": "Dynamic",
+      "phaseHistory": []
+    },
+    "session": {
+      "startedAt": "2026-04-29T02:44:36.683Z",
+      "onboardingCompleted": false,
+      "lastActivity": "2026-05-01T13:07:14.860Z"
+    },
+    "history": [
+      {
+        "timestamp": "2026-04-29T13:23:42.269Z",
+        "feature": "js",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:23:45.990Z",
+        "feature": "js",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:23:51.421Z",
+        "feature": "SQM_v865_CLEAN",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:24:02.210Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:24:06.169Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:24:10.053Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:24:16.692Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:24:17.038Z",
+        "feature": "scripts",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:24:23.910Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:24:33.539Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:24:40.016Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:24:54.288Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:24:58.892Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:25:03.107Z",
+        "feature": "scripts",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:25:04.871Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:25:12.676Z",
+        "feature": "scripts",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:25:15.963Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:25:26.806Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:25:28.540Z",
+        "feature": "scripts",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:26:23.822Z",
+        "feature": "scripts",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:26:26.810Z",
+        "feature": "scripts",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:27:14.288Z",
+        "feature": "scripts",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:28:19.078Z",
+        "feature": "scripts",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:28:39.625Z",
+        "feature": "scripts",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:29:00.421Z",
+        "feature": "ai",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:30:21.275Z",
+        "feature": "ai",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:30:26.120Z",
+        "feature": "ai",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:30:29.334Z",
+        "feature": "scripts",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:30:30.968Z",
+        "feature": "ai",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:30:35.483Z",
+        "feature": "ai",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:30:41.908Z",
+        "feature": "ai",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:30:48.774Z",
+        "feature": "ai",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:30:53.488Z",
+        "feature": "ai",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:30:58.251Z",
+        "feature": "ai",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:31:04.827Z",
+        "feature": "ai",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:38:12.651Z",
+        "feature": "scripts",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:38:39.004Z",
+        "feature": "scripts",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:38:40.312Z",
+        "feature": "scripts",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T13:53:01.397Z",
+        "feature": "scripts",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T14:04:20.906Z",
+        "feature": "scripts",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T14:07:28.413Z",
+        "feature": "scripts",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T14:14:47.514Z",
+        "feature": "scripts",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T14:28:42.861Z",
+        "feature": "scripts",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T14:34:27.201Z",
+        "feature": "ai",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T14:46:55.747Z",
+        "feature": "document_parser_modular",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T14:47:00.694Z",
+        "feature": "document_parser_modular",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T14:47:10.634Z",
+        "feature": "document_parser_modular",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T14:47:28.329Z",
+        "feature": "ai",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T14:48:04.660Z",
+        "feature": "document_parser_modular",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-29T14:48:40.209Z",
+        "feature": "tests",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-05-01T12:57:48.436Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-05-01T12:58:06.814Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-05-01T12:59:50.044Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-05-01T13:07:14.860Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      }
+    ],
+    "stateMachine": {
+      "defaultWorkflow": "default",
+      "activeWorkflows": {},
+      "totalTransitions": 0
+    },
+    "automation": {
+      "globalLevel": 2,
+      "trustScore": 40,
+      "pendingApprovals": 0,
+      "lastGateResult": null
+    },
+    "team": {
+      "enabled": true,
+      "stateFile": ".bkit/runtime/agent-state.json",
+      "eventsFile": ".bkit/runtime/agent-events.jsonl"
+    }
+  }
+}

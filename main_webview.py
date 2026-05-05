@@ -2,7 +2,7 @@
 SQM Inventory — PyWebView 진입점 (Tkinter 대체)
 실행: python main_webview.py
 
-=== v865 Debug Visibility 패치 (에러 은폐 차단) ===
+=== v8.6.6 Debug Visibility 패치 (에러 은폐 차단) ===
 1. sys.excepthook / threading.excepthook — 미포획 예외 전부 파일 기록
 2. FileHandler — 모든 로그를 sqm_debug.log 에 항상 기록 (frozen 아닐 때도)
 3. uvicorn log_level="debug" + access_log=True — 백엔드 요청/에러 완전 노출
@@ -63,7 +63,7 @@ except Exception as _e:
     print(f"[WARN] 로그 파일 핸들러 실패: {_e}")
 
 log = logging.getLogger(__name__)
-log.info(f"=== SQM v865 시작 — 로그 파일: {LOG_PATH} ===")
+log.info(f"=== SQM v8.6.6 시작 — 로그 파일: {LOG_PATH} ===")
 
 # ─────────────────────────────────────────────────────────────
 # [Patch 3] 전역 예외 훅 — 미포획 예외 전부 로그 파일에 기록
@@ -125,7 +125,7 @@ def save_window_state(width, height, maximized=False):
 def run_api_server():
     """FastAPI 서버를 별도 스레드에서 실행
 
-    [Patch] v865: log_level="debug" + access_log=True
+    [Patch] v8.6.6: log_level="debug" + access_log=True
     → 모든 HTTP 요청/응답/500 에러 전부 콘솔+파일에 기록
     """
     try:
@@ -337,7 +337,7 @@ def main():
 
         _win_w, _win_h, _win_max = load_window_state()
         window = webview.create_window(
-            title='SQM Inventory v865 — 광양창고',
+            title='SQM Inventory v8.6.6 — 광양창고',
             url=url,
             width=_win_w,
             height=_win_h,
@@ -360,7 +360,7 @@ def main():
                 window.SQM_API_BASE = "http://{API_HOST}:{API_PORT}";
                 console.log("[SQM] API Base:", window.SQM_API_BASE);
 
-                // ── v865 Debug: JS 에러를 백엔드 로그로 전송 ──
+                // ── v8.6.6 Debug: JS 에러를 백엔드 로그로 전송 ──
                 (function installErrorBridge() {{
                     function report(payload) {{
                         try {{

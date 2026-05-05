@@ -1,4 +1,4 @@
-/* SQM Inventory — sqm-logistics.js (Logistics — 입고·출고·반품·이동·로그·스캔) */
+/* SQM Inventory v8.6.6 — sqm-logistics.js (Logistics — 입고·출고·반품·이동·로그·스캔) */
 (function () {
   'use strict';
   /* ─── sqm-core.js 공유 함수 로컬 앨리어스 ─────────────────────────
@@ -477,13 +477,13 @@
       '-',
       { icon:'✅', label:'검사완료 → AVAILABLE', kbd:'A', color:'#22c55e', fn:function(){
           if(!confirm('['+lot+'] 검사 완료 — AVAILABLE로 전환하시겠습니까?')) return;
-          window.returnToAvailable(lot);
+          window.returnToAvailable(lot, true);
         }
       },
     ]);
   };
-  window.returnToAvailable = function(lotNo) {
-    if (!confirm('LOT ' + lotNo + ' 검사완료 처리합니다.\nAVAILABLE로 전환하시겠습니까?')) return;
+  window.returnToAvailable = function(lotNo, skipConfirm) {
+    if (!skipConfirm && !confirm('LOT ' + lotNo + ' 검사완료 처리합니다.\nAVAILABLE로 전환하시겠습니까?')) return;
     apiPost('/api/inventory/adjust', { lot_no: lotNo, action: 'return_to_available' })
       .then(function(){ showToast('success', lotNo + ' AVAILABLE 전환 완료'); window.loadReturnPage(); })
       .catch(function(e){ showToast('error', '전환 실패: ' + (e.message||String(e))); });

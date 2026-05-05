@@ -1,4 +1,4 @@
-/* SQM Inventory — sqm-inventory.js (Inventory — 재고목록·톤백모달) */
+/* SQM Inventory v8.6.6 — sqm-inventory.js (Inventory — 재고목록·톤백모달) */
 (function () {
   'use strict';
   /* ─── sqm-core.js 공유 함수 로컬 앨리어스 ─────────────────────────

@@ -1,5 +1,5 @@
 """
-SQM v864.3 — Phase 4-B SQL 조회 엔드포인트
+SQM v8.6.6 — Phase 4-B SQL 조회 엔드포인트
 queries2.py: report-daily, report-monthly, recent-files,
              return-stats, outbound-confirm-list, detail-outbound
 

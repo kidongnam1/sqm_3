@@ -1,4 +1,4 @@
-// SQM v864.3 — Auto Refresh (Tier 2 Stage 5)
+// SQM v8.6.6
 // 30초 주기, 탭 hidden 시 일시정지, 실패 3연속 시 60초 백오프
 import { startStatusAutoRefresh } from './statusbar.js';
 import { startAlertsAutoRefresh } from './alerts.js';

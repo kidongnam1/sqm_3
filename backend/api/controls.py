@@ -1,5 +1,5 @@
 """
-SQM v864.3 — Controls API (toolbar/sidebar/keyboard, 23 엔드포인트)
+SQM v8.6.6 — Controls API (toolbar/sidebar/keyboard, 23 엔드포인트)
 자동 생성: Ruby, Stage 2 BACKEND, 2026-04-21
 기능 수: 23
 """

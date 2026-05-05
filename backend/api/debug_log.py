@@ -1,5 +1,5 @@
 """
-v864.3 Debug Visibility — 프론트엔드 에러 수집 엔드포인트
+v8.6.6 Debug Visibility — 프론트엔드 에러 수집 엔드포인트
 
 프론트에서 window.onerror / unhandledrejection / console.error 가 발생하면
 main_webview.py 의 JS 브리지가 POST /api/log/frontend-error 로 전송.

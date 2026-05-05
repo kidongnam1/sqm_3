@@ -1,5 +1,5 @@
 """
-SQM v864.3 — LRU 캐시 + TTL (Tier 3 S2 Performance)
+SQM v8.6.6 — LRU 캐시 + TTL (Tier 3 S2 Performance)
 =====================================================
 hot-path 조회 함수의 결과를 짧은 시간 캐싱하여 FastAPI 응답 속도 향상.
 

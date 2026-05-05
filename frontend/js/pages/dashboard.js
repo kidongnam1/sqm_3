@@ -1,4 +1,4 @@
-// SQM v864.3 — Dashboard (v864.2 Golden Reference 스타일로 전면 복구)
+// SQM v8.6.6
 // 테이블 2개: [좌] 재고 및 확인 (판매가능/판매배정/판매화물/출고완료/반품대기/합계/샘플)
 //             [우] LOT별 (기초재고/입고/출고/기말재고/검증)
 import { apiGet } from '../api-client.js';

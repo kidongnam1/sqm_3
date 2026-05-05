@@ -2748,8 +2748,33 @@
     applyFontScale(stored || 100, false);
   }
 
+  function normalizeTablePreset(preset) {
+    return preset === 'large' ? 'large' : 'default';
+  }
+
+  function applyTablePreset(preset, notify) {
+    var p = normalizeTablePreset(preset);
+    document.documentElement.setAttribute('data-table-preset', p);
+    window._sqmTablePreset = p;
+    try { getStore().setItem('sqm_table_preset', p); } catch {}
+    if (notify) {
+      showToast('success', '테이블 프리셋: ' + (p === 'large' ? '확대(15px)' : '기본(14px)'));
+    }
+  }
+
+  window.sqmSetTablePreset = function(preset) {
+    applyTablePreset(preset, true);
+  };
+
+  function applyStoredTablePreset() {
+    var stored = null;
+    try { stored = getStore().getItem('sqm_table_preset'); } catch {}
+    applyTablePreset(stored || 'default', false);
+  }
+
   function showFontSizeModal() {
     var cur = window._sqmFontScale || 100;
+    var tablePreset = normalizeTablePreset(window._sqmTablePreset || 'default');
     var html = '<div style="max-width:420px">'
       + '<h2 style="margin:0 0 14px 0">⚙️ 표시 · 엑셀</h2>'
       + '<p style="color:var(--text-muted);font-size:.9rem;margin-bottom:16px">'
@@ -2765,6 +2790,15 @@
         + ' style="min-width:66px;font-size:14px">' + p + '%</button>';
     });
     html += '</div>'
+      + '<h3 style="margin:0 0 10px 0;font-size:1rem">📋 테이블 표준값</h3>'
+      + '<p style="color:var(--text-muted);font-size:.85rem;margin-bottom:12px">'
+      + '모든 탭/모달의 테이블 글자와 행 높이에 공통 적용됩니다.</p>'
+      + '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">'
+      + '<button class="btn' + (tablePreset === 'default' ? ' btn-primary' : '') + '"'
+      + ' onclick="window.sqmSetTablePreset(\'default\')" style="min-width:110px;font-size:14px">기본 (14px)</button>'
+      + '<button class="btn' + (tablePreset === 'large' ? ' btn-primary' : '') + '"'
+      + ' onclick="window.sqmSetTablePreset(\'large\')" style="min-width:110px;font-size:14px">확대 (15px)</button>'
+      + '</div>'
       + '<div style="margin-top:8px;padding-top:16px;border-top:1px solid var(--panel-border,#1e4a7a)">'
       + '<h3 style="margin:0 0 8px 0;font-size:1rem">📊 엑셀 내보내기</h3>'
       + '<label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">'
@@ -4194,8 +4228,8 @@
         closeAllMenus();
         if (!open) {
           el.classList.add('open');
-          _menuJustOpened = true;
-          setTimeout(function(){ _menuJustOpened = false; }, 200);
+          window._menuJustOpened = true;
+          setTimeout(function(){ window._menuJustOpened = false; }, 200);
           console.log('[SQM MENU OPEN]', menuName, '| .open class added:', el.classList.contains('open'));
           dbgLog('📂','MENU OPEN', menuName + ' | .open 추가됨', '#4caf50');
         } else {
@@ -4230,8 +4264,8 @@
 
     // close on outside click
     document.addEventListener('click', function(ev){
-      if (_menuJustOpened) {
-        console.log('[SQM] document click 차단됨 (_menuJustOpened=true)');
+      if (window._menuJustOpened) {
+        console.log('[SQM] document click 차단됨 (window._menuJustOpened=true)');
         return;
       }
       if (!ev.target.closest('.menu-btn,.menu-dropdown')) {
@@ -4268,7 +4302,7 @@
       }
     });
 
-    console.info('[SQM v864.3] bindAll complete');
+    console.info('[SQM v8.6.6] bindAll complete');
   }
 
   // ── 재고 수정 (자연어 AI 입력) ──
@@ -4359,6 +4393,7 @@
     _dbgBuild();
     applyTheme();
     applyStoredFontScale();
+    applyStoredTablePreset();
     bindAll();
     loadAlerts();
     loadStatusbar();
@@ -4390,7 +4425,7 @@
     window.SQM.renderPage = renderPage;
     window.SQM.dispatchAction = dispatchAction;
     window.SQM.currentRoute = function(){ return window.getCurrentRoute(); };
-    console.info('[SQM v864.3] boot complete. initial route:', initial);
+    console.info('[SQM v8.6.6] boot complete. initial route:', initial);
   }
 
   /* sqm-onestop-inbound.js 의존성 전역 노출 */

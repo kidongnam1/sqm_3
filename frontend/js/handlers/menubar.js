@@ -1,4 +1,4 @@
-// SQM v864.3 — Menubar Handlers (Tier 2 Stage 4)
+// SQM v8.6.6
 // 자동 생성 — feature_matrix.json 의 category=menubar 62건
 import { apiCall } from '../api-client.js';
 import { showToast } from '../toast.js';

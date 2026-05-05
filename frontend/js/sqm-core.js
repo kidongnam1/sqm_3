@@ -1,5 +1,5 @@
 /* =======================================================================
-   SQM Inventory v8.6.5 - sqm-inline.js
+   SQM Inventory v8.6.6 - sqm-core.js
    Rebuilt: 2026-04-21  Ruby (Senior Software Architect)
    Updated: 2026-04-27  Draggable modals, parse log panel, step badge, ESC guard
    ======================================================================= */

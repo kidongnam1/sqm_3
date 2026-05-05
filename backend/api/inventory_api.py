@@ -1,5 +1,5 @@
 """
-SQM v864.3 - Inventory / Allocation / Tonbag / Scan endpoints
+SQM v8.6.6 - Inventory / Allocation / Tonbag / Scan endpoints
 GET  /api/inventory          사이드바 Inventory 탭 데이터
 GET  /api/allocation         사이드바 Allocation 탭 데이터
 GET  /api/tonbags            톤백 리스트

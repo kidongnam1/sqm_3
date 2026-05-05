@@ -1,4 +1,4 @@
-// SQM v864.3 — API Client (Tier 2 Stage 4)
+// SQM v8.6.6
 // FastAPI 호출 표준 래퍼. 재시도 3회, 지수백오프.
 const API_BASE = 'http://127.0.0.1:8765';
 const DEFAULT_TIMEOUT_MS = 5000;

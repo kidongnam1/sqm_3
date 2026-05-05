@@ -1,4 +1,4 @@
-// SQM v864.3 — Toolbar Handlers (Tier 2 Stage 4)
+// SQM v8.6.6
 // 자동 생성 — feature_matrix.json 의 category=toolbar_button 2건 + 스크린샷 기반 7개
 import { apiCall } from '../api-client.js';
 import { showToast } from '../toast.js';
