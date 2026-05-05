@@ -41,7 +41,7 @@
     {
       "id": "F004",
       "category": "menubar",
-      "location": "파일 > 입고",
+      "location": "입고 (웹) / 파일>입고 (데스크톱)",
       "label_korean": "📍  톤백 위치 매핑",
       "tkinter_callback": "_on_tonbag_location_upload",
       "tkinter_source": "unknown:0",
@@ -53,7 +53,7 @@
     {
       "id": "F005",
       "category": "menubar",
-      "location": "파일 > 입고",
+      "location": "재고 (웹) / 파일>입고 (데스크톱)",
       "label_korean": "✅  대량 이동 승인",
       "tkinter_callback": "_on_move_approval_queue",
       "tkinter_source": "gui_app_modular/mixins/advanced_dialogs_mixin.py:2077",

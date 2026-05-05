@@ -132,7 +132,7 @@
       + '<button class="btn" onclick="window.onestopResetFilter()" style="margin-left:auto">✖ 초기화</button>'
       + '</div>'
       + '<div style="flex:1 1 auto;overflow-x:auto;overflow-y:auto;">'
-      + '<table class="onestop-preview-table" style="min-width:1200px">'
+      + '<table class="data-table onestop-preview-table" style="min-width:1200px">'
       + '<thead><tr>' + _pH + '</tr></thead>'
       + '<tbody id="onestop-preview-body">'
       + '<tr><td colspan="' + ONESTOP_PREVIEW_COLS.length + '" class="onestop-preview-empty">📭 파싱 대기 중...</td></tr>'
@@ -616,7 +616,7 @@
     var ci2 = JSON.stringify(carrier);
     var html = '<div style="min-width:520px">'
       + '<div style="font-size:14px;font-weight:700;margin-bottom:12px">' + carrier + ' 템플릿 관리</div>'
-      + (list.length ? '<table style="width:100%;border-collapse:collapse;margin-bottom:12px"><tbody>' + rows + '</tbody></table>' : '<p style="color:var(--text-muted);margin-bottom:12px">등록된 템플릿이 없습니다.</p>')
+      + (list.length ? '<table class="data-table" style="width:100%;border-collapse:collapse;margin-bottom:12px"><tbody>' + rows + '</tbody></table>' : '<p style="color:var(--text-muted);margin-bottom:12px">등록된 템플릿이 없습니다.</p>')
       + '<hr style="border-color:var(--border);margin-bottom:12px">'
       + '<div style="font-size:13px;font-weight:600;margin-bottom:8px">+ 새 템플릿 작성</div>'
       + formHtml
@@ -944,7 +944,7 @@
                   ].join(';');
                   _t.innerHTML =
                     '<div style="font-weight:700;color:#e8c87e;margin-bottom:8px;font-size:13px">&#9888;&#65039; ARRIVAL 날짜 충돌</div>' +
-                    '<table style="width:100%;border-collapse:collapse;font-size:11px">' +
+                    '<table class="data-table" style="width:100%;border-collapse:collapse;font-size:11px">' +
                     '<tr><td style="color:#aaa;padding:2px 6px 2px 0">수동 입력</td>' +
                     '<td style="color:#e87e7e;font-weight:700">' + _manual + '</td></tr>' +
                     '<tr><td style="color:#aaa;padding:2px 6px 2px 0">DO 파싱결과</td>' +
@@ -1212,6 +1212,20 @@
       showToast('warn', '파싱된 데이터가 없습니다. ▶ 파싱 시작을 먼저 실행하세요');
       return;
     }
+    var seenLots = {};
+    var dupLots = [];
+    _onestopState.previewRows.forEach(function(r, idx) {
+      var lot = String((r && r.lot_no) || '').trim();
+      if (!lot) return;
+      var key = lot.toUpperCase();
+      if (seenLots[key]) dupLots.push({lot_no: lot, first: seenLots[key], row: idx + 1});
+      else seenLots[key] = idx + 1;
+    });
+    if (dupLots.length) {
+      showToast('error', '중복 LOT가 있어 DB 업로드를 중단했습니다: ' + dupLots[0].lot_no);
+      alert('중복 LOT 차단\n\n같은 입고 파일 안에 동일 LOT가 있습니다.\n첫 번째 중복: ' + dupLots[0].lot_no + ' (행 ' + dupLots[0].first + ', ' + dupLots[0].row + ')\n\n중복을 제거한 뒤 다시 저장하세요.');
+      return;
+    }
     var editedCount = Object.keys(_onestopState.editedCells).length;
     var rowCount = _onestopState.previewRows.length;
     var confirmMsg = '💾 DB 저장 확인\n\n' +
@@ -1252,7 +1266,12 @@
         }
       })
       .catch(function(e){
-        showToast('error', 'DB 저장 오류: ' + (e.message || String(e)));
+        var d = e && e.detail && e.detail.detail ? e.detail.detail : null;
+        var msg = (d && (d.message || d.code)) || (e.message || String(e));
+        if (d && d.errors && d.errors.length) {
+          msg += ' — ' + (d.errors[0].lot_no || '') + ' ' + (d.errors[0].reason || '');
+        }
+        showToast('error', 'DB 저장 오류: ' + msg);
         if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '📤 DB 업로드 재시도'; }
       });
   };
@@ -1373,7 +1392,7 @@
     var tdStyle = 'padding:4px 6px;border:1px solid var(--panel-border);font-size:11px;white-space:nowrap';
     var diffStyle = tdStyle + ';background:#fff3cd;color:#7a5c00';
 
-    var html = '<table style="border-collapse:collapse;width:100%;min-width:900px">';
+    var html = '<table class="data-table" style="border-collapse:collapse;width:100%;min-width:900px">';
     /* header row */
     html += '<thead><tr>';
     html += '<th style="' + thStyle + '">#</th>';

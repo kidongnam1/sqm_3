@@ -352,6 +352,7 @@ Claude_SQM_v864_3/
 | 2026-05-02 | Rule A 위반 — 메뉴 분리 제안 시 질문 먼저 함 | 추천안 먼저 제시 후 질문 | Rule A 재확인 완료 |
 | 2026-05-04 | [Question]/[Intent]/시간 포맷 누락 (×2) | 매 응답 첫 줄에 시간 + 형식 헤더 필수 | 포맷 위반 재발 방지 — 루비 학습 로그 기록 |
 | 2026-05-04 | GIT_INDEX_FILE 임시 인덱스로 커밋 → 400개 파일 삭제 | git 작업은 반드시 Windows CMD에서 직접 실행 | VM에서 git commit 금지 — Rule 추가 |
+| 2026-05-04 | 3회 전수검사 미실시 → truncated 파일 방치 | 세션 종료 전 py_compile 전수검사 필수 | 5차세션 전수검사에서 49개 복구 — Rule 추가 |
 
 ---
 
@@ -465,13 +466,50 @@ git commit -m "fix: BUG-001 ocr_auto_tuner get_ocr_tuner+GeminiCallGate, BUG-003
 git push origin main
 ```
 
+### ✅ 2026-05-04 5차 세션 완료 작업
+
+#### 3회 전수검사 + 49개 truncated 파일 복구 (BUG-MASS)
+- **원인:** 이전 세션들에서 Edit 툴로 300줄↑ 파일 직접 수정 → 파일 말미 잘림
+- **발견:** Round 3 py_compile 전수검사에서 49개 파일 SyntaxError/null bytes 감지
+- **복구 방법:** `git show HEAD:<파일> > <파일>` — git HEAD 클린 버전으로 덮어쓰기
+- **복구 파일 분류:**
+  - backend/api: actions.py, actions3.py, queries3.py, tonbag_api.py (4개)
+  - features/: multi_template_registry.py, parsers/__init__.py, picking_engine.py, picking_list_parser.py, sales_order_engine.py (5개)
+  - utils/: daily_report.py, date_utils.py, parse_alarm.py, pdf_converter.py (4개)
+  - engine_modules/: db_migration_mixin.py, crud_mixin.py, export_mixin.py, inbound_mixin.py, outbound_mixin.py, return_mixin.py, tonbag_mixin.py (7개)
+  - tests/: test_date_utils_free_time.py, test_parser_regression.py (2개)
+  - scripts/: menu_patch_1_structure.py, test_all_menus_playwright.py (2개)
+  - parsers/: bl_mixin.py, invoice_mixin.py, packing_mixin.py, parser.py (4개)
+  - gui_app_modular/: 20개 (dialogs, handlers, mixins, tabs, utils)
+  - version.py (1개)
+- **복구 불가 3개 (NOT IN HEAD, untracked):** scripts/patch_gui_excel_alignment.py, run_comparison_windows.py, run_master_api.py → app 무관, 방치
+- **최종 검사 결과:** 336개 Python 파일 100% PASS ✅
+
+#### git staged deletions 경고 (미해결 — 사장님 직접 처리 필요)
+- 25개 파일이 git index에 staged for deletion 상태 (GIT_INDEX_FILE 사고 잔재)
+- 물리 파일은 존재하고 HEAD에도 있음 — `git commit` 하면 GitHub에서 25개 삭제됨
+- **필수 명령어 (Windows CMD에서 실행):**
+  ```cmd
+  git restore --staged .
+  ```
+
 ### 🔴 미완료 — 최우선 처리
-1. **신규 기능 테스트** — 앱 실행 후:
+1. **⚠️ 즉시 — git staged deletions 해제:**
+   ```cmd
+   git restore --staged .
+   ```
+2. **복구된 파일 커밋 (staged deletions 해제 후):**
+   ```cmd
+   git add -u
+   git commit -m "fix: 49개 truncated 파일 HEAD 복구 (py_compile 전수검사)"
+   git push origin main
+   ```
+3. **신규 기능 테스트** — 앱 실행 후:
    - 재고목록 탭 → MXBG 숫자 버튼 클릭 → 톤백 모달 정상 동작 확인
    - 샘플 행 SP 표기 + 필드 상속 정상 표시 확인
    - 대시보드 product matrix 단일행 표시 확인
-2. **중복 템플릿 3개 삭제** — 앱 실행 후: `python scripts\cleanup_dup_templates.py`
-3. **Phase 6 EXE 빌드** — PyInstaller 단일 파일 배포 (최우선)
+4. **중복 템플릿 3개 삭제** — `python scripts\cleanup_dup_templates.py`
+5. **Phase 6 EXE 빌드** — PyInstaller 단일 파일 배포
 
 ### 파일 위치 요약 (누적)
 | 용도 | 경로 |

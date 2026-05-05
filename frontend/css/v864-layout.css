@@ -800,7 +800,7 @@ html[data-theme="dark"] {
   font-size: 14px;
   margin: 14px 0 8px;
 }
-.num-cell { text-align: right; }
+.num-cell { text-align: center; }
 @media (max-width: 900px) {
   .lot-detail-info-grid,
   .lot-detail-metric-grid {
@@ -936,11 +936,48 @@ html[data-theme="dark"] {
 .data-table th {
   background: var(--table-header);
   padding: 8px 10px;
-  text-align: center;
+  text-align: center !important;
   font-weight: 700;
   border-bottom: 2px solid var(--panel-border);
   color: var(--fg);
   white-space: nowrap;
+}
+.data-table th .table-th-label,
+.sqm-table th .table-th-label,
+.inventory-table th .table-th-label {
+  display: inline-block;
+  vertical-align: middle;
+}
+.data-table th .table-sort-indicator,
+.sqm-table th .table-sort-indicator,
+.inventory-table th .table-sort-indicator {
+  display: inline-block;
+  min-width: 16px;
+  color: var(--accent);
+  font-weight: 800;
+}
+.data-table th .table-column-filter,
+.sqm-table th .table-column-filter,
+.inventory-table th .table-column-filter {
+  display: block;
+  width: 100%;
+  max-width: 180px;
+  min-width: 74px;
+  height: 24px;
+  margin: 5px auto 0;
+  padding: 2px 22px 2px 6px;
+  border: 1px solid var(--panel-border);
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--fg);
+  font-size: 11px;
+  line-height: 18px;
+}
+.data-table th .table-column-filter:focus,
+.sqm-table th .table-column-filter:focus,
+.inventory-table th .table-column-filter:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 .data-table td {
   padding: 7px 10px;
@@ -948,10 +985,10 @@ html[data-theme="dark"] {
   border-bottom: 1px solid var(--panel-border);
 }
 .data-table td.mono-cell { font-family: 'Consolas','Courier New',monospace; }
-.data-table td[style*="text-align:right"],
-.data-table td[style*="text-align: right"] { text-align: right !important; }
-.data-table td[style*="text-align:left"],
-.data-table td[style*="text-align: left"] { text-align: left !important; }
+.data-table .cell-left { text-align: left !important; }
+.data-table .cell-right,
+.data-table .cell-num { text-align: right !important; }
+.data-table .cell-center { text-align: center !important; }
 .data-table tr:nth-child(even) td { background: var(--table-row-alt); }
 .data-table tr.total-row td {
   font-weight: 700;
@@ -1478,6 +1515,8 @@ body,
 .inventory-table th {
   color: var(--fg) !important;
   background: var(--table-header) !important;
+  text-align: center !important;
+  vertical-align: middle;
 }
 
 .data-table td,
@@ -1485,6 +1524,37 @@ body,
 .inventory-table td {
   color: var(--fg);
   background: var(--table-cell-bg);
+  text-align: center !important;
+  vertical-align: middle;
+}
+
+#sqm-modal-content table th,
+#sqm-modal-content table td,
+.page table th,
+.page table td {
+  text-align: center !important;
+  vertical-align: middle;
+}
+
+.data-table .cell-left,
+.sqm-table .cell-left,
+.inventory-table .cell-left,
+#sqm-modal-content table .cell-left,
+.page table .cell-left {
+  text-align: left !important;
+}
+
+.data-table .cell-right,
+.data-table .cell-num,
+.sqm-table .cell-right,
+.sqm-table .cell-num,
+.inventory-table .cell-right,
+.inventory-table .cell-num,
+#sqm-modal-content table .cell-right,
+#sqm-modal-content table .cell-num,
+.page table .cell-right,
+.page table .cell-num {
+  text-align: right !important;
 }
 
 .data-table tr:nth-child(even) td,

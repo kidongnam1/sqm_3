@@ -857,11 +857,9 @@
   function loadDashboardTables() {
     apiGet('/api/dashboard/stats').then(function(res){
       var d = res.data || res || {};
-      renderStatusCards(d.status_summary || {});
       renderProductMatrix(d.product_matrix || []);
       renderIntegrity(d.integrity || {}, d.lot_weight_summary || {});
     }).catch(function(){
-      renderStatusCards({});
       renderProductMatrix([]);
       renderIntegrity({}, {});
     });
@@ -885,36 +883,24 @@
     {key:'return',    label:'Return (반품)',         icon:'\uD83D\uDD04', color:'#8b5cf6'}
   ];
 
+  /* 5단계 KPI 카드 제거 — 컨테이너만 초기화 */
   function renderStatusCards(summary) {
     var el = document.getElementById('dashboard-detail');
     if (!el) return;
-    var html = '<div style="margin-bottom:16px"><h3 style="margin:0 0 8px 0;font-size:15px;color:var(--text-primary,#e0e0e0)">';
-    html += '5\uB2E8\uACC4 \uC7AC\uACE0 \uD604\uD669</h3>';
-    html += '<div style="display:flex;gap:10px;flex-wrap:wrap">';
-    STATUS_CARD_META.forEach(function(m){
-      var s = summary[m.key] || {lots:0, tonbags:0, weight_kg:0};
-      html += '<div style="flex:1;min-width:160px;background:var(--bg-card,#1e1e2e);border-left:4px solid '+m.color+';border-radius:8px;padding:12px 14px">';
-      html += '<div style="font-size:13px;color:'+m.color+';font-weight:700;margin-bottom:6px">'+m.icon+' '+m.label+'</div>';
-      html += '<div style="font-size:22px;font-weight:700;color:var(--text-primary,#e0e0e0)">'+s.tonbags+'<span style="font-size:12px;font-weight:400;color:var(--text-muted,#888)"> \uD1A4\uBC31</span></div>';
-      html += '<div style="font-size:12px;color:var(--text-muted,#888);margin-top:2px">'+s.lots+' LOT \u00B7 '+fmtW(s.weight_kg)+'</div>';
-      html += '</div>';
-    });
-    html += '</div></div>';
-    html += '<div id="dash-matrix-area"></div>';
-    html += '<div id="dash-integrity-area"></div>';
-    el.innerHTML = html;
+    el.innerHTML = '<div id="dash-matrix-area"></div><div id="dash-integrity-area"></div>';
   }
 
   /* -- 제품x상태 매트릭스 테이블 (제품별 단일 행 — 샘플 괄호 병기) -- */
+  /* ── 제품×상태 테이블 — 제품당 2행 (일반 톤백 + 샘플) ── */
   function renderProductMatrix(rows) {
     var el = document.getElementById('dash-matrix-area');
     if (!el) return;
     if (!rows.length) {
-      el.innerHTML = '<p style="color:var(--text-muted,#888);font-size:13px">제품별 데이터 없음</p>';
+      el.innerHTML = '<p style="color:var(--text-muted,#888);font-size:13px;padding:12px">제품별 데이터 없음</p>';
       return;
     }
 
-    /* 제품별로 정상/샘플 그룹핑 */
+    /* 제품별 그룹핑 */
     var productMap = {};
     rows.forEach(function(r) {
       var prod = r.product;
@@ -923,61 +909,23 @@
       else             productMap[prod].normal = r;
     });
 
-    /* 전체 합계 */
-    var totN = {available:0,reserved:0,picked:0,outbound:0,ret:0,total:0,wt:0};
-    var totS = {available:0,reserved:0,picked:0,outbound:0,ret:0,total:0,wt:0};
-    rows.forEach(function(r) {
-      var t = r.is_sample ? totS : totN;
-      t.available += (r.available||0);
-      t.reserved  += (r.reserved||0);
-      t.picked    += (r.picked||0);
-      t.outbound  += (r.outbound||0);
-      t.ret       += (r['return']||0);
-      t.total     += (r.total||0);
-      t.wt        += (r.weight_mt||0);
-    });
-
-    /* 셀 렌더 헬퍼: 정상값 + 샘플값 괄호 병기 */
-    function cell(nVal, sVal, isWt) {
-      var n = nVal || 0;
-      var s = sVal || 0;
-      var nStr = isWt ? n.toFixed(2) : String(n);
-      var sStr = isWt ? s.toFixed(2) : String(s);
-      var base = '<td style="text-align:right;padding:5px 8px">' + nStr;
-      if (s > 0) base += ' <span style="font-size:11px;color:#eab308">(+' + sStr + '\u{1F52C})</span>';
-      base += '</td>';
-      return base;
+    /* 셀 헬퍼 */
+    function cv(val, isWt) {
+      var v = val || 0;
+      return '<td style="text-align:right;padding:5px 8px">' + (isWt ? v.toFixed(3) : String(v)) + '</td>';
     }
-    function cellBold(nVal, sVal, isWt) {
-      var n = nVal || 0;
-      var s = sVal || 0;
-      var nStr = isWt ? n.toFixed(2) : String(n);
-      var sStr = isWt ? s.toFixed(2) : String(s);
-      var base = '<td style="text-align:right;padding:5px 8px;font-weight:700">' + nStr;
-      if (s > 0) base += ' <span style="font-size:11px;color:#eab308">(+' + sStr + '\u{1F52C})</span>';
-      base += '</td>';
-      return base;
-    }
-    /* 톤백(개) 셀 — LOT수 + 톤백수 병기 */
-    function cellLot(nLot, nTotal, sLot, sTotal) {
-      var nl = nLot || 0;
-      var nt = nTotal || 0;
-      var sl = sLot || 0;
-      var st = sTotal || 0;
-      var base = '<td style="text-align:right;padding:5px 8px">'
-               + '<span style="color:#94a3b8;font-size:11px;font-weight:400">' + nl + ' LOT</span>'
-               + '<span style="font-weight:700;margin-left:4px">· ' + nt + '</span>';
-      if (st > 0) base += ' <span style="font-size:11px;color:#eab308">(+' + sl + 'LOT/' + st + '\u{1F52C})</span>';
-      base += '</td>';
-      return base;
+    function cvLot(lotCnt, total) {
+      var nl = lotCnt || 0; var nt = total || 0;
+      return '<td style="text-align:right;padding:5px 8px">'
+           + '<span style="color:#94a3b8;font-size:11px">' + nl + ' LOT</span>'
+           + '<span style="font-weight:700;margin-left:4px">· ' + nt + '</span></td>';
     }
 
-    var TH  = 'style="padding:6px 8px;text-align:right"';
-    var THL = 'style="text-align:left;padding:6px 10px"';
+    var TH  = 'style="padding:6px 8px;text-align:right;background:var(--bg-header,#2a2a3e)"';
+    var THL = 'style="text-align:left;padding:6px 10px;background:var(--bg-header,#2a2a3e)"';
 
-    var html = '<h3 style="margin:16px 0 8px;font-size:15px;color:var(--text-primary,#e0e0e0)">제품\xD7상태 매트릭스</h3>';
-    html += '<div style="overflow-x:auto"><table class="sqm-table" style="width:100%;font-size:13px;border-collapse:collapse">';
-    html += '<thead><tr style="background:var(--bg-header,#2a2a3e)">';
+    var html = '<div style="overflow-x:auto"><table class="sqm-table" style="width:100%;font-size:13px;border-collapse:collapse">';
+    html += '<thead><tr>';
     html += '<th ' + THL + '>제품</th>';
     html += '<th ' + TH + ' style="color:#22c55e">Available</th>';
     html += '<th ' + TH + ' style="color:#3b82f6">Reserved</th>';
@@ -989,33 +937,37 @@
     html += '</tr></thead><tbody>';
 
     var products = Object.keys(productMap).sort();
-    products.forEach(function(prod) {
-      var g = productMap[prod];
-      var n = g.normal || {};
-      var s = g.sample || {};
-      html += '<tr>';
-      html += '<td style="text-align:left;padding:5px 10px;font-weight:700">' + escapeHtml(prod) + '</td>';
-      html += cell(n.available,  s.available,  false);
-      html += cell(n.reserved,   s.reserved,   false);
-      html += cell(n.picked,     s.picked,     false);
-      html += cell(n.outbound,   s.outbound,   false);
-      html += cell(n['return'],  s['return'],  false);
-      html += cellLot(n.lot_count, n.total, s.lot_count, s.total);
-      html += cell(n.weight_mt,  s.weight_mt,  true);
+    products.forEach(function(prod, idx) {
+      var g  = productMap[prod];
+      var n  = g.normal || {};
+      var s  = g.sample || {};
+      var borderTop = idx > 0 ? 'border-top:2px solid var(--border-color,#3a3a5e);' : '';
+
+      /* 1행: 일반 톤백 */
+      html += '<tr style="' + borderTop + '">';
+      html += '<td style="text-align:left;padding:6px 10px;font-weight:700">' + escapeHtml(prod) + '</td>';
+      html += cv(n.available,  false);
+      html += cv(n.reserved,   false);
+      html += cv(n.picked,     false);
+      html += cv(n.outbound,   false);
+      html += cv(n['return'],  false);
+      html += cvLot(n.lot_count, n.total);
+      html += cv(n.weight_mt,  true);
+      html += '</tr>';
+
+      /* 2행: 샘플 (항상 표시 — 데이터 없으면 0) */
+      html += '<tr style="background:rgba(234,179,8,0.07)">';
+      html += '<td style="text-align:left;padding:4px 10px 4px 22px;color:#eab308;font-size:12px">🔬 샘플</td>';
+      html += cv(s.available,  false);
+      html += cv(s.reserved,   false);
+      html += cv(s.picked,     false);
+      html += cv(s.outbound,   false);
+      html += cv(s['return'],  false);
+      html += '<td style="text-align:right;padding:5px 8px">' + (s.total || 0) + '</td>';
+      html += cv(s.weight_mt,  true);
       html += '</tr>';
     });
 
-    /* 합계 행 */
-    html += '<tr style="border-top:2px solid var(--border-color,#444);background:var(--bg-header,#2a2a3e)">';
-    html += '<td style="text-align:left;padding:5px 10px;font-weight:700">합계</td>';
-    html += cellBold(totN.available, totS.available, false);
-    html += cellBold(totN.reserved,  totS.reserved,  false);
-    html += cellBold(totN.picked,    totS.picked,    false);
-    html += cellBold(totN.outbound,  totS.outbound,  false);
-    html += cellBold(totN.ret,       totS.ret,       false);
-    html += cellBold(totN.total,     totS.total,     false);
-    html += cellBold(totN.wt,        totS.wt,        true);
-    html += '</tr>';
     html += '</tbody></table></div>';
     el.innerHTML = html;
   }
@@ -1360,18 +1312,18 @@
       var sc = STATUS_COLOR[r.status] || '#94a3b8';
       html += '<tr style="border-bottom:1px solid var(--border,#334155);' + rowBg + '">'
         + '<td style="padding:6px 8px;text-align:right;color:#94a3b8">' + (i+1) + '</td>'
-        + '<td style="padding:6px 8px;font-family:monospace">' + escapeHtml(r.sub_lot_no || r.tonbag_no || '') + '</td>'
-        + '<td style="padding:6px 8px;text-align:right">' + (r.weight_mt != null ? Number(r.weight_mt).toFixed(3) : '-') + '</td>'
+        + '<td style="padding:6px 8px;font-family:monospace">' + escapeHtml(r.sub_lt || r.tonbag_no || '') + '</td>'
+        + '<td style="padding:6px 8px;text-align:right">' + ((r.weight != null && r.weight !== '') ? Number(r.weight).toFixed(3) : '-') + '</td>'
         + '<td style="padding:6px 8px;text-align:center"><span style="color:' + sc + ';font-weight:700">' + escapeHtml(r.status||'') + '</span></td>'
         + '<td style="padding:6px 8px;text-align:center">' + (isSample ? '🔬 샘플' : '📦 일반') + '</td>'
-        + '<td style="padding:6px 8px">' + escapeHtml(r.location || '-') + '</td>'
-        + '<td style="padding:6px 8px;font-family:monospace">' + escapeHtml(r.container_no || '-') + '</td>'
-        + '<td style="padding:6px 8px">' + escapeHtml((r.inbound_date || r.created_at || '').slice(0,10)) + '</td>'
+        + '<td style="padding:6px 8px;text-align:center">' + escapeHtml(r.location || '-') + '</td>'
+        + '<td style="padding:6px 8px;font-family:monospace">' + escapeHtml(r.container || '-') + '</td>'
+        + '<td style="padding:6px 8px;text-align:center">' + escapeHtml((r.inbound_date || '').slice(0,10)) + '</td>'
         + '</tr>';
     });
     document.getElementById('tbm-body').innerHTML = html ||
       '<tr><td colspan="8" style="text-align:center;padding:20px;color:#94a3b8">데이터 없음</td></tr>';
-    var totalMt = rows.reduce(function(s,r){ return s + (parseFloat(r.weight_mt)||0); }, 0);
+    var totalMt = rows.reduce(function(s,r){ return s + (parseFloat(r.weight)||0); }, 0);
     var sampleCnt = rows.filter(function(r){ return r.is_sample==1||r.is_sample===true; }).length;
     document.getElementById('tbm-summary').textContent =
       '표시 ' + rows.length + '개 / 합계 ' + totalMt.toFixed(3) + ' MT'
