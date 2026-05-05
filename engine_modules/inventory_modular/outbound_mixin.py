@@ -2547,7 +2547,7 @@ class OutboundMixin(InventoryBaseMixin):
             self._recalc_current_weight(p_lot, reason='P2_RESERVED_TO_PICKED')
         # plan 상태 갱신
         self.db.execute(
-            """UPDATE allocation_plan SET status = 'EXECUTED', executed_at = ?
+            """UPDATE allocation_plan SET status = 'PICKED', executed_at = ?
             WHERE id = ?""",
             (now, plan['id'])
         )
@@ -3684,10 +3684,10 @@ class OutboundMixin(InventoryBaseMixin):
                 'STAGED': 'CANCELLED',
                 'PICKED': 'RESERVED',
                 'EXECUTED': 'RESERVED',
-                'OUTBOUND': 'EXECUTED',
-                'SOLD': 'EXECUTED',
-                'SHIPPED': 'EXECUTED',
-                'CONFIRMED': 'EXECUTED',
+                'OUTBOUND': 'PICKED',
+                'SOLD': 'PICKED',
+                'SHIPPED': 'PICKED',
+                'CONFIRMED': 'PICKED',
             }
 
             with self.db.transaction("IMMEDIATE"):
@@ -3806,7 +3806,7 @@ class OutboundMixin(InventoryBaseMixin):
         allocation_plan EXECUTED → RESERVED, inventory_tonbag PICKED → RESERVED.
         """
         result = {'success': False, 'reverted': 0, 'errors': []}
-        query = """SELECT id, lot_no, tonbag_id FROM allocation_plan WHERE status = 'EXECUTED'"""
+        query = """SELECT id, lot_no, tonbag_id FROM allocation_plan WHERE status IN ('EXECUTED','PICKED')"""
         params = [] if not lot_no else [lot_no]
         if lot_no:
             query += " AND lot_no = ?"

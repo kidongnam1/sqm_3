@@ -114,15 +114,8 @@ class ReturnMixin:
         샘플(is_sample=1 or sub_lt=0)은 일반 반품 흐름과 완전 분리.
         Returns False → 반품 중단.
         """
-        is_sample = int(tonbag.get('is_sample') or 0)
-        sub_lt    = tonbag.get('sub_lt')
-        if is_sample or sub_lt == 0:
-            msg = (f"[T9][SAMPLE_RETURN] 샘플 톤백은 일반 반품 불가 "
-                   f"(sub_lt={sub_lt}, is_sample={is_sample}). "
-                   f"샘플 반품은 별도 처리 필요.")
-            logger.warning(msg)
-            result.setdefault('errors', []).append(msg)
-            return False
+        # v8.6.6 [사장님 승인 2026-05-05]: 샘플도 일반 반품 허용
+        # 경우 B: 샘플(sub_lt=0)도 가끔 반품되므로 하드블록 제거
         return True
 
     def _ret_cancel_allocation_plan(self, lot_no: str, sub_lt,
@@ -146,7 +139,7 @@ class ReturnMixin:
                  (lot_no, tonbag_id)),
             ]:
                 r = self.db.execute(
-                    f"UPDATE allocation_plan SET status='CANCELLED' WHERE {where}",
+                    f"UPDATE allocation_plan SET status='RETURN', cancelled_at=datetime('now') WHERE {where}",
                     params
                 )
                 if hasattr(r, 'rowcount'):
@@ -255,21 +248,7 @@ class ReturnMixin:
                     if not isinstance(tonbag, dict):
                         tonbag = dict(tonbag)
 
-                    # v7.1.3 [T9-SAMPLE-RETURN-BLOCK]: 샘플 톤백 반품 Hard Stop
-                    # 샘플(is_sample=1 또는 sub_lt=0)은 일반 반품 흐름과 완전 분리
-                    # bulk_return_by_lot: is_sample=0 WHERE 조건으로 이미 제외
-                    # process_return 단일건: 명시적 Hard Stop 추가 (T9 보강)
-                    if tonbag.get('is_sample') or tonbag.get('sub_lt') == 0:
-                        msg = (
-                            f"[T9][SAMPLE_RETURN_BLOCKED] 샘플 톤백 반품 차단: "
-                            f"{lot_no}-{sub_lt} (is_sample=1 또는 sub_lt=0) "
-                            f"— 샘플은 재고 포함 고정 정책, 반품 불가"
-                        )
-                        logger.error(msg)
-                        result['errors'].append(msg)
-                        result.setdefault('fail_codes', []).append('SAMPLE_RETURN_BLOCKED')
-                        result['skipped'] += 1
-                        continue
+                    # v8.6.6 [사장님 승인 2026-05-05]: 샘플 반품 허용 — 블록 제거
 
                     # v6.9.7 [RT-06]: RETURN_DUPLICATE — 이중 반품 명확한 차단
                     if tonbag['status'] == STATUS_AVAILABLE:
@@ -354,19 +333,20 @@ class ReturnMixin:
                     self.db.execute("""
                         UPDATE inventory_tonbag 
                         SET status = 'RETURN',
+                            return_date = ?,
                             outbound_date = NULL,
                             picked_date = NULL,
                             picked_to = NULL,
                             sale_ref = NULL,
                             updated_at = ?
                         WHERE lot_no = ? AND sub_lt = ?
-                    """, (now, lot_no, sub_lt))
+                    """, (now, now, lot_no, sub_lt))
 
                     # v5.9.3: RESERVED였으면 allocation_plan도 CANCELLED 처리
                     if was_reserved:
                         try:
                             self.db.execute("""
-                                UPDATE allocation_plan SET status = 'CANCELLED', cancelled_at = ?
+                                UPDATE allocation_plan SET status = 'RETURN', cancelled_at = ?
                                 WHERE lot_no = ? AND sub_lt = ? AND status = 'RESERVED'
                             """, (now, lot_no, sub_lt))
                         except (sqlite3.OperationalError, ValueError, TypeError) as _e:
@@ -393,13 +373,13 @@ class ReturnMixin:
                         try:
                             self.db.execute(
                                 "UPDATE allocation_plan "
-                                "SET status='CANCELLED', cancelled_at=? "
+                                "SET status='RETURN', cancelled_at=? "
                                 "WHERE lot_no=? AND sub_lt=? "
-                                "AND status IN ('EXECUTED','RESERVED','STAGED')",
+                                "AND status IN ('EXECUTED','PICKED','RESERVED','STAGED')",
                                 (now, lot_no, sub_lt)
                             )
                             logger.info(
-                                f"[3] allocation_plan CANCELLED: {lot_no}-{sub_lt} "
+                                f"[3] allocation_plan RETURN: {lot_no}-{sub_lt} "
                                 f"(반품 사유: {reason})"
                             )
                         except (sqlite3.OperationalError, ValueError, TypeError) as _ae:
@@ -972,10 +952,12 @@ class ReturnMixin:
                 # stock_movement 이력 (위치 복귀 기록)
                 self.db.execute(
                     "INSERT INTO stock_movement "
-                    "(lot_no, movement_type, qty_kg, remarks, created_at) "
-                    "VALUES (?, 'RETURN_TO_AVAILABLE', ?, ?, ?)",
+                    "(lot_no, movement_type, qty_kg, from_status, to_status, "
+                    " from_location, to_location, remarks, created_at) "
+                    "VALUES (?, 'MOVE', ?, 'RETURN', 'AVAILABLE', ?, ?, ?, ?)",
                     (lot_no, tb_weight,
-                     f"sub_lt={sub_lt}, location={new_location}", now)
+                     new_location, new_location,
+                     f"sub_lt={sub_lt}, RETURN→AVAILABLE 재입고", now)
                 )
 
             # P2 재계산 (실제 tonbag 상태 기반으로 current_weight 재산출)

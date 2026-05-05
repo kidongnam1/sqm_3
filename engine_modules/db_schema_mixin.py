@@ -767,6 +767,15 @@ class DatabaseSchemaMixin:
                 self.execute(
                     "ALTER TABLE stock_movement ADD COLUMN operator TEXT DEFAULT 'system'")
                 logger.info("[v6.6.0] stock_movement.operator 컬럼 추가")
+            cols_sm = {r[1] for r in (self.execute("PRAGMA table_info(stock_movement)") or [])}
+            if 'from_status' not in cols_sm:
+                self.execute(
+                    "ALTER TABLE stock_movement ADD COLUMN from_status TEXT DEFAULT NULL")
+                logger.info("[v8.6.6] stock_movement.from_status 컬럼 추가")
+            if 'to_status' not in cols_sm:
+                self.execute(
+                    "ALTER TABLE stock_movement ADD COLUMN to_status TEXT DEFAULT NULL")
+                logger.info("[v8.6.6] stock_movement.to_status 컬럼 추가")
         except Exception as e:
             logger.warning(f"[v6.6.0] stock_movement 마이그레이션 오류: {e}")
 
