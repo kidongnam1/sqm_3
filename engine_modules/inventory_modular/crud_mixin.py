@@ -69,8 +69,7 @@ class CRUDMixin:
             row_avail = self.db.fetchone(
                 "SELECT COALESCE(SUM(weight), 0) AS s "
                 "FROM inventory_tonbag "
-                "WHERE lot_no = ? AND status IN ('AVAILABLE','RESERVED','RETURN') "
-                "  AND (is_sample IS NULL OR is_sample = 0)",
+                "WHERE lot_no = ? AND status IN ('AVAILABLE','RESERVED','RETURN')",
                 (lot_no,)
             )
             avail_kg = float(row_avail.get('s', 0) if isinstance(row_avail, dict) else (row_avail[0] or 0))
@@ -79,8 +78,7 @@ class CRUDMixin:
             row_picked = self.db.fetchone(
                 "SELECT COALESCE(SUM(weight), 0) AS s "
                 "FROM inventory_tonbag "
-                "WHERE lot_no = ? AND status = 'PICKED' "
-                "  AND (is_sample IS NULL OR is_sample = 0)",
+                "WHERE lot_no = ? AND status = 'PICKED'",
                 (lot_no,)
             )
             picked_kg = float(row_picked.get('s', 0) if isinstance(row_picked, dict) else (row_picked[0] or 0))
@@ -207,7 +205,7 @@ class CRUDMixin:
             #      → _recalc_current_weight() 출력과 일치, validator 개입 불필요
             # initial_weight는 "입고 당시 총량"이므로 net_weight 유지 (샘플 포함).
             # ──────────────────────────────────────────────────────────────
-            _current_weight_init = (float(net_weight) - float(SAMPLE_WEIGHT_KG)) if mxbg_pallet > 0 else float(net_weight)
+            _current_weight_init = float(net_weight)  # 샘플백 포함 (샘플도 판매 가능 — 사장님 2026-05-05 확정)
 
             with self.db.transaction("IMMEDIATE"):
                 now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
