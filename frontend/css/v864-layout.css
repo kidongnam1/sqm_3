@@ -1871,3 +1871,64 @@ nav.menubar .menu-dropdown .menu-section-label,
 .menubar .menu-dropdown .menu-section-label {
   color: #94a3b8 !important;
 }
+
+/* Global table export and scrollbar hardening */
+::-webkit-scrollbar {
+  width: 12px !important;
+  height: 12px !important;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-card, #111827) !important;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border, #475569) !important;
+  border: 2px solid var(--bg-card, #111827) !important;
+  border-radius: 6px !important;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent, #4a9eff) !important;
+}
+html,
+body {
+  scrollbar-gutter: stable both-edges;
+}
+.page-content,
+#dashboard-container,
+#page-container,
+#sqm-modal-content,
+.sqm-float-modal .sqm-float-body {
+  overflow: scroll !important;
+  scrollbar-gutter: stable both-edges;
+}
+.data-table-wrap,
+.sqm-table-scroll,
+.page div:has(> table.data-table),
+.page div:has(> table.sqm-table),
+#page-container div:has(> table.data-table),
+#page-container div:has(> table.sqm-table),
+#sqm-modal-content div:has(> table.data-table),
+#sqm-modal-content div:has(> table.sqm-table),
+.sqm-float-modal div:has(> table.data-table),
+.sqm-float-modal div:has(> table.sqm-table) {
+  max-width: 100% !important;
+  overflow: auto !important;
+  scrollbar-gutter: stable both-edges;
+}
+table.data-table,
+table.sqm-table {
+  min-width: 100%;
+  width: max-content;
+}
+.sqm-table-export-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  margin: 4px 0 6px;
+}
+.sqm-table-export-btn {
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  padding: 4px 8px !important;
+}

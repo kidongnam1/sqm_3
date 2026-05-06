@@ -20,3 +20,15 @@ Thumbs.db
 node_modules/
 settings.ini
 data/db/sqm_inventory.db
+
+exports/*.xlsx
+# === 2026-05-06 추가 ===
+exports/*.xls
+
+# === 2026-05-06 추가 ===
+exports/*.xlsx
+exports/*.xls
+.claude/worktrees/
+tests/workflow_test_report.html
+tests/*.html
+.claude/worktrees/

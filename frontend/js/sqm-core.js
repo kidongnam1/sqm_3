@@ -668,11 +668,16 @@
 
   function enhanceDataTables(root) {
     var scope = root && root.querySelectorAll ? root : document;
-    scope.querySelectorAll('table.data-table').forEach(function(table) {
+    scope.querySelectorAll('table.data-table,table.sqm-table').forEach(function(table) {
       if (table.dataset.sqmExcelReady === '1') return;
       table.dataset.sqmExcelReady = '1';
       var parent = table.parentElement;
-      if (parent && !parent.classList.contains('sqm-table-scroll') && parent.children.length === 1) {
+      var canMarkParent = parent
+        && parent.tagName === 'DIV'
+        && !/^(page-container|dashboard-container|sqm-modal-content)$/.test(parent.id || '')
+        && !parent.classList.contains('sqm-table-scroll')
+        && parent.children.length === 1;
+      if (canMarkParent) {
         parent.classList.add('sqm-table-scroll');
       }
       var host = document.createElement('div');
@@ -699,7 +704,7 @@
       mutations.forEach(function(m) {
         m.addedNodes.forEach(function(node) {
           if (node.nodeType !== 1) return;
-          if (node.matches && node.matches('table.data-table')) {
+          if (node.matches && node.matches('table.data-table,table.sqm-table')) {
             enhanceDataTables(node.parentNode || document);
           } else {
             enhanceDataTables(node);

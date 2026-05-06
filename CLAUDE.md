@@ -216,8 +216,9 @@ SQM_v866_CLEAN/
 | Phase 7 | 사장님 실사용 1주 + 버그 수집 | ⏳ 대기 |
 | Phase 8 | 🏆 v866 공식 릴리스 (GY Logis 전환) | 🎯 최종 |
 
-**전체 진행률 (2026-05-05 기준):** 약 85% (Phase 0~5 완료 + 다수 버그 수정)
+**전체 진행률 (2026-05-05 기준):** 약 88% (Phase 0~5 완료 + 역방향 전수검사 2회 완료)
 **예상 릴리스:** 2026-05-25 (본업 병행 감안)
+**최신 커밋:** `6b9ec31` — 2회차 역방향 전수검사 fix (2026-05-05)
 
 ---
 
@@ -281,17 +282,19 @@ sqm-inline.js (391KB, 7133줄) → 6개 IIFE 파일로 분할 완료
 
 ## 🔴 현재 미완료 — 최우선 처리 순서
 
-### 1. 앱 재시작 후 확인 항목 (Bug④⑤ + 사이드바 검증)
-- 완전 종료 후 재시작 (단순 새로고침 금지)
-- Dashboard → 상단 "재고 현황" 바 차트 표시 확인 (Available/Reserved/Picked MT)
-- alloc_test_v2_*.xlsx 중 1개 업로드 → Available↓ Reserved↑ 반영 확인
-- Inventory탭 → Balance 옆 "Avail/Rsv(MT)" 컬럼: 초록=가용MT, 파랑=배분MT
-- 배분 탭 RESERVED 행 SAP NO / PRODUCT / WH 데이터 표시 확인
-- 사이드바 Inventory 클릭 → 하위메뉴(Available/Allocation/Picked/Return) 펼침 확인
-- Available 메뉴 클릭 → AVAILABLE LOT 목록 표시 확인
-- 배지(N개·X MT) 30초마다 자동 갱신 확인
+### 1. 역방향 전수검사 2회차 완료 (2026-05-05) — 17/17 ✅
+**수정 완료된 버그 (commit 6b9ec31):**
+- `confirm_outbound()`: `allocation_plan.status='OUTBOUND'` 누락 → 추가
+- `db_schema_mixin`: `stock_movement` CREATE TABLE에 `from_status`/`to_status` 컬럼 누락 → 추가
+- `return_mixin`: sample hard-block 제거 / return_date / RETURN 상태 / MOVE 이력 (1회차 수정)
+- `backend/api/inventory_api.py`, `queries.py`: Linux mount truncation 복구
+- `sqm-core/allocation/inventory/logistics/picked.js`: Linux mount truncation 복구 (5개)
 
-### 2. Phase 6 — EXE 빌드
+**⚠️ 새로 발견된 구조적 이슈:**
+- Linux 마운트가 Windows 파일 변경을 즉시 반영 못 함 (staleness)
+- 세션 시작 시 py_compile + node --check 로 truncation 조기 탐지 필수
+
+### 2. Phase 6 — EXE 빌드 (다음 작업)
 - PyInstaller spec 작성 → hidden imports 해결 → 빌드 테스트 → 실행 검증
 - Gate: test_phase5_parity.py 44 passed + EXE 실행 시 FastAPI 정상 기동
 
@@ -329,6 +332,7 @@ sqm-inline.js (391KB, 7133줄) → 6개 IIFE 파일로 분할 완료
 7. **설계 결정 이유 미기록** (방지책①) → 수정할 때마다 `왜`를 CLAUDE.md에 함께 기록. "당연하다"도 기록 대상
 8. **코드 읽기 전 수정** (방지책②) → "버그같다" 판단해도 → 관련 코드 주석/원인 먼저 확인 → 이해 후 수정. 추측 금지
 9. **300줄↑ 파일 작은 수정도 Edit 툴 사용** (방지책③) → 예외 없이 Python 스크립트 사용 (Rule 5 재확인)
+10. **세션 시작 후 전수검사 생략** (방지책④) → 세션 시작 즉시 `find ... -name "*.py" | xargs python3 -m py_compile` + `find frontend/js -name "*.js" | xargs node --check` 실행. Linux mount staleness로 truncated 파일이 있을 수 있음
 
 ---
 
@@ -364,6 +368,8 @@ sqm-inline.js (391KB, 7133줄) → 6개 IIFE 파일로 분할 완료
 | 2026-05-05 | CLAUDE.md에 v865 표기 방치 | 폴더명(v866)과 버전 일치 필수 | 전면 재작성 |
 | 2026-05-05 | 코드 주석 미확인 → 샘플백 포함 여부 flip-flop 3회 | 수정 전 코드+주석 반드시 먼저 읽기 | 방지책② 추가 |
 | 2026-05-05 | StreamingResponse PyWebView 비호환 재발 | exports/+os.startfile() 패턴만 사용 | 설계결정 기록 |
+| 2026-05-05 | Linux mount staleness → truncated 파일 py_compile 통과로 오인 | 세션 시작 시 즉시 py_compile+node--check 전수검사 | 방지책④ 추가 |
+| 2026-05-05 | confirm_outbound() allocation_plan OUTBOUND 미동기화 방치 | 역방향 전수검사로 탐지 → 즉시 수정 | commit 6b9ec31 |
 
 ---
 

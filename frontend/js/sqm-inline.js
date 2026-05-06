@@ -867,7 +867,7 @@
 
   function fmtN(v) {
     if (typeof v !== 'number') return (v == null ? '-' : v);
-    return v.toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1});
+    return v.toLocaleString('ko-KR',{minimumFractionDigits:3,maximumFractionDigits:3});
   }
   function fmtW(kg) {
     if (typeof kg !== 'number') return '-';
