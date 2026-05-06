@@ -127,10 +127,17 @@ def run_api_server():
 
     [Patch] v8.6.6: log_level="debug" + access_log=True
     → 모든 HTTP 요청/응답/500 에러 전부 콘솔+파일에 기록
+    [P11 PATCH 2026-05-06] uvicorn 로거 propagate 분리
+    → 이전: uvicorn INFO 메시지가 SQM root 로거로 propagate 되어 [ERROR] root: 로 이중 표시
+    → 수정: uvicorn 자체 로거의 propagate=False 로 SQM 로깅과 분리
     """
     try:
         import uvicorn
         from backend.api import app
+        # [P11 PATCH] uvicorn 로거 분리 (SQM root 로거로의 propagate 차단).
+        # uvicorn 은 자체 핸들러로 stdout 에 출력하므로 SQM 로깅이 중복 캡처 안 함.
+        for _uv_logger_name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+            logging.getLogger(_uv_logger_name).propagate = False
         uvicorn.run(
             app,
             host=API_HOST,
@@ -214,26 +221,80 @@ def wait_for_api(timeout=10):
     log.warning("API 서버 연결 타임아웃 — 오프라인 모드로 진행")
     return False
 
+# ===========================================================================
+# [P1 PATCH 2026-05-06] 스플래시 창 즉시 표시 (UI thread async)
+# ---------------------------------------------------------------------------
+# 기존: main() 이 kill_zombie_on_port(최대 5.7s) + wait_for_api(최대 10s) 를
+#       메인 스레드에서 동기 호출 -> 사용자는 창이 뜨기 전 최대 ~15.7초 freeze 체감.
+# 해결: 백엔드 부트스트랩(좀비 정리 + API 서버 시작)을 백그라운드 스레드로 위임.
+#       PyWebView 창은 즉시 SPLASH_HTML 로 표시되며, webview.start(func=...) 콜백에서
+#       wait_for_api() 백그라운드 대기 후 실제 URL 로 navigate 한다.
+# ===========================================================================
+
+SPLASH_HTML = '''<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>SQM Inventory — 시작 중</title>
+<style>
+  html, body { margin:0; padding:0; height:100vh; background:#070e1a; }
+  body {
+    color:#e2e8f0;
+    font-family:'Segoe UI','Malgun Gothic',sans-serif;
+    display:flex; flex-direction:column;
+    justify-content:center; align-items:center;
+    user-select:none; -webkit-user-select:none;
+  }
+  h1 { font-size:32px; font-weight:800; margin:0 0 8px; color:#f59e0b; }
+  .sub { font-size:16px; color:#94a3b8; margin-bottom:32px; }
+  .spinner {
+    width:48px; height:48px;
+    border:4px solid #1e293b;
+    border-top-color:#f59e0b;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .ver { position:absolute; bottom:20px; right:20px;
+         font-size:12px; color:#475569; }
+</style>
+</head>
+<body>
+  <h1>SQM Inventory</h1>
+  <p class="sub">광양창고 시스템을 시작하는 중...</p>
+  <div class="spinner"></div>
+  <div class="ver">v8.6.6</div>
+</body>
+</html>
+'''
+
+
 def main():
-    # 0. 포트 사전 점검: 점유 중이면 좀비 종료
-    if is_port_open(API_HOST, API_PORT):
-        log.warning(f"포트 {API_PORT} 선점 상태 → 좀비 uvicorn 제거")
-        kill_zombie_on_port(API_PORT)
-        if is_port_open(API_HOST, API_PORT):
-            log.error(
-                f"포트 {API_PORT} 가 여전히 점유됨. 수동 확인 필요:\n"
-                f'  netstat -ano | findstr :{API_PORT}'
-            )
+    log.info("=== SQM 시작 (Splash 즉시 표시 모드) ===")
 
-    # 1. API 서버 시작 (백그라운드 스레드)
-    api_thread = threading.Thread(target=run_api_server, daemon=True)
-    api_thread.start()
-    log.info(f"API 서버 시작 중 (http://{API_HOST}:{API_PORT})")
+    # [P1 PATCH] 백엔드 부트스트랩(좀비 청소 + API 서버 시작)을 백그라운드 스레드로 위임.
+    # 메인 스레드는 즉시 webview 창 생성으로 진입 -> 사용자에게 0.3~1초 안에 창이 보임.
+    def _setup_backend():
+        try:
+            if is_port_open(API_HOST, API_PORT):
+                log.warning(f"포트 {API_PORT} 선점 상태 -> 좀비 uvicorn 제거")
+                kill_zombie_on_port(API_PORT)
+                if is_port_open(API_HOST, API_PORT):
+                    log.error(
+                        f"포트 {API_PORT} 가 여전히 점유됨. 수동 확인 필요:\n"
+                        f'  netstat -ano | findstr :{API_PORT}'
+                    )
+            run_api_server()
+        except Exception as e:
+            log.exception(f"백엔드 부트스트랩 실패: {e}")
 
-    # 2. API 준비 대기
-    wait_for_api()
+    backend_thread = threading.Thread(
+        target=_setup_backend, daemon=True, name="sqm-backend-bootstrap"
+    )
+    backend_thread.start()
+    log.info(f"API 서버 + 좀비 청소 백그라운드 시작 (http://{API_HOST}:{API_PORT})")
 
-    # 3. PyWebView 창 생성
+    # 3. PyWebView 창 생성 (스플래시 즉시 -> API 준비 후 메인 URL navigate)
     try:
         import webview
         from webview import FileDialog
@@ -336,9 +397,10 @@ def main():
         url = f'http://{API_HOST}:{API_PORT}/'
 
         _win_w, _win_h, _win_max = load_window_state()
+        # [P1 PATCH] url= 대신 html=SPLASH_HTML 로 즉시 표시 (API 대기 없음).
         window = webview.create_window(
             title='SQM Inventory v8.6.6 — 광양창고',
-            url=url,
+            html=SPLASH_HTML,
             width=_win_w,
             height=_win_h,
             min_size=(1024, 700),
@@ -347,21 +409,45 @@ def main():
             js_api=SqmPywebviewApi(),
         )
 
+        # [P1 PATCH 2차 수정] on_loaded 3-state gating:
+        #   "splash" = 1차 발화 (최대화 복원만)
+        #   "main"   = 메인 URL 로드 완료 (JS 브릿지 + 에러 후크 설치)
+        #   "error"  = 오류 화면 로드 (JS 브릿지 비설치, 죽은 백엔드 fetch 루프 방지)
+        _phase = ["splash"]
+
         def on_loaded():
-            # 최대화 상태 복원 (load_window_state에서 _win_max=True 였을 때)
-            if _win_max:
-                try:
-                    window.maximize()
-                    log.info('창 최대화 복원 완료')
-                except Exception as e:
-                    log.warning(f'창 최대화 복원 실패: {e}')
-            # JS 브릿지 초기화 + [Patch] 프론트 에러 자동 전송
+            if _phase[0] == "splash":
+                # 1차 발화: 스플래시 페이지 로드 완료 -> 최대화 복원만 처리.
+                if _win_max:
+                    try:
+                        window.maximize()
+                        log.info('창 최대화 복원 완료')
+                    except Exception as e:
+                        log.warning(f'창 최대화 복원 실패: {e}')
+                return
+
+            if _phase[0] == "error":
+                # 오류 화면: JS 브릿지 설치하지 않음 (죽은 백엔드에 fetch 루프 방지).
+                log.info('on_loaded: error 페이지 로드 — JS 브릿지 비설치')
+                return
+
+            # _phase[0] == "main": 실제 메인 URL 로드 완료 -> JS 브릿지 + 에러 후크 설치.
+            # (필요 시 메인 URL 로드 후 최대화 재시도는 향후 개선; 현재는 splash 단계 처리로 충분)
             window.evaluate_js(f'''
                 window.SQM_API_BASE = "http://{API_HOST}:{API_PORT}";
                 console.log("[SQM] API Base:", window.SQM_API_BASE);
 
                 // ── v8.6.6 Debug: JS 에러를 백엔드 로그로 전송 ──
                 (function installErrorBridge() {{
+                    // [3차 수정 2026-05-06] Idempotency guard.
+                    // SPA 라우팅 / link click / load_url 재호출 등으로 on_loaded 가 여러 번
+                    // 발화될 때, console.error 래핑이 누적되어 무한 재귀가 발생하는 버그 방지.
+                    if (window.__SQM_BRIDGE_INSTALLED__) {{
+                        console.log("[SQM] Error bridge already installed — skip");
+                        return;
+                    }}
+                    window.__SQM_BRIDGE_INSTALLED__ = true;
+
                     function report(payload) {{
                         try {{
                             fetch(window.SQM_API_BASE + "/api/log/frontend-error", {{
@@ -435,8 +521,44 @@ def main():
         window.events.loaded += on_loaded
         window.events.closing += on_closing
 
-        log.info("PyWebView 창 시작 (DEBUG MODE — 우클릭 → 검사로 콘솔 확인 가능)")
-        webview.start(debug=False)
+        # [P1 PATCH] webview.start(func=...) 콜백으로 API 대기 + URL 네비게이션.
+        # 메인 스레드는 webview 이벤트 루프를 돌리고, on_window_started 는 별도 스레드에서 실행됨.
+        def on_window_started():
+            log.info("on_window_started: API 준비 대기 시작")
+            try:
+                if wait_for_api(timeout=10):
+                    log.info(f"API 준비 완료 -> 메인 URL navigate: {url}")
+                    _phase[0] = "main"
+                    try:
+                        window.load_url(url)
+                    except Exception as e:
+                        log.exception(f"window.load_url 실패: {e}")
+                else:
+                    log.error("API 시작 실패 -> 오류 화면 표시")
+                    _phase[0] = "error"
+                    error_html = (
+                        '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">'
+                        '<title>SQM 시작 실패</title>'
+                        '<style>body{background:#070e1a;color:#e2e8f0;'
+                        'font-family:"Segoe UI","Malgun Gothic",sans-serif;'
+                        'padding:50px;line-height:1.6;}'
+                        'h1{color:#fda4af;}code{background:#1e293b;padding:2px 6px;'
+                        'border-radius:4px;}</style></head><body>'
+                        '<h1>API 서버 시작 실패</h1>'
+                        '<p>로그 파일을 확인해 주세요: <code>sqm_debug.log</code></p>'
+                        '<p>또는 PowerShell에서: '
+                        '<code>netstat -ano | findstr :8765</code> 로 포트 점유 확인.</p>'
+                        '</body></html>'
+                    )
+                    try:
+                        window.load_html(error_html)
+                    except Exception as e:
+                        log.exception(f"오류 HTML 로드 실패: {e}")
+            except Exception as e:
+                log.exception(f"on_window_started 실패: {e}")
+
+        log.info("PyWebView 창 시작 (Splash 즉시 표시 모드)")
+        webview.start(on_window_started, debug=False)
         # 창이 닫히면 webview.start() 반환 → 프로세스 강제 종료
         # (FastAPI daemon 스레드가 살아있어도 깔끔하게 종료)
         log.info("창 닫힘 — 프로세스 종료")

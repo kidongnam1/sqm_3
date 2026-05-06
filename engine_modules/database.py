@@ -51,8 +51,9 @@ import os
 import logging
 import threading
 from datetime import datetime
-from typing import Optional, List, Dict, Tuple, Any, TYPE_CHECKING
+from typing import Optional, List, Dict, Tuple, Any, Callable, TYPE_CHECKING
 from contextlib import contextmanager
+from concurrent.futures import ThreadPoolExecutor, Future
 
 # 타입 힌팅용 (런타임에는 import 안 함)
 if TYPE_CHECKING:
@@ -844,3 +845,85 @@ class SQMDatabase(DatabaseSchemaMixin, DatabaseMigrationMixin, DatabaseInterface
     # ── END ──
 
     # 이전 코드 제거됨 — DatabaseSchemaMixin에서 제공
+
+
+# ═══════════════════════════════════════════════════════════
+# v8.6.6: 비동기 DB 헬퍼 (UI 스레드 락 회피용)
+# ═══════════════════════════════════════════════════════════
+# Use these for UI handler paths that may experience DB lock contention.
+# The original sync functions (SQMDatabase.execute / fetchall / fetchone /
+# begin_transaction 등) remain unchanged — battle-tested with hundreds of
+# callers. These helpers ADD a non-breaking async submission path on top.
+#
+# Pattern:
+#     fut = db_execute_async(db.fetchall, "SELECT ...", on_done=cb)
+# The callable runs in a small worker pool (max_workers=4); on_done(result)
+# is invoked from a follow-up thread when the work completes (or with the
+# raised Exception object on failure). UI code is responsible for marshalling
+# the on_done result back to the UI thread if needed.
+
+_db_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="sqm-db-")
+
+# [2차 수정 2026-05-06] atexit 등록 — DB 락에 걸린 작업이 인터프리터 종료를 막지 않도록
+# (max_workers=4 풀이라 개별 작업이 sqlite OperationalError 재시도 중일 수 있음).
+import atexit as _atexit
+_atexit.register(_db_executor.shutdown, wait=False)
+
+
+def db_execute_async(callable_: Callable[..., Any], *args,
+                     on_done: Optional[Callable[[Any], None]] = None,
+                     **kwargs) -> Future:
+    """
+    임의의 DB 작업을 비동기로 제출.
+
+    Use these for UI handler paths that may experience DB lock contention.
+    The original sync functions remain unchanged.
+
+    Args:
+        callable_: 호출할 함수 (예: db.execute, db.fetchall, 사용자 콜백 등)
+        *args, **kwargs: callable_에 전달할 인자
+        on_done: 완료 시 호출할 콜백. 성공 시 결과값, 실패 시 예외 객체를
+                 단일 인자로 받음. (None이면 호출 생략)
+
+    Returns:
+        concurrent.futures.Future — 호출자가 result()/exception()으로
+        직접 결과를 받을 수도 있음.
+    """
+    fut = _db_executor.submit(callable_, *args, **kwargs)
+
+    if on_done is not None:
+        def _done_cb(f: Future) -> None:
+            try:
+                exc = f.exception()
+                payload = exc if exc is not None else f.result()
+            except Exception as _e:  # pragma: no cover - 방어적
+                payload = _e
+            try:
+                on_done(payload)
+            except Exception:
+                logger.exception("[db_execute_async] on_done 콜백 실패")
+
+        fut.add_done_callback(_done_cb)
+
+    return fut
+
+
+def db_query_async(db: 'SQMDatabase', sql: str, params: tuple = (),
+                   on_done: Optional[Callable[[Any], None]] = None) -> Future:
+    """
+    SELECT 쿼리를 비동기로 제출 (SQMDatabase.fetchall 래핑).
+
+    Use these for UI handler paths that may experience DB lock contention.
+    The original sync functions remain unchanged.
+
+    Args:
+        db: SQMDatabase 인스턴스 (sync fetchall 호출에 사용).
+        sql: 실행할 SQL 문자열.
+        params: 바인딩 파라미터 튜플.
+        on_done: 완료 시 호출할 콜백. 성공 시 list[dict], 실패 시 예외 객체를
+                 단일 인자로 받음.
+
+    Returns:
+        concurrent.futures.Future
+    """
+    return db_execute_async(db.fetchall, sql, params, on_done=on_done)
